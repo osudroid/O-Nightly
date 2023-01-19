@@ -43,8 +43,8 @@ Rimu Backend
 | Name                               | Version      | License                            |
 | -----------------------------------|--------------|------------------------------------|
 | NetEscapades.EnumGenerators        | 1.0.0-beta04 | MIT                                |
-| Npgsql                             | 6.0.7        | PostgreSQL                         |
-| NPoco                              | 5.4.0        | Apache, Version 2.0                |
+| Npgsql                             | 7.0.1        | PostgreSQL                         |
+| NPoco                              | 5.7.0        | Apache, Version 2.0                |
 | SixLabors.ImageSharp               | 2.1.2        | Apache, Version 2.0                |
 | System.Drawing.Common              | 5.0.2        | MIT                                |
 | Microsoft.OpenApi                  | 1.2.3        | MIT                                |
