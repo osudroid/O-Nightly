@@ -14,16 +14,14 @@ Rimu Backend
 
 ### Finish Goals
 #### (1.0.0)
+- Split Cronjobs to own Dockerimages.
 - Stable Backend
 ### Future Goals
 #### (1.0.1)
 - Move All Sqlquerys into 1 File
+- Add Deploy Help in Readme
 #### (1.1.0)
 - Manuel SQL Migration Up Down over Args
-#### (2.0.0)
-- Split Cronjobs to own Dockerimages.
-#### (2.0.1)
-- Create own Interface and class(Wrapper) for DatabaseConnection (With Queue And Resulttype)
 
 
 
