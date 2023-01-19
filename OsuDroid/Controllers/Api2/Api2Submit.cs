@@ -75,7 +75,7 @@ public class Api2Submit : ControllerExtensions {
                 return BadRequest("JSON is false");
             prop = value;
         }
-        catch (Exception e) {
+        catch (Exception) {
             return BadRequest("JSON is false");
         }
 
@@ -102,21 +102,25 @@ public class Api2Submit : ControllerExtensions {
             : Ok(resp.Ok());
     }
 
-    public class Api2UploadReplayFilePropAsFormWrapper {
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class Api2UploadReplayFilePropAsFormWrapper {
         public IFormFile? File { get; set; }
         public string? Prop { get; set; }
     }
 
-    public class PushReplayResult200 {
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class PushReplayResult200 {
         public BblUserStats? UserStats { get; set; }
         public long BestPlayScoreId { get; set; }
     }
 
-    public class PushPlayStartResult200 {
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class PushPlayStartResult200 {
         public long PlayId { get; set; }
     }
 
-    public class PushPlayStartProp : Submit.ScoreProp, ApiTypes.IValuesAreGood, ApiTypes.ISingleString,
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class PushPlayStartProp : Submit.ScoreProp, ApiTypes.IValuesAreGood, ApiTypes.ISingleString,
         ApiTypes.IPrintHashOrder {
         public string? Filename { get; set; }
         public string? FileHash { get; set; }
@@ -143,7 +147,8 @@ public class Api2Submit : ControllerExtensions {
         }
     }
 
-    public class PushPlayProp : Submit.ScoreProp, ApiTypes.IValuesAreGood, ApiTypes.ISingleString,
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class PushPlayProp : Submit.ScoreProp, ApiTypes.IValuesAreGood, ApiTypes.ISingleString,
         ApiTypes.IPrintHashOrder {
         public string PrintHashOrder() {
             return ErrorText.HashBodyDataAreFalse(new List<string> {
@@ -200,7 +205,8 @@ public class Api2Submit : ControllerExtensions {
         }
     }
 
-    public class Api2UploadReplayFileProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class Api2UploadReplayFileProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
         public string? MapHash { get; set; }
         public long ReplayId { get; set; }
 

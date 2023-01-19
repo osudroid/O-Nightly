@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
@@ -8,8 +9,6 @@ using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Lib.Validate;
 using OsuDroid.Utils;
 using OsuDroidLib.Database.Entities;
-
-// ReSharper disable All
 
 namespace OsuDroid.Controllers.Api;
 
@@ -381,28 +380,33 @@ WHERE id = {tokenValue.UserId}
         }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class ResetPasswdAndSendEmailProp : ValidateAll, IValidateEmail, IValidateUsername {
         public string? Email { get; set; }
         public string? Username { get; set; }
     }
-
+    
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class ResetPasswdAndSendEmailRes {
         public bool Work { get; set; }
         public bool TimeOut { get; set; }
     }
-
+    
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class WebLoginWithUsernameProp : ValidateAll, IValidatePasswd, IValidateUsername {
         public int Math { get; set; }
         public Guid Token { get; set; }
         public string? Passwd { get; set; }
         public string? Username { get; set; }
     }
-
+    
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UpdateCookieInfo {
         public string? Username { get; set; }
         public string? Email { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class WebRegisterProp : ValidateAll, IValidatePasswd, IValidateUsername {
         public string? Email { get; set; }
         public int MathRes { get; set; }
@@ -411,13 +415,14 @@ WHERE id = {tokenValue.UserId}
         public string? Passwd { get; set; }
         public string? Username { get; set; }
     }
-
+    
     public sealed class WebLoginTokenRes {
         public Guid Token { get; set; }
         public int MathValue1 { get; set; }
         public int MathValue2 { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class WebLoginProp : ValidateAll, IValidatePasswd, IValidateEmail {
         public int Math { get; set; }
         public Guid Token { get; set; }
@@ -425,6 +430,7 @@ WHERE id = {tokenValue.UserId}
         public string? Passwd { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     private sealed class WebLoginRes {
         public bool Work { get; set; }
         public bool UserOrPasswdOrMathIsFalse { get; set; }
@@ -432,6 +438,7 @@ WHERE id = {tokenValue.UserId}
         public bool EmailExist { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class WebReplacePasswordWithToken {
         public bool Work { get; set; }
         public string? ErrorMsg { get; set; }

@@ -68,7 +68,8 @@ public class Api2Leaderboard : ControllerExtensions {
     }
 
 
-    public class LeaderBoardUserProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class LeaderBoardUserProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
         public long UserId { get; set; }
 
         public string PrintHashOrder() {
@@ -86,6 +87,7 @@ public class Api2Leaderboard : ControllerExtensions {
         }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class LeaderBoardProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
         private string? _region;
         public int Limit { get; set; }
@@ -103,9 +105,9 @@ public class Api2Leaderboard : ControllerExtensions {
         }
 
         public string ToSingleString() {
-            return Merge.ObjectsToString(new[] {
-                Limit.ToString(),
-                Region
+            return Merge.ObjectsToString(new object[] {
+                Limit,
+                Region??""
             });
         }
 
@@ -128,7 +130,8 @@ public class Api2Leaderboard : ControllerExtensions {
         }
     }
 
-    public class LeaderBoardSearchUserProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class LeaderBoardSearchUserProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
         private string? _region;
         public long Limit { get; set; }
         public string? Query { get; set; }

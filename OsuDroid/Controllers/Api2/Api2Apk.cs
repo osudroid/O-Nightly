@@ -17,7 +17,7 @@ public class Api2Apk : ControllerExtensions {
             throw;
         }
 #else
-        catch (Exception _) {
+        catch (Exception) {
             return BadRequest();
         }
 #endif

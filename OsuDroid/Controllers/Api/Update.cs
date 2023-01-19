@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
@@ -36,6 +37,7 @@ public class Update : ControllerExtensions {
         });
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public class ApiUpdateInfo {
         [JsonProperty]
         [JsonPropertyName("version_code")]

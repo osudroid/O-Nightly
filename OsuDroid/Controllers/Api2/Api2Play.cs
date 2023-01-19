@@ -65,7 +65,8 @@ public class Api2Play : ControllerExtensions {
     }
 
 
-    public class RecentPlays : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class RecentPlays : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
         public string? FilterPlays { get; set; }
         public string? OrderBy { get; set; }
         public int Limit { get; set; }
@@ -81,11 +82,11 @@ public class Api2Play : ControllerExtensions {
         }
 
         public string ToSingleString() {
-            return Merge.ObjectsToString(new[] {
-                FilterPlays,
-                OrderBy,
-                Limit.ToString(),
-                StartAt.ToString()
+            return Merge.ObjectsToString(new object[] {
+                FilterPlays??"",
+                OrderBy??"",
+                Limit,
+                StartAt
             });
         }
 
@@ -149,13 +150,15 @@ public class Api2Play : ControllerExtensions {
         }
     }
 
-    public class PlayInfoById {
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class PlayInfoById {
         public BblScore? Score { get; set; }
         public string? Username { get; set; }
         public string? Region { get; set; }
     }
 
-    public class Api2PlayById : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class Api2PlayById : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
         public long PlayId { get; set; }
 
         public string PrintHashOrder() {

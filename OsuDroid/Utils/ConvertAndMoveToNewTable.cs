@@ -379,7 +379,7 @@ VALUES (
         WriteLine("Move Score");
         var scoreSpan = CollectionsMarshal.AsSpan(
             oldDb.Fetch<bbl_score?>($@"SELECT * FROM {Env.OldDatabase}.bbl_score").OkOrDefault() ??
-            new List<bbl_score>(0));
+            new List<bbl_score?>(0));
         WriteLine("Score Fetch Count: " + scoreSpan.Length);
         for (var i = scoreSpan.Length - 1; i >= 0; i--) {
             var score = scoreSpan[i];

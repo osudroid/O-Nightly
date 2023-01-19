@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroidLib.Database.Entities;
@@ -33,7 +34,7 @@ public sealed class CookieInfo : ControllerExtensions {
         });
     }
 
-
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UserInfo {
         public long Id { get; set; }
         public string? Username { get; set; }

@@ -42,9 +42,9 @@ public class Api2MapFileRankProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleStri
     }
 
     public string ToSingleString() {
-        return Merge.ObjectsToString(new[] {
-            Filename,
-            FileHash
+        return Merge.ObjectsToString(new object[] {
+            Filename??"",
+            FileHash??""
         });
     }
 

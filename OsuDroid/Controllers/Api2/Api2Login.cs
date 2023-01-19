@@ -73,17 +73,20 @@ public class Api2Login : ControllerExtensions {
             : Ok(new ApiTypes.ExistOrFoundInfo<long> { Value = resp.Ok().UserId, ExistOrFound = true });
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public class CreateApi2TokenProp {
         public string? Username { get; set; }
         public string? Passwd { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public class CreateApi2TokenResult {
         public required Guid Token { get; set; }
         public required bool UsernameFalse { get; set; }
         public required bool PasswdFalse { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public class SimpleTokenProp {
         public Guid Token { get; set; }
     }

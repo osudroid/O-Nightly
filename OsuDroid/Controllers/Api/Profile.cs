@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
 using NPoco;
 using OsuDroid.Extensions;
@@ -11,6 +12,7 @@ using BblGlobalRankingTimeline = OsuDroid.Database.TableFn.BblGlobalRankingTimel
 
 namespace OsuDroid.Controllers.Api;
 
+[SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 public sealed class Profile : ControllerExtensions {
     /// <summary> Guid Token Id, long UserId </summary>
     /// <returns></returns>
@@ -373,12 +375,14 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow);
     }
 
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UpdatePatreonEmailProp : ValidateAll, IValidateEmail, IValidateUsername, IValidatePasswd {
         public string? Email { get; set; }
         public string? Passwd { get; set; }
         public string? Username { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UserRankTimeLine {
         public long UserId { get; set; }
         public IReadOnlyList<RankTimeLineValue>? List { get; set; }
@@ -390,44 +394,52 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow);
         }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UpdateAvatarProp : ValidateAll, IValidatePasswd {
         public string? ImageBase64 { get; set; }
         public string? Passwd { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UpdateAvatarRes {
         public bool PasswdFalse { get; set; }
         public bool ImageToBig { get; set; }
         public bool IsNotAImage { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UpdateUsernameRes {
         public bool HasWork { get; set; }
         public int WaitTimeForNextDayToUpdate { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UpdateEmailProp : ValidateAll, IValidateOldEmail, IValidateNewEmail, IValidatePasswd {
         public string? NewEmail { get; set; }
         public string? OldEmail { get; set; }
         public string? Passwd { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UpdateUsernameProp : ValidateAll, IValidateOldUsername, IValidateNewUsername, IValidatePasswd {
         public string? NewUsername { get; set; }
         public string? OldUsername { get; set; }
         public string? Passwd { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UpdatePasswdProp : ValidateAll, IValidateOldPasswd, IValidateNewPasswd {
         public string? NewPasswd { get; set; }
         public string? OldPasswd { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class Plays {
         public bool Found { get; set; }
         public IReadOnlyList<BblScore>? Scores { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class ProfileStats {
         public long Id { get; set; }
         public string? Username { get; set; }

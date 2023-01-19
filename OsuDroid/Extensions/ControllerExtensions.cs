@@ -38,7 +38,7 @@ public abstract class ControllerExtensions : ControllerBase {
             throw;
         }
 #else
-        catch (Exception _) {
+        catch (Exception) {
             return Response<TokenInfo>.Err;
         }
 #endif
@@ -75,7 +75,7 @@ public abstract class ControllerExtensions : ControllerBase {
             throw;
         }
 #else
-        catch (Exception _) {
+        catch (Exception) {
             return LamLibAllOver.Response.Err();
         }
 #endif

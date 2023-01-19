@@ -39,11 +39,13 @@ public class Api2Statistic : ControllerExtensions {
         return Ok(ApiTypes.ExistOrFoundInfo<List<UsernameAndId>>.Exist(res));
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UsernameAndId {
         public string? Username { get; set; }
         public long Id { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class ActiveUser {
         public long Active1H { get; set; }
         public long Active1Day { get; set; }

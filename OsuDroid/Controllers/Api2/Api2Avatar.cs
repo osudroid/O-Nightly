@@ -77,6 +77,7 @@ AND user_id in ({string.Join(',', prop.Body.UserIds ?? Array.Empty<long>())})
         });
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public class AvatarHashesByUserIdsProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString {
         public int Size { get; set; }
         public long[]? UserIds { get; set; }
@@ -96,11 +97,13 @@ AND user_id in ({string.Join(',', prop.Body.UserIds ?? Array.Empty<long>())})
         }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public class AvatarHash {
         public long UserId { get; set; }
         public string? Hash { get; set; }
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public class AvatarHashes {
         public List<AvatarHash>? List { get; set; }
     }

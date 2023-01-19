@@ -34,6 +34,7 @@ public class Api2Update : ControllerExtensions {
         });
     }
 
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public class ApiUpdateInfoV2 {
         public long VersionCode { get; set; }
         public string? Link { get; set; }
