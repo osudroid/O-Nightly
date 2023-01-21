@@ -407,8 +407,7 @@ VALUES (
             task = InsertSpan(db, task, scoreSpan.Slice(posi, sliceSize));
             posi += sliceSize;
         }
-
-        scoreSpan = Span<bbl_score?>.Empty;
+        
         GC.Collect();
     }
 
@@ -505,6 +504,8 @@ VALUES (
                     bblUserStats.OverallKatu += bblScore.Katu;
                     bblUserStats.OverallMiss += bblScore.Miss;
                 }
+                
+                queue.Enqueue(bblUserStats);
             });
         
         listBblUser.Clear();

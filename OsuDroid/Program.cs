@@ -11,7 +11,6 @@ public sealed class Program {
         if (args.Length == 0) {
             Security.GetSecurity();
             RunWebsite();
-
             return;
         }
 
