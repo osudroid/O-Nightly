@@ -1,4 +1,4 @@
-CREATE DATABASE osu_droid;
+CREATE SEQUENCE IF NOT EXISTS bbl_user_id_seq AS bigint START WITH 1 INCREMENT BY 1 CACHE 1;
 
 CREATE TABLE IF NOT EXISTS bbl_token_user
 (
@@ -10,6 +10,15 @@ CREATE TABLE IF NOT EXISTS bbl_token_user
 
 CREATE INDEX IF NOT EXISTS idx_bbl_token_user ON bbl_token_user USING brin (create_date);
 
+CREATE TABLE IF NOT EXISTS bbl_patron
+(
+    patron_email     text    NOT NULL,
+    active_supporter boolean NOT NULL DEFAULT false,
+    PRIMARY KEY (patron_email)
+);
+
+
+
 CREATE TABLE IF NOT EXISTS bbl_user
 (
     id                   bigint    NOT NULL DEFAULT nextval('bbl_user_id_seq'),
@@ -19,35 +28,23 @@ CREATE TABLE IF NOT EXISTS bbl_user
     deviceid             text      NOT NULL DEFAULT '',
     regist_time          timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login_time      timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    regist_ip            text      NOT NULL DEFAULT '',
     region               text      NOT NULL DEFAULT '',
     active               boolean   NOT NULL DEFAULT true,
     banned               boolean   NOT NULL DEFAULT false,
     restrict_mode        boolean   NOT NULL DEFAULT false,
     username_last_change timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    latest_ip            text      NOT NULL DEFAULT '',
     patron_email         text               DEFAULT null,
     patron_email_accept  boolean   NOT NULL DEFAULT false,
     FOREIGN KEY (patron_email) REFERENCES bbl_patron (patron_email),
     PRIMARY KEY (id)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_bbl_user_username ON bbl_user USING btree (lower(username));
+ALTER SEQUENCE bbl_user_id_seq OWNED BY bbl_user.id;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_bbl_user_patron_email ON bbl_user USING btree (patron_email);
 
-CREATE SEQUENCE IF NOT EXISTS bbl_user_id_seq AS bigint START WITH 1 INCREMENT BY 1 CACHE 1;
-
-ALTER SEQUENCE bbl_user_id_seq OWNED BY bbl_user.id;
-
-
-CREATE TABLE IF NOT EXISTS bbl_patron
-(
-    patron_email     text    NOT NULL,
-    active_supporter boolean NOT NULL DEFAULT false,
-    PRIMARY KEY (patron_email)
-);
-
-
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bbl_user_username ON bbl_user USING btree (lower(username));
 
 CREATE TABLE IF NOT EXISTS bbl_user_stats
 (
@@ -69,7 +66,8 @@ CREATE TABLE IF NOT EXISTS bbl_user_stats
     overall_50       bigint NOT NULL DEFAULT 0,
     overall_geki     bigint NOT NULL DEFAULT 0,
     overall_katu     bigint NOT NULL DEFAULT 0,
-    overall_Miss     bigint NOT NULL DEFAULT 0,
+    overall_miss     bigint NOT NULL DEFAULT 0,
+    overall_xss      bigint NOT NULL DEFAULT 0,
     PRIMARY KEY (uid),
     FOREIGN KEY (uid) REFERENCES bbl_user (id)
 );

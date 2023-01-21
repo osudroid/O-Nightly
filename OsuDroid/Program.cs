@@ -27,6 +27,7 @@ public sealed class Program {
         }
 
         Environment.Exit(args switch {
+            ["--reload-user-stats" or "-s"] => (int)ReloadUserStats(),
             ["--transfer"] => (int)RunTransferDb(),
             ["--reload-timeline" or "-f"] => (int)FullReloadRankingTimeline(),
             ["--hashpass", var password] => (int)ParseAndPrint(() => Password.Hash(password)),
@@ -34,6 +35,11 @@ public sealed class Program {
         });
     }
 
+    private static EExitCode ReloadUserStats() {
+        new ConvertAndMoveToNewTable().Run(true);
+        return EExitCode.Success;
+    }
+    
     private static EExitCode FullReloadRankingTimeline() {
         BblScore? s = null;
         using (var db = DbBuilder.BuildPostSqlAndOpen()) {

@@ -11,11 +11,18 @@ public static class DbBuilder {
     private static void DatabaseFactoryBuild() {
         DatabaseFactory = DatabaseFactory.Config(config => {
             config.UsingDatabase(() => {
-                var db = new NPoco.Database(new NpgsqlConnection(NpgsqlConnectionString), DatabaseType.PostgreSQL);
-                db.EnableAutoSelect = false;
-                db.KeepConnectionAlive = false;
-                db.Connection!.Open();
-                return db;
+                try {
+                    var db = new NPoco.Database(new NpgsqlConnection(NpgsqlConnectionString), DatabaseType.PostgreSQL);
+                    db.EnableAutoSelect = false;
+                    db.KeepConnectionAlive = false;
+                    db.Connection!.Open();
+                    return db;
+                }
+                catch (Exception e) {
+                    WriteLine(NpgsqlConnectionString);
+                    WriteLine(e);
+                    throw;
+                }
             });
         });
     }

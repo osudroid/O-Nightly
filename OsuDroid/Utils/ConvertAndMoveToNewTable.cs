@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data;
 using System.Runtime.InteropServices;
 using Npgsql;
@@ -11,15 +12,19 @@ public class ConvertAndMoveToNewTable {
     private SavePoco oldDb = null!;
 #pragma warning restore CS8618
 
-    public void Run() {
+    public void Run(bool onlyUserStats = false) {
         oldDb = DbBuilder.BuildPostSqlAndOpen();
+        if (onlyUserStats) {
+            FullUpdateUserStats();
+            return;
+        }
         RemoveAllRowsFromNewTable();
         ConvertScore();
         ConvertUser();
         MoveUser();
         InsertScore();
         RemoveScoresWithNoUser();
-        FullUpdateUserScore();
+        FullUpdateUserStats();
         oldDb.Dispose();
     }
 
@@ -181,7 +186,7 @@ VALUES (
         @Deviceid, 
         @RegistTime, 
         @LastLoginTime, 
-        @RegistIp, 
+        @LatestIp, 
         @Region, 
         @Active, 
         @Banned, 
@@ -200,7 +205,7 @@ VALUES (
                         { Value = user.RegistTime, DbType = DbType.DateTime, ParameterName = "RegistTime" },
                     new NpgsqlParameter
                         { Value = user.LastLoginTime, DbType = DbType.DateTime, ParameterName = "LastLoginTime" },
-                    new NpgsqlParameter { Value = user.LatestIp, DbType = DbType.String, ParameterName = "RegistIp" },
+                    new NpgsqlParameter { Value = user.LatestIp, DbType = DbType.String, ParameterName = "LatestIp" },
                     new NpgsqlParameter { Value = user.Region, DbType = DbType.String, ParameterName = "Region" },
                     new NpgsqlParameter { Value = user.Active, DbType = DbType.Boolean, ParameterName = "Active" },
                     new NpgsqlParameter { Value = user.Banned, DbType = DbType.Boolean, ParameterName = "Banned" },
@@ -390,7 +395,7 @@ VALUES (
 
         var posi = 0;
         var maxPosi = scoreSpan.Length;
-        const int sliceSize = 500_000;
+        const int sliceSize = 10_000;
         Task<int>? task = null;
         while (true) {
             WriteLine($"Posi: {posi} FROM {scoreSpan.Length}");
@@ -407,34 +412,80 @@ VALUES (
         GC.Collect();
     }
 
-    private void FullUpdateUserScore() {
+    private void FullUpdateUserStats() {
+        GC.Collect();
         WriteLine("FullUpdateUserScore Start");
         WriteLine("Get All User");
-        foreach (var bblUser in oldDb.Fetch<BblUser>("SELECT id FROM public.bbl_user").Ok()) {
-            WriteLine("Get Plays From User: " + bblUser.Id);
-            var scoreList =
-                oldDb.Fetch<BblScore>($"SELECT * FROM public.bbl_score WHERE uid = {bblUser.Id}").OkOrDefault() ??
-                new List<BblScore>(0);
-            var scoreMap = new Dictionary<string, BblScore>(scoreList.Count);
 
-            foreach (var bblScore in scoreList) {
-                if (!scoreMap.ContainsKey(bblScore.Hash!)) {
-                    scoreMap.Add(bblScore.Hash!, bblScore);
-                    continue;
-                }
-
-                var fromMap = scoreMap[bblScore.Hash!];
-                if (fromMap.Score >= bblScore.Score) continue;
-
-                scoreMap[bblScore.Hash!] = bblScore;
+        var listBblUser = oldDb.Fetch<BblUser>(@"SELECT id FROM bbl_user").Ok();
+        WriteLine("Get All BblScore");
+        var userScores = new Dictionary<long, List<BblScore>>(listBblUser.Count);
+        foreach (var bblUser in listBblUser) 
+            userScores[bblUser.Id] = new List<BblScore>();
+        
+        foreach (var bblScore in oldDb.Fetch<BblScore>(@$"SELECT * FROM bbl_score").Ok()) {
+            List<BblScore> list; 
+            if (userScores.TryGetValue(bblScore.Uid, out list) == false) {
+                list = new List<BblScore>(64);
+                userScores[bblScore.Uid] = list;
             }
+            list.Add(bblScore);
+        }
 
-            scoreList.Clear();
-            var userStats = Flat.FlatToSingle<BblScore, BblUserStats>(scoreMap.Select(x => x.Value),
-                (bblScore, bblUserStats) => {
-                    bblUserStats ??= new BblUserStats { Uid = bblScore.Uid };
+        WriteLine($"Users  Count: {listBblUser.Count}");
+        WriteLine($"Scores Count: {userScores.Count}");
+        WriteLine("Get All Calc Stats");
+        GC.Collect();
+        var queue = new ConcurrentQueue<BblUserStats>();
+        Parallel.ForEach(userScores, new ParallelOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount * 2 },
+            pair => {
+                pair.Deconstruct(out var userId, out var listBblScores);
+                
+                if (listBblScores.Count == 0)
+                    return;
+                
+                var bblUserStats = new BblUserStats() {
+                    Uid = userId,
+                    Playcount = 0,
+                    OverallScore = 0,
+                    OverallAccuracy = 0,
+                    OverallCombo = 0,
+                    OverallXss = 0,
+                    OverallSs = 0,
+                    OverallXs = 0,
+                    OverallS = 0,
+                    OverallA = 0,
+                    OverallB = 0,
+                    OverallC = 0,
+                    OverallD = 0,
+                    OverallHits = 0,
+                    Overall300 = 0,
+                    Overall100 = 0,
+                    Overall50 = 0,
+                    OverallGeki = 0,
+                    OverallKatu = 0,
+                    OverallMiss = 0,
+                };
+                
+                var dictionary = new Dictionary<string, BblScore>((listBblScores.Count + 1) / 2);
+                
+                foreach (var bblScore in listBblScores) {
+                    if (bblScore.Hash is null) continue;
 
                     bblUserStats.Playcount++;
+                    
+                    if (dictionary.TryGetValue(bblScore.Hash, out var inDic) == false) {
+                        dictionary[bblScore.Hash] = bblScore;
+                        continue;
+                    }
+                    
+                    if (inDic.Score > bblScore.Score)
+                        continue;
+
+                    dictionary[bblScore.Hash] = bblScore;
+                }
+                
+                foreach (var (key, bblScore) in dictionary) {
                     bblUserStats.OverallScore += bblScore.Score;
                     bblUserStats.OverallAccuracy += bblScore.Accuracy;
                     bblUserStats.OverallCombo += bblScore.Combo;
@@ -453,13 +504,26 @@ VALUES (
                     bblUserStats.OverallGeki += bblScore.Geki;
                     bblUserStats.OverallKatu += bblScore.Katu;
                     bblUserStats.OverallMiss += bblScore.Miss;
+                }
+            });
+        
+        listBblUser.Clear();
+        userScores.Clear();
+        GC.Collect();
+        
 
-                    return bblUserStats;
-                });
-            scoreMap.Clear();
-            if (userStats is null) continue;
-            WriteLine("Update Stats User: " + bblUser.Id);
-            oldDb.Execute(@$"
+        WriteLine("Update Stats In Db");
+        WriteLine($"Queue Start Size: {queue.Count}");
+        
+        Parallel.For(0, queue.Count, new ParallelOptions() { MaxDegreeOfParallelism = Environment.ProcessorCount * 2 }, (int _) => {
+            using var db = DbBuilder.BuildPostSqlAndOpen();
+            BblUserStats? userStats; 
+            if (queue.TryDequeue(out userStats) == false) 
+                return;
+            
+            WriteLine($"(Queue: {queue.Count}) Update Stats User: {userStats.Uid}");
+            
+            db.Execute(@$"
 Update public.bbl_user_stats 
 SET
     playcount = {userStats.Playcount}, 
@@ -483,6 +547,128 @@ SET
     overall_miss = {userStats.OverallMiss}
 WHERE uid = {userStats.Uid}   
 ");
-        }
+        });
+        
+        
+//         
+//         
+//         Parallel.ForEach(oldDb.Fetch<BblUser>("SELECT id FROM public.bbl_user").Ok(), new ParallelOptions() {
+//             MaxDegreeOfParallelism = Environment.ProcessorCount * 2
+//         }, bblUser => {
+//             using var db = DbBuilder.BuildPostSqlAndOpen();
+//             
+//             
+//             var scoreMap = new Dictionary<string, BblScore>(102_400);
+//
+//             var scoreList =
+//                 db.Fetch<BblScore>($"SELECT * FROM public.bbl_score WHERE uid = {bblUser.Id}").OkOrDefault() ??
+//                 new List<BblScore>(0);
+//             
+//             
+//             
+//             
+//             
+//             
+//             foreach (var bblScore in scoreList) {
+//                 if (!scoreMap.ContainsKey(bblScore.Hash!)) {
+//                     scoreMap.Add(bblScore.Hash!, bblScore);
+//                     continue;
+//                 }
+//
+//                 var fromMap = scoreMap[bblScore.Hash!];
+//                 if (fromMap.Score >= bblScore.Score) continue;
+//
+//                 scoreMap[bblScore.Hash!] = bblScore;
+//             }
+//
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             
+//             scoreList.Clear();
+//             var userStats = Flat.FlatToSingle<BblScore, BblUserStats>(scoreMap.Select(x => x.Value),
+//                 (bblScore, bblUserStats) => {
+//                     bblUserStats ??= new BblUserStats { Uid = bblScore.Uid };
+//
+//                     bblUserStats.Playcount++;
+//                     bblUserStats.OverallScore += bblScore.Score;
+//                     bblUserStats.OverallAccuracy += bblScore.Accuracy;
+//                     bblUserStats.OverallCombo += bblScore.Combo;
+//                     bblUserStats.OverallXss += bblScore.EqAsInt(BblScore.EMark.XSS);
+//                     bblUserStats.OverallSs += bblScore.EqAsInt(BblScore.EMark.SS);
+//                     bblUserStats.OverallXs += bblScore.EqAsInt(BblScore.EMark.XS);
+//                     bblUserStats.OverallS += bblScore.EqAsInt(BblScore.EMark.S);
+//                     bblUserStats.OverallA += bblScore.EqAsInt(BblScore.EMark.A);
+//                     bblUserStats.OverallB += bblScore.EqAsInt(BblScore.EMark.B);
+//                     bblUserStats.OverallC += bblScore.EqAsInt(BblScore.EMark.C);
+//                     bblUserStats.OverallD += bblScore.EqAsInt(BblScore.EMark.D);
+//                     bblUserStats.OverallHits += bblScore.GetValue(BblScore.EBblScore.Hits);
+//                     bblUserStats.Overall300 += bblScore.GetValue(BblScore.EBblScore.N300);
+//                     bblUserStats.Overall100 += bblScore.GetValue(BblScore.EBblScore.N100);
+//                     bblUserStats.Overall50 += bblScore.GetValue(BblScore.EBblScore.N50);
+//                     bblUserStats.OverallGeki += bblScore.Geki;
+//                     bblUserStats.OverallKatu += bblScore.Katu;
+//                     bblUserStats.OverallMiss += bblScore.Miss;
+//
+//                     return bblUserStats;
+//                 });
+//             scoreMap.Clear();
+//             if (userStats is null) return;
+//
+//             WriteLine("Update Stats User: " + bblUser.Id);
+//             db.Execute(@$"
+// Update public.bbl_user_stats 
+// SET
+//     playcount = {userStats.Playcount}, 
+//     overall_score = {userStats.OverallScore}, 
+//     overall_accuracy = {userStats.OverallAccuracy}, 
+//     overall_combo = {userStats.OverallCombo}, 
+//     overall_xss = {userStats.OverallXss}, 
+//     overall_ss = {userStats.OverallSs}, 
+//     overall_xs = {userStats.OverallXs}, 
+//     overall_s = {userStats.OverallS}, 
+//     overall_a = {userStats.OverallA}, 
+//     overall_b = {userStats.OverallB}, 
+//     overall_c = {userStats.OverallC}, 
+//     overall_d = {userStats.OverallD}, 
+//     overall_hits = {userStats.OverallHits},  
+//     overall_300 = {userStats.Overall300}, 
+//     overall_100 = {userStats.Overall100}, 
+//     overall_50 = {userStats.Overall50}, 
+//     overall_geki = {userStats.OverallGeki}, 
+//     overall_katu = {userStats.OverallKatu}, 
+//     overall_miss = {userStats.OverallMiss}
+// WHERE uid = {userStats.Uid}   
+// ");
+        // });
     }
 }
