@@ -3,21 +3,25 @@ using System.Collections.Concurrent;
 namespace OsuDroid.Lib.TokenHandler;
 
 public static class TokenHandlerManger {
-    private static Task? TaskClean;
+    private static Task? _taskClean;
     private static readonly ConcurrentDictionary<ETokenHander, IRefreshAuto> TokenHandlerDic = new();
 
     public static ITokenHandlerDb GetOrCreateCacheDatabase(ETokenHander eTokenHandler) {
-        TaskClean ??= Task.Run(() => {
-            try {
-                while (true) {
-                    Task.Delay(TimeSpan.FromMinutes(1));
-                    foreach (var (key, o) in TokenHandlerDic) o.RefreshAuto();
+        _taskClean ??= Task.Factory.StartNew(async () => {
+            while (true) {
+                try {
+                    {
+                        await Task.Delay(TimeSpan.FromMinutes(1));
+                        foreach (var (key, o) in TokenHandlerDic) 
+                            o.RefreshAuto();
+
+                    }
+                }
+                catch (Exception) {
+                    // ignored
                 }
             }
-            catch (Exception) {
-                // ignored
-            }
-        });
+        }, TaskCreationOptions.LongRunning);
 
         if (TokenHandlerDic.TryGetValue(eTokenHandler, out var value)) {
             if (value is ITokenHandlerDb db) return db;

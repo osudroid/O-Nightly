@@ -116,7 +116,8 @@ WHERE token_id = @0
     public void RemoveDeadToken(SavePoco db) {
         var time = DateTime.UtcNow.Subtract(LifeSpanToken);
         db.Execute(@$"
-DELETE FROM bbl_token_user
+DELETE 
+FROM bbl_token_user
 WHERE create_date <= '{Time.ToScyllaString(time)}'
 ");
     }

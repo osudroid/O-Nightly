@@ -105,10 +105,10 @@ WHERE id = {userId}
     }
 
 
-    public static Response<BblPatron> GetBblPatron(Entities.BblUser bblUser, SavePoco db) {
-        if (string.IsNullOrEmpty(bblUser.Email)) return Response<BblPatron>.Err;
+    public static Response<OsuDroidLib.Database.Entities.BblPatron> GetBblPatron(Entities.BblUser bblUser, SavePoco db) {
+        if (string.IsNullOrEmpty(bblUser.Email)) return Response<OsuDroidLib.Database.Entities.BblPatron>.Err;
 
-        return db.SingleOrDefaultById<BblPatron>(bblUser.Email);
+        return db.SingleOrDefaultById<OsuDroidLib.Database.Entities.BblPatron>(bblUser.Email);
     }
 
     public static Response<bool> CheckPassword(SavePoco db, string username, string passwordHash) {
@@ -138,6 +138,13 @@ AND password = @1
                 res.Ok() is null ? Response<long>.Err : Response<long>.Ok(res.Ok()!.Id),
             _ => Response<long>.Err
         };
+    }
+
+    public static Response DeleteBblUser(SavePoco db, long userId) {
+        var res = db.Execute(@$"Delete FROM bbl_user WHERE id = {userId}");
+        if (res == EResponse.Err)
+            return Response.Err();
+        return Response.Ok();
     }
 
     public class UserRank {

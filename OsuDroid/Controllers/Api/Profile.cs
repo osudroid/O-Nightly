@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
 using NPoco;
+using OsuDroid.Database.TableFn;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.Validate;
@@ -9,6 +10,9 @@ using OsuDroidLib.Database.Entities;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using BblGlobalRankingTimeline = OsuDroid.Database.TableFn.BblGlobalRankingTimeline;
+using BblPatron = OsuDroidLib.Database.Entities.BblPatron;
+using BblScore = OsuDroidLib.Database.Entities.BblScore;
+using BblUser = OsuDroidLib.Database.Entities.BblUser;
 
 namespace OsuDroid.Controllers.Api;
 
@@ -19,6 +23,9 @@ public sealed class Profile : ControllerExtensions {
     private static readonly TimeoutTokenDictionary<Guid, (long UserId, string Email)> _patreoneMailToken =
         new(TimeSpan.FromMinutes(5), 10000, 10000);
 
+    private static readonly TimeoutTokenDictionary<Guid, (long UserId, string Email)> _deleteAccMailToken =
+        new(TimeSpan.FromMinutes(5), 10000, 10000);
+    
     [HttpGet("/api/profile/stats/{id:long}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ProfileStats))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProfileStats))]
@@ -100,7 +107,6 @@ WHERE uid = {userId}
     public IActionResult WebProfileStatsTimeLine([FromRoute(Name = "id")] long userId) {
         if (userId < 0)
             return BadRequest();
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
         var res = BblGlobalRankingTimeline
             .BuildTimeLine(db, userId, DateTime.UtcNow - TimeSpan.FromDays(90))
@@ -374,7 +380,77 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow);
         return Ok(new ApiTypes.Work { HasWork = true });
     }
 
+    [HttpPost("/api/profile/drop-account/sendMail")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CreateDropAccountTokenRes))]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public IActionResult CreateDropAccountToken([FromBody] ApiTypes.Api2GroundNoHeader<CreateDropAccountTokenProp> prop) {
+        if (prop.ValuesAreGood() == false) 
+            return Ok(CreateDropAccountTokenRes.HasElseError());
+        
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        var tokenInfoRes = LoginTokenInfo(db);
+        if (tokenInfoRes == EResponse.Err)
+            return Ok(CreateDropAccountTokenRes.CookieIsDead());
+        
+        var userId = tokenInfoRes.Ok().UserId;
+        var bblUser = Database.TableFn.BblUser.GetUserById(db, userId);
+        if (bblUser is null)
+            return Ok(CreateDropAccountTokenRes.HasElseError());
+        
+        if (Database.TableFn.BblUser.PasswordEqual(bblUser, prop.Body!.Password ?? "") == false) 
+            return Ok(CreateDropAccountTokenRes.PasswordIsFalse());
+        
+        
+        var deleteAccToken = Guid.NewGuid(); 
+        _deleteAccMailToken.Add(deleteAccToken, (userId, bblUser.Email??""));
+        Utils.SendEmail.MainSendDropAccountVerifyLinkToken(bblUser.Username??"", bblUser.Email??"", deleteAccToken);
 
+        return Ok(CreateDropAccountTokenRes.NoError());
+    }
+
+    [HttpGet("/api/profile/drop-account/token/{token:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public IActionResult DropAccountWithToken([FromRoute(Name = "token")] Guid token) {
+        _deleteAccMailToken.CleanDeadTokens();
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        
+        var tokenInfoRes = LoginTokenInfo(db);
+        var deleteAccTokenResponse = _deleteAccMailToken.Pop(token: token);
+        if (tokenInfoRes == EResponse.Err || deleteAccTokenResponse == EResponse.Err)
+            return BadRequest();
+
+        var userId = deleteAccTokenResponse.Ok().UserId;
+
+        var deleteAccountResponse = Bbl.DeleteAccount(db, userId);
+        
+        this.RemoveCookieByEName(ECookie.LoginCookie);
+        return Ok(ApiTypes.Work.True);
+    }
+
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class CreateDropAccountTokenProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString {
+        public string? Password { get; set; }
+        
+        public bool ValuesAreGood() => !string.IsNullOrEmpty(Password);
+
+        public string ToSingleString() => Password??"";
+    }
+
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class CreateDropAccountTokenRes {
+        public bool Work { get; set; }
+        public bool PasswordFalse { get; set; }
+        public bool CookieDead { get; set; }
+        public bool ElseError { get; set; }
+
+        public static CreateDropAccountTokenRes NoError() => new() { Work = true };
+        public static CreateDropAccountTokenRes PasswordIsFalse() => new() { Work = false, PasswordFalse = true };
+        public static CreateDropAccountTokenRes CookieIsDead() => new() { Work = false, CookieDead = true };
+        public static CreateDropAccountTokenRes HasElseError() => new() { Work = false, ElseError = true };
+    }
+    
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UpdatePatreonEmailProp : ValidateAll, IValidateEmail, IValidateUsername, IValidatePasswd {
         public string? Email { get; set; }

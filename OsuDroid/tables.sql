@@ -106,6 +106,7 @@ CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid ON bbl_score USING brin (uid);
 CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid_filename ON bbl_score USING brin (uid, filename);
 CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_filename ON bbl_score USING brin (filename);
 CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_hash_filename ON bbl_score USING brin (filename, hash);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_user_id_id ON bbl_score USING btree (uid desc , id desc);
 ALTER SEQUENCE bbl_score_id_seq OWNED BY bbl_score.id;
 
 

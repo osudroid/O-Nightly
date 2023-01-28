@@ -26,21 +26,29 @@ public static class BblGlobalRankingTimeline {
 
     public static IReadOnlyList<Entities.BblGlobalRankingTimeline> BuildTimeLine(SavePoco db, long userId,
         DateTime startAt) {
-        var now = Now(db, userId);
+        // var now = Now(db, userId);
         var sql = new Sql(@$"
 SELECT * 
 FROM bbl_global_ranking_timeline
 WHERE user_id = {userId}
-AND date >= @0
+AND date >= {Time.ToScyllaString(startAt)}
 ORDER BY date ASC 
-", startAt);
+");
+
 
         var response = db.Fetch<Entities.BblGlobalRankingTimeline>(sql);
         var resList = response == EResponse.Err
             ? new List<Entities.BblGlobalRankingTimeline>(0)
             : response.Ok();
-        if (now is not null)
-            resList.Add(now);
+        // if (now is not null)
+        //     resList.Add(now);
         return resList;
+    }
+    
+    public static Response DeleteAllRankingByAllUserId(SavePoco db, long userId) {
+        var res = db.Execute(@$"Delete FROM bbl_global_ranking_timeline WHERE user_id = {userId}");
+        if (res == EResponse.Err)
+            return Response.Err();
+        return Response.Ok();
     }
 }

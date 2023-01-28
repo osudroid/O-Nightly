@@ -20,7 +20,7 @@ public sealed class Login : ControllerExtensions {
     /// <summary> Key Token Value CreateTime </summary>
     private static readonly ConcurrentDictionary<string, (DateTime, long UserId)> ResetPasswdTime = new();
 
-    private static readonly Random _random = new();
+    private static readonly Random Random = new();
     private static readonly ConcurrentDictionary<Guid, (WebLoginTokenRes, DateTime)> TokenDic = new();
 
     [HttpPost("/api/weblogin")]
@@ -48,7 +48,7 @@ public sealed class Login : ControllerExtensions {
             prop.Email ?? "", this.ToPasswdHash(prop.Passwd ?? string.Empty)).OkOrDefault();
         if (fetchResult is null)
             return Ok(new WebLoginRes { Work = false });
-
+        
         var guid = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).Insert(db, fetchResult.Id);
         AppendCookie(ECookie.LoginCookie, guid.ToString());
 
@@ -175,8 +175,8 @@ or lower(username) = @1
     public ActionResult WebLoginToken() {
         var res = new WebLoginTokenRes {
             Token = Guid.NewGuid(),
-            MathValue1 = _random.Next(1, 50),
-            MathValue2 = _random.Next(1, 50)
+            MathValue1 = Random.Next(1, 50),
+            MathValue2 = Random.Next(1, 50)
         };
         TokenDic[res.Token] = (res, DateTime.UtcNow + TimeSpan.FromMinutes(5));
         return Ok(res);
