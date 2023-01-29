@@ -131,8 +131,8 @@ public sealed class Program {
         connStringBuilder.Pooling = true;
         connStringBuilder.ReadBufferSize = 1048576;
         connStringBuilder.WriteBufferSize = 1048576;
-        connStringBuilder.MaxPoolSize = 256;
-        connStringBuilder.MinPoolSize = 20;
+        connStringBuilder.MaxPoolSize = 1024;
+        connStringBuilder.MinPoolSize = 256;
         connStringBuilder.KeepAlive = 10;
         connStringBuilder.TcpKeepAlive = true;
 
