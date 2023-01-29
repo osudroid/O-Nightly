@@ -38,8 +38,9 @@ ORDER BY date ASC
         var resList = response == EResponse.Err
             ? new List<Entities.BblGlobalRankingTimeline>(0)
             : response.Ok();
-        // if (now is not null)
-        //     resList.Add(now);
+        var now = Now(db, userId);
+        if (now is not null)
+            resList.Add(now);
         return resList;
     }
     
