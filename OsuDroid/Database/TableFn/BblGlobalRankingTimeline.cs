@@ -26,8 +26,6 @@ public static class BblGlobalRankingTimeline {
 
     public static IReadOnlyList<Entities.BblGlobalRankingTimeline> BuildTimeLine(SavePoco db, long userId,
         DateTime startAt) {
-        Console.WriteLine("hi");
-        // var now = Now(db, userId);
         var sql = new Sql(@$"
 SELECT * 
 FROM bbl_global_ranking_timeline
