@@ -127,17 +127,11 @@ WHERE uid = {userId}
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(Plays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult WebProfileTopPlays([FromRoute(Name = "id")] long userId) {
-        var sql = new Sql(@$"
-SELECT * FROM bbl_score 
-WHERE uid = {userId}
-ORDER BY bbl_score.score DESC 
-LIMIT 50;
-");
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
+        
         return Ok(new Plays {
             Found = true,
-            Scores = db.Fetch<BblScore>(sql).OkOrDefault() ?? new List<BblScore>(0)
+            Scores = Database.TableFn.BblScore.GetTopScoreFromUserId(db, userId).OkOr(new List<BblScore>(0))
         });
     }
 
