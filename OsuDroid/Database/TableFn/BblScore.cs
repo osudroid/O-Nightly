@@ -12,9 +12,9 @@ public static class BblScore {
         var res = db.Fetch<Entities.BblScore>(@$"
 SELECT * 
 FROM (
-         SELECT distinct ON (hash) * FROM bbl_score
+         SELECT distinct ON (filename) * FROM bbl_score
          WHERE uid = {userId}
-         ORDER BY hash, score DESC
+         ORDER BY filename, score DESC
      ) x
 ORDER BY score DESC 
 LIMIT 50;
