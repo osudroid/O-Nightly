@@ -1,3 +1,5 @@
+[![CodeFactor](https://www.codefactor.io/repository/github/osudroid/o-nightly/badge)](https://www.codefactor.io/repository/github/osudroid/o-nightly)
+
 Rimu Backend
 =============================
 - [Goals](#goals)
