@@ -45,10 +45,13 @@ public static class Env {
     public static string UpdatePath => GetEnvironmentVariableCheckNull("UPDATE_PATH");
 
     public static string JarPath => GetEnvironmentVariableCheckNull("JAR_PATH");
+    public static bool LogPrint => bool.Parse(GetEnvironmentVariableCheckNull("LOG_PRINT"));
+    public static bool LogRequestJsonPrint => bool.Parse(GetEnvironmentVariableCheckNull("LOG_REQUEST_JSON_PRINT"));
 
     private static string GetEnvironmentVariableCheckNull(string name) {
         return Config[name] ?? throw new NullReferenceException("EnvironmentVariable " + name);
     }
+    
 
     #region JWT
 

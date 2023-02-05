@@ -1,4 +1,5 @@
 using AspNetCoreRateLimit;
+using Newtonsoft.Json;
 using Npgsql;
 using OsuDroid.Lib;
 using OsuDroid.Utils;
@@ -6,6 +7,7 @@ using OsuDroidLib.Database.Entities;
 
 public sealed class Program {
     public static void Main(string[] args) {
+        
         DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
 
         if (args.Length == 0) {

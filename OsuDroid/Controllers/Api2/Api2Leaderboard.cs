@@ -55,6 +55,8 @@ public class Api2Leaderboard : ControllerExtensions {
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
+        ((ILogRequestJsonPrint)prop.Body!).LogRequestJsonPrint();
+        
         var rep = prop.Body!.IsRegionAll() switch {
             true => LeaderBoard.SearchUser(prop.Body!.Limit, prop.Body!.Query!).OkOr(new()),
             _ => LeaderBoard.SearchUserWithRegion(prop.Body!.Limit, prop.Body!.Query!,
@@ -130,7 +132,7 @@ public class Api2Leaderboard : ControllerExtensions {
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class LeaderBoardSearchUserProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
+    public sealed class LeaderBoardSearchUserProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder, ILogRequestJsonPrint {
         private string? _region;
         public long Limit { get; set; }
         public string? Query { get; set; }
@@ -172,5 +174,7 @@ public class Api2Leaderboard : ControllerExtensions {
         public bool IsRegionAll() {
             return Region == "all";
         }
+
+        
     }
 }
