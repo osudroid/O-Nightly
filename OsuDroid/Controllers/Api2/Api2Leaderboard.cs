@@ -51,20 +51,19 @@ public class Api2Leaderboard : ControllerExtensions {
     [HttpPost("/api2/leaderboard/search-user")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult
-        GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardSearchUserProp> prop) {
+    public IActionResult GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardSearchUserProp> prop) {
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
         var rep = prop.Body!.IsRegionAll() switch {
-            true => LeaderBoard.SearchUser(prop.Body!.Limit, prop.Body!.Query!),
+            true => LeaderBoard.SearchUser(prop.Body!.Limit, prop.Body!.Query!).OkOr(new()),
             _ => LeaderBoard.SearchUserWithRegion(prop.Body!.Limit, prop.Body!.Query!,
-                prop.Body.GetRegionAsCountry().Ok())
+                prop.Body.GetRegionAsCountry().OkOr(new()))
         };
 
         return Ok(rep == EResponse.Err
             ? ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.NotExist()
-            : ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.Exist(rep.Ok()));
+            : ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.Exist(rep.OkOr(new())));
     }
 
 
