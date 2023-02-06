@@ -1,5 +1,5 @@
 using AspNetCoreRateLimit;
-using Newtonsoft.Json;
+
 using Npgsql;
 using OsuDroid.Lib;
 using OsuDroid.Utils;

@@ -16,7 +16,7 @@ public static class Env {
             try {
                 return Config["OSUDROID_SECURITY_DLL"] ?? "";
             }
-            catch (Exception _) {
+            catch (Exception) {
                 return "";
             }
         }
