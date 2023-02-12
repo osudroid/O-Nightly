@@ -6,20 +6,20 @@ namespace OsuDroidLib;
 public static class Log {
     private static bool _settingsSet = false;
     public static LamLogger.LamLog GetLog(SavePoco savePoco) {
-        
-        if (_settingsSet == false)
+        if (_settingsSet == false) {
             LamLogger.LamLog.Settings = new LamLogSettings() {
-DbTable = Env.LogInDbName,
-LazyDbPrint = false,
-PrintUseDebug = Env.LogDebug,
-PrintUseError = Env.LogError,
-LazyTextWriterPrint = false,
-UseDbAsPrint = Env.LogInDb,
-PrintUseOk = Env.LogOk,
-PrintDBUseDebug = Env.LogDebug,
-PrintDBUseError = Env.LogError,
-PrintDBUseOk = Env.LogOk
+                DbTable = Env.LogInDbName,
+                LazyDbPrint = false,
+                LazyTextWriterPrint = false,
+                UseDbAsPrint = Env.LogInDb,
+                PrintUseOk = Env.LogOk,
+                PrintUseDebug = Env.LogDebug,
+                PrintUseError = Env.LogError,
+                PrintDBUseOk = Env.LogOk,
+                PrintDBUseDebug = Env.LogDebug,
+                PrintDBUseError = Env.LogError,
             };
+        }
 
         async Task Insert(LamLogTable[] tables) {
             var db = savePoco;
@@ -29,7 +29,7 @@ PrintDBUseOk = Env.LogOk
                     var sql = new Sql(@$"
 INSERT INTO {Env.LogInDbName} 
     (id, date_time, message, status, stack, trigger)
-VALUES ('{log.DateUuid.ToString()}',@0, @1, @2, @3, @4)
+VALUES ('{log.DateUuid.ToString()}', @0, @1, @2, @3, @4)
 ",
                         DateTime.SpecifyKind(log.DateTime, DateTimeKind.Utc), 
                         log.Message??"", 
