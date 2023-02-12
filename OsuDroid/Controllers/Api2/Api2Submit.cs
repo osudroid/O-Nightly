@@ -14,14 +14,16 @@ public class Api2Submit : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PushPlayStartResult200))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult PushPlayStart([FromBody] ApiTypes.Api2GroundWithHash<PushPlayStartProp> prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
 
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
         
         var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
         var tokenInfoResp = log
@@ -47,14 +49,15 @@ public class Api2Submit : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult PushReplay([FromBody] ApiTypes.Api2GroundWithHash<PushPlayProp> prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
-
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
         
         var tokenInfoResp = log
             .AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User)
@@ -84,6 +87,8 @@ public class Api2Submit : ControllerExtensions {
         ApiTypes.Api2GroundWithHash<Api2UploadReplayFileProp> prop;
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         
         try {
             var value =

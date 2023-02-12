@@ -29,6 +29,10 @@ public sealed class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(WebLoginRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult WebLogin([FromBody] WebLoginProp prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         var now = DateTime.UtcNow;
         {
             foreach (var token in TokenDic.Keys)
@@ -39,9 +43,6 @@ public sealed class Login : ControllerExtensions {
 
         if (TokenDic.Remove(prop.Token, out var tokenAndTime) == false)
             return BadRequest();
-
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
         
         var tokenValue = tokenAndTime.Item1;
         if (prop.Math != tokenValue.MathValue1 + tokenValue.MathValue2)
@@ -69,6 +70,10 @@ public sealed class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     [HttpPost("/api/webloginwithusername")]
     public IActionResult WebLoginWithUsername([FromBody] WebLoginWithUsernameProp prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         prop.Username = this.FixUsername(prop.Username ?? string.Empty);
 
         var now = DateTime.UtcNow;
@@ -86,8 +91,6 @@ public sealed class Login : ControllerExtensions {
         if (prop.Math != tokenValue.MathValue1 + tokenValue.MathValue2)
             return Ok(new WebLoginRes { Work = false });
 
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
         
         var passwdHash = this.ToPasswdHash(prop.Passwd ?? string.Empty);
         var fetchResult = log.AddResultAndTransform(db.SingleOrDefault<Entities.BblUser>(
@@ -116,6 +119,10 @@ public sealed class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(WebLoginRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult WebRegister([FromBody] WebRegisterProp value) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (value.AnyValidate() == EResult.Err) {
             return Ok(new WebLoginRes { UserOrPasswdOrMathIsFalse = true });
         }
@@ -141,9 +148,6 @@ SELECT username, email FROM public.bbl_user
 WHERE email = @0 
 or lower(username) = @1
 ", value.Username.ToLower(), value.Email);
-
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
         
         var userExist = log.AddResultAndTransform(db.SingleOrDefault<Entities.BblUser>(sql)).OkOrDefault();
         if (userExist is not null) {
@@ -186,6 +190,10 @@ or lower(username) = @1
     [HttpGet("/api/weblogintoken")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WebLoginTokenRes))]
     public ActionResult WebLoginToken() {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         var res = new WebLoginTokenRes {
             Token = Guid.NewGuid(),
             MathValue1 = Random.Next(1, 50),
@@ -200,6 +208,7 @@ or lower(username) = @1
     public IActionResult WebUpdateCookie() {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
         
         var response = log.AddResultAndTransform(this.LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
         if (response.IsSet() == false) {
@@ -243,12 +252,13 @@ WHERE id = {response.Unwrap().UserId}
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResetPasswdAndSendEmailRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult ResetPasswdAndSendEmail([FromBody] ResetPasswdAndSendEmailProp prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (prop.AnyValidate() == EResult.Err) {
             return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
         }
-
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
         
         Option<IPAddress> optionIpAddress = Option<IPAddress>.Trim(log.AddResultAndTransform(GetIpAddress()));
         if (optionIpAddress.IsSet() == false)
@@ -297,6 +307,10 @@ LIMIT 1", prop.Username)
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(WebReplacePasswordWithToken))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult SetNewPasswd([FromBody] ApiTypes.Api2GroundNoHeader<SetNewPasswdProp> prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (prop.ValuesAreGood() == false) {
             return Ok(new WebReplacePasswordWithToken {
                 Work = false,
@@ -320,9 +334,6 @@ LIMIT 1", prop.Username)
                 Work = false,
                 ErrorMsg = "Password To Short"
             });
-
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
         
         var response = log.AddResultAndTransform(db.Execute(@$"
 UPDATE bbl_user 
@@ -345,6 +356,10 @@ WHERE id = {tokenValue.UserId}
 
     [HttpPost("/api/signin/patreon")]
     public async Task<IActionResult> PatreonSignLogin([FromForm] string provider) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         // Note: the "provider" parameter corresponds to the external
         // authentication provider choosen by the user agent.
         if (string.IsNullOrWhiteSpace(provider))
@@ -364,6 +379,10 @@ WHERE id = {tokenValue.UserId}
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult PatreonSignout() {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         // TODO PatreonSignout
 
 
@@ -376,6 +395,10 @@ WHERE id = {tokenValue.UserId}
 
     [HttpGet("/api/weblogout")]
     public IActionResult RemoveCookie() {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         RemoveCookieByEName(ECookie.LoginCookie);
         return Ok();
     }

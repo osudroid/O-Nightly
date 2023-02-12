@@ -206,3 +206,14 @@ CREATE INDEX IF NOT EXISTS idx_bbl_avatar_hash_full ON bbl_avatar_hash(user_id, 
 --     on bbl_global_ranking_timeline (user_id, date) INCLUDE (score, global_ranking);
 -- CREATE INDEX IF NOT EXISTS idx_bbl_global_ranking_timeline_date
 --     on bbl_global_ranking_timeline (date) INCLUDE (score, global_ranking);
+
+
+CREATE TABLE IF NOT EXISTS log(
+    id uuid NOT NULL ,
+    date_time timestamp NOT NULL,
+    message text NOT NULL,
+    status text NOT NULL,
+    stack text NOT NULL,
+    trigger text NOT NULL,
+    PRIMARY KEY (id, date_time)
+);

@@ -33,11 +33,12 @@ public sealed class Profile : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProfileStats))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult WebProfileStats([FromRoute(Name = "id")] long userId) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
         
         var sql = new Sql(
             "SELECT * FROM public.bbl_user JOIN bbl_user_stats bus on bus.uid = bbl_user.id WHERE id = @0", userId);
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
         
         var optionUserAndStats = log.AddResultAndTransform(db.SingleOrDefault<BblUserAndBblUserStats>(sql))
             .Map(x => Option<BblUserAndBblUserStats>.NullSplit(x))
@@ -109,11 +110,12 @@ WHERE uid = {userId}
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UserRankTimeLine))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult WebProfileStatsTimeLine([FromRoute(Name = "id")] long userId) {
-        if (userId < 0)
-            return BadRequest();
-        
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (userId < 0)
+            return BadRequest();
         
         var rankingTimeline = log.AddResultAndTransform(BblGlobalRankingTimeline
             .BuildTimeLine(db, userId, DateTime.UtcNow - TimeSpan.FromDays(90)))
@@ -136,6 +138,8 @@ WHERE uid = {userId}
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult WebProfileTopPlays([FromRoute(Name = "id")] long userId) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
         
         return Ok(new Plays {
             Found = true,
@@ -148,14 +152,17 @@ WHERE uid = {userId}
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(Plays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult WebProfileTopRecent([FromRoute(Name = "id")] long userId) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         var sql = new Sql(@$"
 SELECT * FROM bbl_score 
 WHERE uid = {userId}
 ORDER BY bbl_score.id DESC 
 LIMIT 50;
 ");
-
-        using var db = DbBuilder.BuildPostSqlAndOpen();
+        
         return Ok(new Plays {
             Found = true,
             Scores = db.Fetch<BblScore>(sql).OkOrDefault() ?? new List<BblScore>(0)
@@ -167,11 +174,12 @@ LIMIT 50;
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult UpdateEmail([FromBody] UpdateEmailProp prop) {
-        if (prop.AnyValidate() == EResult.Err)
-            return Ok(new ApiTypes.Work { HasWork = false });
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (prop.AnyValidate() == EResult.Err)
+            return Ok(new ApiTypes.Work { HasWork = false });
         
         var tokenInfoResp = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
         if (tokenInfoResp.IsSet() == false) return Ok(ApiTypes.Work.False);
@@ -212,12 +220,13 @@ LIMIT 50;
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult UpdatePasswd([FromBody] UpdatePasswdProp prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (prop.AnyValidate() == EResult.Err)
             return Ok(new ApiTypes.Work { HasWork = false });
 
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        
         var optiontokenInfoResp = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
         if (optiontokenInfoResp.IsSet() == false) 
             return Ok(ApiTypes.Work.False);
@@ -243,12 +252,13 @@ LIMIT 50;
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(UpdateUsernameRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult UpdateUsername([FromBody] UpdateUsernameProp prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         prop.NewUsername = prop.NewUsername?.Trim();
         if (prop.AnyValidate() == EResult.Err)
             return Ok(new UpdateUsernameRes { HasWork = false });
-
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
         
         var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
         if (optionTokenInfo.IsSet() == false) return Ok(new UpdateUsernameRes { HasWork = false });
@@ -286,11 +296,12 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult UpdateAvatar([FromBody] UpdateAvatarProp prop) {
-        if (prop.AnyValidate() == EResult.Err)
-            return Ok(new UpdateAvatarRes { PasswdFalse = true });
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (prop.AnyValidate() == EResult.Err)
+            return Ok(new UpdateAvatarRes { PasswdFalse = true });
         
         var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
         if (optionTokenInfo.IsSet() == false) return BadRequest();
@@ -349,11 +360,12 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult UpdatePatreonEmail([FromBody] UpdatePatreonEmailProp prop) {
-        if (prop.AnyValidate() == EResult.Err)
-            return Ok(ApiTypes.Work.False);
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (prop.AnyValidate() == EResult.Err)
+            return Ok(ApiTypes.Work.False);
 
         var checkRes = log.AddResultAndTransform(Database.TableFn.BblUser.CheckPasswordGetId(db, prop.Username ?? "",
             Database.TableFn.BblUser.HashPasswd(prop.Passwd ?? "", Env.PasswdSeed))).OkOr(Option<long>.Empty);
@@ -379,11 +391,12 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult AcceptPatreonEmail([FromRoute(Name = "token")] Guid token) {
-        if (token == Guid.Empty)
-            return Ok(new ApiTypes.Work { HasWork = false });
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (token == Guid.Empty)
+            return Ok(new ApiTypes.Work { HasWork = false });
         
         var response = _patreoneMailToken.Pop(token);
 
@@ -412,11 +425,12 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CreateDropAccountTokenRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult CreateDropAccountToken([FromBody] ApiTypes.Api2GroundNoHeader<CreateDropAccountTokenProp> prop) {
-        if (prop.ValuesAreGood() == false) 
-            return Ok(CreateDropAccountTokenRes.HasElseError());
-        
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (prop.ValuesAreGood() == false) 
+            return Ok(CreateDropAccountTokenRes.HasElseError());
         
         var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
         if (optionTokenInfo.IsSet() == false) return BadRequest();
@@ -444,9 +458,11 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult DropAccountWithToken([FromRoute(Name = "token")] Guid token) {
-        _deleteAccMailToken.CleanDeadTokens();
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        _deleteAccMailToken.CleanDeadTokens();
         
         var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
         var deleteAccTokenResponse = _deleteAccMailToken.Pop(token: token);

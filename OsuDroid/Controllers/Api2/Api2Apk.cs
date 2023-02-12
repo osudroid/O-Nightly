@@ -8,6 +8,10 @@ public class Api2Apk : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(byte[]))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult GetUpdateInfo([FromRoute(Name = "dirNameNumber")] long version) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         try {
             using var fileStream = System.IO.File.OpenRead($"{Env.UpdatePath}/{version}/android.apk");
             return File(fileStream, "application/apk");

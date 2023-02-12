@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using OsuDroid.Extensions;
+using OsuDroidLib;
 
 namespace OsuDroid.Controllers.Api;
 
@@ -11,6 +12,10 @@ public class Update : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiUpdateInfo))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult GetUpdateInfo([FromQuery(Name = "lang")] string lang = "en") {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         var dirNameNumber = Directory.GetDirectories(Env.UpdatePath).Select(long.Parse).MaxBy(x => x);
         if (dirNameNumber == 0) return GetInternalServerError();
 

@@ -15,6 +15,7 @@ public class Api2Login : ControllerExtensions {
     public IActionResult CreateApi2Token([FromBody] CreateApi2TokenProp prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
 
         var user = log.AddResultAndTransform(db.SingleOrDefault<BblUser>(
             "SELECT id, username, password FROM bbl_user WHERE username = lower(@0)", prop.Username ?? ""))
@@ -52,6 +53,7 @@ public class Api2Login : ControllerExtensions {
     public IActionResult RefreshApi2Token([FromBody] SimpleTokenProp prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
         
         var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
         var optionExist = log.AddResultAndTransform(tokenHandler.TokenExist(db, prop.Token)).OkOr(false);
@@ -72,6 +74,7 @@ public class Api2Login : ControllerExtensions {
     public IActionResult RemoveApi2Token([FromBody] SimpleTokenProp prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
         
         var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
         var resultErr = tokenHandler.RemoveToken(db, prop.Token);
@@ -88,6 +91,7 @@ public class Api2Login : ControllerExtensions {
     public IActionResult GetTokenUserId([FromBody] SimpleTokenProp prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
         
         var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
         var optionResp = log.AddResultAndTransform(tokenHandler.GetTokenInfo(db, prop.Token)).OkOr(Option<TokenInfo>.Empty);

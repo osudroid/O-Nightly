@@ -14,14 +14,16 @@ public class Api2Play : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PlayInfoById))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(string))]
     public IActionResult GetPlayById([FromBody] ApiTypes.Api2GroundWithHash<Api2PlayById> prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
 
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
         
         var optionRep = log.AddResultAndTransform(ScorePack.GetByPlayId(prop.Body!.PlayId))
             .OkOr(Option<(BblScore Score, string Username, string Region)>.Empty);
@@ -39,6 +41,10 @@ public class Api2Play : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK,
         Type = typeof(ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.BblScoreWithUsername>>))]
     public async Task<IActionResult> GetRecentPlay([FromBody] ApiTypes.Api2GroundNoHeader<RecentPlays> prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        await log.AddLogDebugStartAsync();
+        
         if (prop.ValuesAreGood() == false)
             return BadRequest();
         try {

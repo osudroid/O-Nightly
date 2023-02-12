@@ -15,8 +15,9 @@ public sealed class CookieInfo : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult GetUserInfoByCookie() {
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        LamLog log = Log.GetLog(db);
-        
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+
         log.AddLogOk("Start");
         var optionToken = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
         if (optionToken.IsSet() == false) 

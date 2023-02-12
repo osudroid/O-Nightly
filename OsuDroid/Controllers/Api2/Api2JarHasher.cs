@@ -8,6 +8,10 @@ public class Api2JarHasher : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(byte[]))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult Jar([FromRoute(Name = "version")] string version, [FromQuery(Name = "q")] string keyToken) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (Env.Keyword != keyToken)
             return BadRequest();
         try {

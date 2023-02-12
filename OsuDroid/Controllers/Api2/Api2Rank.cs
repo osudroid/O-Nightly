@@ -13,14 +13,15 @@ public class Api2Rank : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult MapFileRank([FromBody] ApiTypes.Api2GroundWithHash<Api2MapFileRankProp> prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
-
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
         
         var resultRep = log.AddResultAndTransform(Rank.MapTopPlaysByFilenameAndHash(
             prop.Body!.Filename!,

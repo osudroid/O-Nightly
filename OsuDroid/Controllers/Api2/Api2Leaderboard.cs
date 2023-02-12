@@ -12,11 +12,12 @@ public class Api2Leaderboard : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult GetLeaderBoard([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardProp> prop) {
-        if (prop.ValuesAreGood() == false)
-            return BadRequest();
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (prop.ValuesAreGood() == false)
+            return BadRequest();
         
         var allRegion = prop.Body!.IsRegionAll();
         Result<List<LeaderBoardUser>, string> rep;
@@ -45,11 +46,12 @@ public class Api2Leaderboard : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<LeaderBoardUser>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardUserProp> prop) {
-        if (prop.ValuesAreGood() == false)
-            return BadRequest();
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (prop.ValuesAreGood() == false)
+            return BadRequest();
         
         var rep = log.AddResultAndTransform(LeaderBoard.User(prop.Body!.UserId)).OkOr(Option<LeaderBoardUser>.Empty);
 
@@ -62,11 +64,12 @@ public class Api2Leaderboard : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardSearchUserProp> prop) {
-        if (prop.ValuesAreGood() == false)
-            return BadRequest();
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (prop.ValuesAreGood() == false)
+            return BadRequest();
         
         ((ILogRequestJsonPrint)prop.Body!).LogRequestJsonPrint();
         
