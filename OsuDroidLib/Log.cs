@@ -1,4 +1,5 @@
 using LamLogger;
+using NPoco;
 
 namespace OsuDroidLib; 
 
@@ -24,17 +25,24 @@ PrintDBUseOk = Env.LogOk
             var db = savePoco;
 
             foreach (var log in tables) {
-                await db.ExecuteAsync(@$"
+                try {
+                    var sql = new Sql(@$"
 INSERT INTO {Env.LogInDbName} 
     (id, date_time, message, status, stack, trigger)
-VALUES (@0, @1, @2, @3, @4, @5)
-", log.DateUuid.ToString(), 
-                    log.DateTime, 
-                    log.Message, 
-                    log.Status.ToString(), 
-                    log.Stack, 
-                    log.Trigger
-                );
+VALUES ('{log.DateUuid.ToString()}',@0, @1, @2, @3, @4)
+",
+                        DateTime.SpecifyKind(log.DateTime, DateTimeKind.Utc), 
+                        log.Message??"", 
+                        log.Status.ToString(), 
+                        log.Stack.Or(""), 
+                        log.Trigger??"");
+
+                    await db.ExecuteAsync(sql);
+                }
+                catch (Exception e) {
+                    WriteLine(e);
+                    throw;
+                }
             }
         }
         
