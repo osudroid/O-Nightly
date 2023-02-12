@@ -5,7 +5,7 @@ public interface ITokenHandler : IRefreshAuto {
     public TimeSpan CleanInterval { get; set; }
     public TimeSpan LifeSpanToken { get; set; }
 
-    public Response<List<TokenInfoWithGuid>> GetAll();
+    public Result<List<TokenInfoWithGuid>, string> GetAll();
     public void SetOverwriteMany(Span<TokenInfoWithGuid> span);
     public void CheckNow();
     public void RemoveAllTokenWithSameUserId(long userId);
@@ -14,11 +14,11 @@ public interface ITokenHandler : IRefreshAuto {
 
     public Guid Insert(long userId);
 
-    public Response Refresh(Guid token);
+    public ResultErr<string> Refresh(Guid token);
 
     public void RemoveToken(Guid token);
 
-    public Response<TokenInfo> GetTokenInfo(Guid token);
+    public Option<TokenInfo> GetTokenInfo(Guid token);
 
     public void RemoveDeadTokenIfNextCleanDate();
 

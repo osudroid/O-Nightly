@@ -3,12 +3,12 @@
 namespace Patreon.NET; 
 
 public sealed class Tier {
-    [JsonProperty(PropertyName = "type")] public string Type { get; set; }
+    [JsonProperty(PropertyName = "type")] public string? Type { get; set; }
 
-    [JsonProperty(PropertyName = "id")] public string Id { get; set; }
+    [JsonProperty(PropertyName = "id")] public string? Id { get; set; }
 
     [JsonProperty(PropertyName = "attributes")]
-    public TierAttributes Attributes { get; set; }
+    public TierAttributes? Attributes { get; set; }
 }
 
 public sealed class TierAttributes {
@@ -19,13 +19,13 @@ public sealed class TierAttributes {
     public DateTime CreatedAt { get; set; }
 
     [JsonProperty(PropertyName = "description")]
-    public string Description { get; set; }
+    public string? Description { get; set; }
 
     [JsonProperty(PropertyName = "edited_at")]
     public DateTime EditedAt { get; set; }
 
     [JsonProperty(PropertyName = "image_url")]
-    public string ImageURL { get; set; }
+    public string? ImageURL { get; set; }
 
     [JsonProperty(PropertyName = "patron_count")]
     public int PatronCount { get; set; }
@@ -45,12 +45,12 @@ public sealed class TierAttributes {
     [JsonProperty(PropertyName = "requires_shipping")]
     public bool RequiresShipping { get; set; }
 
-    [JsonProperty(PropertyName = "title")] public string Title { get; set; }
+    [JsonProperty(PropertyName = "title")] public string? Title { get; set; }
 
     [JsonProperty(PropertyName = "unpublished_at")]
     public DateTime UnpublishedAt { get; set; }
 
-    [JsonProperty(PropertyName = "url")] public string URL { get; set; }
+    [JsonProperty(PropertyName = "url")] public string? URL { get; set; }
 
     [JsonProperty(PropertyName = "user_limit")]
     public int? UserLimit { get; set; }

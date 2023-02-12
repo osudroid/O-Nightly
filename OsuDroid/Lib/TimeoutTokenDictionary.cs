@@ -31,17 +31,17 @@ public class TimeoutTokenDictionary<Token, Value> where Token : notnull {
         _dictionary[token] = new Holder(DateTime.UtcNow, value);
     }
 
-    public Response<Value> Pop(Token token) {
+    public Option<Value> Pop(Token token) {
         Counter++;
         if (!_dictionary.TryGetValue(token, out var holder))
-            return Response<Value>.Err;
+            return Option<Value>.Empty;
 
         var now = DateTime.UtcNow;
         if (holder.HolderIsDead(ref now, LifeTime))
-            return Response<Value>.Err;
+            return Option<Value>.Empty;
 
         _dictionary[token] = new Holder(DateTime.MinValue, default!);
-        return Response<Value>.Ok(holder.Value);
+        return Option<Value>.With(holder.Value);
     }
 
     private void CleanDeadTokens(bool intern = true) {

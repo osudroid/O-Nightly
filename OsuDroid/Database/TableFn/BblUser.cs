@@ -1,4 +1,5 @@
 using System.Net;
+using MaxMind.GeoIP2.Responses;
 using NPoco;
 using OsuDroid.Utils;
 using OsuDroidLib.Database.Entities;
@@ -22,12 +23,10 @@ public static class BblUser {
         return bblUser.Password == LamLibAllOver.MD5.Hash(passwd + Env.PasswdSeed).ToLower();
     }
 
-    public static Entities.BblUser? GetUserById(SavePoco db, long id) {
-        return db.FirstOrDefault<Entities.BblUser>($"SELECT * FROM bbl_user WHERE id = {id} LIMIT 1") switch {
-            { Status: EResponse.Ok } res =>
-                res.Ok() is null ? null : res.Ok(),
-            _ => null
-        };
+    public static Result<Option<Entities.BblUser>, string> GetUserById(SavePoco db, long id) {
+        var sql = new Sql($"SELECT * FROM bbl_user WHERE id = {id} LIMIT 1");
+
+        return db.FirstOrDefault<Entities.BblUser>(sql).Map(x => Option<Entities.BblUser>.NullSplit(x));
     }
 
     public static DateTime UpdateLastLoginTime(Entities.BblUser bblUser, SavePoco db) {
@@ -42,62 +41,60 @@ public static class BblUser {
         return time;
     }
 
-    public static void UpdateIpAndRegionByIp(Entities.BblUser bblUser, SavePoco db, IPAddress address) {
-        var countryResponse = IpInfo.Country(address);
-        if (countryResponse is null || countryResponse.RegisteredCountry.Name is null) return;
+    public static ResultErr<string> UpdateIpAndRegionByIp(Entities.BblUser bblUser, SavePoco db, IPAddress address) {
+        CountryResponse? countryResponse = IpInfo.Country(address);
+        if (countryResponse is null || countryResponse.RegisteredCountry.Name is null) 
+            return ResultErr<string>.Err("County Not Found By IpAddress");
         var countryName = countryResponse.RegisteredCountry.Name;
 
         bblUser.LatestIp = address.ToString();
 
-        var country = CountryInfo.FindByName(countryName);
-        if (country is null)
-            return;
+        var optionCountry = CountryInfo.FindByName(countryName);
+        if (optionCountry.IsSet() == false)
+            return ResultErr<string>.Err("CountryInfo Not Found");
 
-        bblUser.Region = country.Value.NameShort;
+        bblUser.Region = optionCountry.Unwrap().NameShort;
 
-        UpdateIpAndRegion(db, bblUser.Id, bblUser.Region, bblUser.LatestIp);
+        return UpdateIpAndRegion(db, bblUser.Id, bblUser.Region, bblUser.LatestIp);
     }
 
-    public static void UpdateIpAndRegionByIp(SavePoco db, long id, IPAddress address) {
+    public static ResultErr<string> UpdateIpAndRegionByIp(SavePoco db, long id, IPAddress address) {
         var countryResponse = IpInfo.Country(address);
-        var country = CountryInfo.FindByName(countryResponse!.Country!.Name!);
+        var optionCountry = CountryInfo.FindByName(countryResponse!.Country!.Name!);
 
-        if (country is null) {
-#if DEBUG
-            throw new NullReferenceException(nameof(country));
-#else
-            return;
-#endif
+        if (optionCountry.IsSet() == false) {
+            return ResultErr<string>.Err("CountryInfo Not Found");
         }
 
-        UpdateIpAndRegion(db, id, country.Value.NameShort, address.ToString());
+        var country = optionCountry.Unwrap();
+        return UpdateIpAndRegion(db, id, country.NameShort, address.ToString());
     }
 
-    public static void SetAcceptPatreonEmail(SavePoco db, long id, bool accept = true) {
+    public static ResultErr<string> SetAcceptPatreonEmail(SavePoco db, long id, bool accept = true) {
         var sql = new Sql($@"
 Update bbl_user 
 Set patron_email_accept = {accept}
 WHERE id = {id}
 ");
 
-        db.Execute(sql);
+        return db.Execute(sql);
     }
 
-    public static void SetPatreonEmail(SavePoco db, long id, string email) {
+    public static ResultErr<string> SetPatreonEmail(SavePoco db, long id, string email) {
         var sql = new Sql($@"
 Update bbl_user 
 Set patron_email = @0
 WHERE id = {id}
 ", email);
 
-        db.Execute(sql);
+        return db.Execute(sql);
     }
 
     /// <param name="db"></param>
     /// <param name="region"></param>
     /// <param name="latest_ip"></param>
-    private static void UpdateIpAndRegion(SavePoco db, long userId, string? region, string? latestIp) {
-        db.Execute(@$"
+    private static ResultErr<string> UpdateIpAndRegion(SavePoco db, long userId, string? region, string? latestIp) {
+        return db.Execute(@$"
 UPDATE bbl_user 
 SET region = '{region}', latest_ip = '{latestIp}'
 WHERE id = {userId}
@@ -105,13 +102,14 @@ WHERE id = {userId}
     }
 
 
-    public static Response<OsuDroidLib.Database.Entities.BblPatron> GetBblPatron(Entities.BblUser bblUser, SavePoco db) {
-        if (string.IsNullOrEmpty(bblUser.Email)) return Response<OsuDroidLib.Database.Entities.BblPatron>.Err;
-
+    public static Result<OsuDroidLib.Database.Entities.BblPatron, string> GetBblPatron(Entities.BblUser bblUser, SavePoco db) {
+        if (string.IsNullOrEmpty(bblUser.Email))
+            return Result<OsuDroidLib.Database.Entities.BblPatron, string>.Err($"{nameof(bblUser.Email)} IS NULL");
+        
         return db.SingleOrDefaultById<OsuDroidLib.Database.Entities.BblPatron>(bblUser.Email);
     }
 
-    public static Response<bool> CheckPassword(SavePoco db, string username, string passwordHash) {
+    public static Result<bool, string> CheckPassword(SavePoco db, string username, string passwordHash) {
         var sql = new Sql(@"
 SELECT username
 FROM bbl_user
@@ -119,13 +117,10 @@ WHERE username = @0
 AND password = @1
 ", username, passwordHash);
 
-        return db.SingleOrDefault<Entities.BblUser>(sql) switch {
-            { Status: EResponse.Ok } => true,
-            _ => false
-        };
+        return db.SingleOrDefault<Entities.BblUser>(sql).Map(x => x is not null );
     }
 
-    public static Response<long> CheckPasswordGetId(SavePoco db, string username, string passwordHash) {
+    public static Result<Option<long>, string> CheckPasswordGetId(SavePoco db, string username, string passwordHash) {
         var sql = new Sql(@"
 SELECT id
 FROM bbl_user
@@ -133,18 +128,12 @@ WHERE username = @0
 AND password = @1
 ", username, passwordHash);
 
-        return db.SingleOrDefault<Entities.BblUser>(sql) switch {
-            { Status: EResponse.Ok } res =>
-                res.Ok() is null ? Response<long>.Err : Response<long>.Ok(res.Ok()!.Id),
-            _ => Response<long>.Err
-        };
+        return db.SingleOrDefault<Entities.BblUser>(sql)
+            .Map(x => x is not null? Option<long>.With(x.Id): Option<long>.Empty);
     }
 
-    public static Response DeleteBblUser(SavePoco db, long userId) {
-        var res = db.Execute(@$"Delete FROM bbl_user WHERE id = {userId}");
-        if (res == EResponse.Err)
-            return Response.Err();
-        return Response.Ok();
+    public static ResultErr<string> DeleteBblUser(SavePoco db, long userId) {
+        return db.Execute(@$"Delete FROM bbl_user WHERE id = {userId}");
     }
 
     public class UserRank {

@@ -31,32 +31,46 @@ public class OdrZip {
     }
 
 
-    public static Response<(FileStream stream, string name)> Factory(SavePoco db, long odrNumber) {
-        var bblScore = db.SingleOrDefault<BblScore>("SELECT * FROM bbl_score WHERE id = " + odrNumber).OkOrDefault();
+    public static Result<Option<(FileStream stream, string name)>, string> Factory(SavePoco db, long odrNumber) {
+        var resultBblScore = db
+            .SingleOrDefault<BblScore>("SELECT * FROM bbl_score WHERE id = " + odrNumber)
+            .Map(x => Option<BblScore>.NullSplit(x));
 
-        if (bblScore is null)
-            return Response<(FileStream stream, string name)>.Err;
+        if (resultBblScore == EResult.Err)
+            return Result<Option<(FileStream stream, string name)>, string>.Err(resultBblScore.Err());
+        
+        var optionBblScore = resultBblScore.Ok();
+        if (optionBblScore.IsSet() == false)
+            return Result<Option<(FileStream stream, string name)>, string>.Ok(Option<(FileStream stream, string name)>.Empty);
 
+        var bblScore = optionBblScore.Unwrap(); 
+        
         var filename = odrNumber + ".zip";
         FileStream stream;
         if (File.Exists(Env.ReplayZipPath)) {
             stream = File.OpenRead(Path.Combine(Env.ReplayZipPath, filename));
         }
         else {
-            var bblUser = db.SingleOrDefault<BblUser>(
-                $"SELECT username FROM bbl_user WHERE id = {bblScore.Uid}").OkOrDefault();
-
-            if (bblUser is null || bblUser.Username is null)
-                return Response<(FileStream stream, string name)>.Err;
+            var resultBblUser = db.SingleOrDefault<BblUser>(
+                $"SELECT username FROM bbl_user WHERE id = {bblScore.Uid}").Map(x => Option<BblUser>.NullSplit(x));
+            
+            if (resultBblUser == EResult.Err)
+                return Result<Option<(FileStream stream, string name)>, string>.Err(resultBblScore.Err());
+            
+            var optionBblUser = resultBblUser.Ok();
+            if (optionBblUser.IsSet() == false)
+                return Result<Option<(FileStream stream, string name)>, string>.Ok(Option<(FileStream stream, string name)>.Empty);
 
             var odrPath = Path.Join(Env.ReplayPath, odrNumber + ".odr");
             if (Path.Exists(odrPath) == false)
-                return Response<(FileStream stream, string name)>.Err;
+                return Result<Option<(FileStream stream, string name)>, string>.Err($"Path Error odrPath: {odrPath}");
 
-            stream = CreateOdrZip(File.OpenRead(odrPath), OdrEntry.Factory(bblScore, bblUser.Username), filename);
+            stream = CreateOdrZip(File.OpenRead(odrPath), OdrEntry
+                .Factory(bblScore, optionBblUser.Unwrap().Username??""), filename);
         }
 
         stream.Position = 0;
-        return Response<(FileStream stream, string name)>.Ok((stream, $"{bblScore.Filename}_{odrNumber}.zip"));
+        return Result<Option<(FileStream stream, string name)>, string>
+            .Ok(Option<(FileStream stream, string name)>.With((stream, $"{bblScore.Filename}_{odrNumber}.zip")));
     }
 }

@@ -151,7 +151,7 @@ public sealed class PatreonClient : IDisposable {
 
         if (campaign is null)
             return new List<Tier>(0);
-        return campaign.Relationships.Tiers;
+        return campaign!.Relationships!.Tiers!;
     }
 
     public async Task<List<Member>> GetCampaignMembers(string campaignId) {

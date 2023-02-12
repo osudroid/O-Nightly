@@ -7,13 +7,16 @@ public static class Service {
         return new ServiceState();
     }
 
-    public static Response<ServiceState> RunRankingTimeline(ServiceState state) {
+    public static Result<ServiceState, string> RunRankingTimeline(ServiceState state) {
         WriteLine("Start Calc New Ranking Timeline");
         var db = DbBuilder.BuildPostSqlAndOpen();
         if (db is null)
             throw new NullReferenceException(nameof(db));
         WriteLine("Finish Calc New Ranking Timeline");
-        return Run(db) == EResponse.Ok ? Response<ServiceState>.Ok(state) : Response<ServiceState>.Err;
+        var resultErr = Run(db);
+        return resultErr == EResult.Err 
+            ? Result<ServiceState, string>.Err(resultErr.Err()) 
+            : Result<ServiceState, string>.Ok(state);
     }
 
     private static List<DateTime> GetCalcDays(SavePoco db) {
@@ -51,19 +54,19 @@ public static class Service {
         return res;
     }
 
-    private static Response Run(SavePoco db) {
+    private static ResultErr<string> Run(SavePoco db) {
         foreach (var dateTime in GetCalcDays(db)) {
             WriteLine("( Start ) ADD New GlobalTimeLine For: " + Time.ToScyllaString(dateTime));
             var response = CalcTableGlobalForThisDay(dateTime);
             WriteLine("( END   ) ADD New GlobalTimeLine For: " + Time.ToScyllaString(dateTime));
-            WriteLine($"Response Ok: {response == EResponse.Ok}");
-            if (response == EResponse.Err) return response;
+            WriteLine($"Response Ok: {response == EResult.Err}");
+            return response;
         }
 
-        return Response.Ok();
+        return ResultErr<string>.Ok();
     }
 
-    private static Response CalcTableGlobalForThisDay(DateTime dateTime) {
+    private static ResultErr<string> CalcTableGlobalForThisDay(DateTime dateTime) {
         try {
             var date = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
             using var db = DbBuilder.BuildNpgsqlConnection();
@@ -102,6 +105,6 @@ ORDER BY global_ranking;
         }
 #endif
 
-        return Response.Ok();
+        return ResultErr<string>.Ok();
     }
 }

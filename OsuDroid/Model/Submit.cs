@@ -3,14 +3,21 @@ using OsuDroidLib.Database.Entities;
 namespace OsuDroid.Model;
 
 public static class Submit {
-    public static Response<(BblUserStats userStats, long BestPlayScoreId), string> InsertFinishPlayAndUpdateUserScore(
+    public static Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string> InsertFinishPlayAndUpdateUserScore(
         long userId, ScoreProp prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
 
-        var history = BblScorePreSubmit.GetById(db, prop.Id);
-        if (history is null)
-            return Response<(BblUserStats userStats, long BestPlayScoreId), string>.Err("Map Not Found");
+        var resultHistory = BblScorePreSubmit.GetById(db, prop.Id);
+        if (resultHistory == EResult.Err)
+            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err(resultHistory.Err());
 
+        var optionHistory = resultHistory.Ok();
+        if (optionHistory.IsSet() == false)
+            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>
+                .Ok(Option<(BblUserStats userStats, long BestPlayScoreId)>.Empty);
+
+        var history = optionHistory.Unwrap();
+        
         var newScoreInsert = new BblScore {
             Id = history.Id,
             Uid = history.Uid,
@@ -30,45 +37,66 @@ public static class Submit {
             Accuracy = prop.Accuracy
         };
 
-        var userStats = SqlFunc.GetBblUserStatsByUserId(db, userId).OkOrDefault();
-        if (userStats is null)
-            return Response<(BblUserStats userStats, long BestPlayScoreId), string>.Err("Id Error");
-
+        Result<BblUserStats, string> resultUserStats = SqlFunc.GetBblUserStatsByUserId(db, userId);
+        if (resultUserStats == EResult.Err)
+            Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err(resultUserStats.Err());
+        
+        var userStats = resultUserStats.Ok();
+        
         if (newScoreInsert.Mode == "AR")
-            return Response<(BblUserStats userStats, long BestPlayScoreId), string>.Err("FAIL");
+            Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err("FAIL");
 
-        if (SqlFunc.InsertBblScore(db, newScoreInsert) == EResponse.Err)
-            return Response<(BblUserStats userStats, long BestPlayScoreId), string>.Err("FAIL");
+        var resultErrInsert = SqlFunc.InsertBblScore(db, newScoreInsert);
+        if (resultErrInsert == EResult.Err)
+            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err(resultErrInsert.Err());
 
-        db.Delete<BblScorePreSubmit>(newScoreInsert.Id);
+        var resultErrDb = db.Delete<BblScorePreSubmit>(newScoreInsert.Id);
+        if (resultErrDb == EResult.Err)
+            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err(resultErrDb.Err());
 
+        var resultUserTopScore = BblScore.GetUserTopScore(db, history.Uid, history.Filename!, history.Hash!);
 
-        var userTopScore = BblScore.GetUserTopScore(db, history.Uid, history.Filename!, history.Hash!);
+        if (resultUserTopScore == EResult.Err)
+            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err(resultUserTopScore.Err());
 
-        if (userTopScore is not null) {
+        var optionUserTopScore = resultUserTopScore.Ok();
+        
+        if (optionUserTopScore.IsSet() == false)
+            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>
+                .Ok(Option<(BblUserStats userStats, long BestPlayScoreId)>.Empty);
+        
+        if (optionUserTopScore.IsSet()) {
+            var userTopScore = optionUserTopScore.Unwrap();
+            
             if (userTopScore.Score > newScoreInsert.Score)
-                return Response<(BblUserStats userStats, long BestPlayScoreId), string>.Ok((
-                    userStats,
-                    userTopScore.Id
-                ));
+                return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>
+                    .Ok(Option<(BblUserStats userStats, long BestPlayScoreId)>
+                        .With((
+                            userStats,
+                            userTopScore.Id
+                        )));
 
             BblUserStats.UpdateStatsFromScore(db, newScoreInsert.Uid, newScoreInsert, userTopScore);
 
-            return Response<(BblUserStats userStats, long BestPlayScoreId), string>.Ok((
-                SqlFunc.GetBblUserStatsByUserId(db, userId).Ok(),
-                newScoreInsert.Id
-            ));
+            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>
+                .Ok(Option<(BblUserStats userStats, long BestPlayScoreId)>
+                    .With((
+                        SqlFunc.GetBblUserStatsByUserId(db, userId).Ok(),
+                        newScoreInsert.Id
+                    )));
         }
 
         BblUserStats.UpdateStatsFromScore(db, newScoreInsert.Uid, newScoreInsert);
 
-        return Response<(BblUserStats userStats, long BestPlayScoreId), string>.Ok((
-            SqlFunc.GetBblUserStatsByUserId(db, userId).Ok(),
-            newScoreInsert.Id
-        ));
+        return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>
+            .Ok(Option<(BblUserStats userStats, long BestPlayScoreId)>
+                .With((
+                    SqlFunc.GetBblUserStatsByUserId(db, userId).Ok(),
+                    newScoreInsert.Id
+                )));
     }
 
-    public static Response<long, string> InsertPreBuildPlay(long userId, string filename, string fileHash) {
+    public static Result<long, string> InsertPreBuildPlay(long userId, string filename, string fileHash) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
 
         var idBblScorePreSubmit = BblScorePreSubmit
@@ -79,8 +107,8 @@ public static class Submit {
                 fileHash);
 
         if (idBblScorePreSubmit is null)
-            return Response<long, string>.Err("Server Error");
-        return Response<long, string>.Ok(idBblScorePreSubmit.Id);
+            return Result<long, string>.Err("Server Error");
+        return Result<long, string>.Ok(idBblScorePreSubmit.Id);
     }
 
     public class ScoreProp {

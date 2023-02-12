@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib.OdrZip;
+using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
 namespace OsuDroid.Controllers.Api2;
@@ -18,11 +19,14 @@ public class Api2Odr : ControllerExtensions {
     [HttpGet("/api2/odr/{replayId:long}.zip")]
     public ActionResult GetOdrZipFile([FromRoute(Name = "replayId")] long replayId) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        var res = OdrZip.Factory(db, replayId);
+        using var log = Log.GetLog(db);
+        
+        var res = log.AddResultAndTransform(OdrZip.Factory(db, replayId))
+            .OkOr(Option<(FileStream stream, string name)>.Empty);
 
-        if (res == EResponse.Err) return BadRequest();
+        if (res.IsSet() == false) return BadRequest();
 
-        var (stream, name) = res.Ok();
+        var (stream, name) = res.Unwrap();
 
         return File(stream, "Application/octet-stream");
     }

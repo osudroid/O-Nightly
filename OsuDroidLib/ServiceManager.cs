@@ -8,7 +8,7 @@ public interface IServiceModeRun {
 }
 
 public class ServiceManager<T> : IDisposable, IServiceModeRun {
-    private readonly List<Func<T, Response<T>>> _actions;
+    private readonly List<Func<T, Result<T, string>>> _actions;
     private T? _state;
     private Task? _task;
     private TimeSpan _timeSpan;
@@ -17,7 +17,7 @@ public class ServiceManager<T> : IDisposable, IServiceModeRun {
 
     private ServiceManager() {
         _timeSpan = TimeSpan.FromDays(1);
-        _actions = new List<Func<T, Response<T>>>(4);
+        _actions = new List<Func<T, Result<T, string>>>(4);
     }
 
     public void Dispose() {
@@ -33,17 +33,17 @@ public class ServiceManager<T> : IDisposable, IServiceModeRun {
     }
 
     private async Task Loop() {
-        static Response ForeActions(Span<Func<T, Response<T>>> actions, T? state) {
+        static ResultErr<string> ForeActions(Span<Func<T, Result<T, string>>> actions, T? state) {
             if (state is null)
                 throw new NullReferenceException(nameof(state));
             foreach (var action in actions) {
                 var resp = action(state);
-                if (resp == EResponse.Err)
-                    return Response.Err();
+                if (resp == EResult.Err)
+                    return resp;
                 state = resp.Ok();
             }
 
-            return Response.Ok();
+            return ResultErr<string>.Ok();
         }
 
         try {
@@ -52,17 +52,17 @@ public class ServiceManager<T> : IDisposable, IServiceModeRun {
             _state = FuncState();
 
             while (true) {
-                var response = Response.Empty;
+                var response = ResultErr<string>.Ok();
                 if (FirstSleep) {
                     await Task.Delay(_timeSpan);
                     response = ForeActions(CollectionsMarshal.AsSpan(_actions), _state);
-                    if (response == EResponse.Err)
+                    if (response == EResult.Err)
                         _state = FuncState();
                     continue;
                 }
 
                 response = ForeActions(CollectionsMarshal.AsSpan(_actions), _state);
-                if (response == EResponse.Err)
+                if (response == EResult.Err)
                     _state = FuncState();
                 await Task.Delay(_timeSpan);
             }
@@ -83,7 +83,7 @@ public class ServiceManager<T> : IDisposable, IServiceModeRun {
         return this;
     }
 
-    public ServiceManager<T> AddFunction(Func<T, Response<T>> action) {
+    public ServiceManager<T> AddFunction(Func<T, Result<T, string>> action) {
         _actions.Add(action);
         return this;
     }

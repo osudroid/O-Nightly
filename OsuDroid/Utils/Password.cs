@@ -4,12 +4,12 @@ public static class Password {
     /// <summary> It Use Env.PasswdSeed </summary>
     /// <param name="passwd"></param>
     /// <returns></returns>
-    public static Response<string, string> Hash(string passwd) {
+    public static Result<string, string> Hash(string passwd) {
         try {
-            return Response<string, string>.Ok(MD5.Hash(passwd + Env.PasswdSeed).ToLower());
+            return Result<string, string>.Ok(MD5.Hash(passwd + Env.PasswdSeed).ToLower());
         }
         catch (Exception e) {
-            return Response<string, string>.Err(e.ToString());
+            return Result<string, string>.Err(e.ToString());
         }
     }
 }

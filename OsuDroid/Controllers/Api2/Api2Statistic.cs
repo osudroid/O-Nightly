@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Model;
+using OsuDroidLib;
 
 namespace OsuDroid.Controllers.Api2;
 
@@ -9,9 +10,13 @@ public class Api2Statistic : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK,
         Type = typeof(ApiTypes.ExistOrFoundInfo<SqlFunc.StatisticActiveUser>))]
     public IActionResult GetActiveUser() {
-        var rep = Statistic.ActiveUser();
-        if (rep == EResponse.Err)
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        
+        var rep = log.AddResultAndTransform(Statistic.ActiveUser());
+        if (rep == EResult.Err)
             return Ok(ApiTypes.ExistOrFoundInfo<SqlFunc.StatisticActiveUser>.NotExist());
+        
         var value = rep.Ok();
         return Ok(ApiTypes.ExistOrFoundInfo<SqlFunc.StatisticActiveUser>.Exist(new SqlFunc.StatisticActiveUser {
             RegisterUser = value.Register,
@@ -23,9 +28,12 @@ public class Api2Statistic : ControllerExtensions {
     [HttpGet("/api2/statistic/all-patreon")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<UsernameAndId>>))]
     public IActionResult GetAllPatreon() {
-        var rep = Statistic.GetActivePatreon();
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        
+        var rep = log.AddResultAndTransform(Statistic.GetActivePatreon());
 
-        if (rep == EResponse.Err)
+        if (rep == EResult.Err)
             return Ok(ApiTypes.ExistOrFoundInfo<List<UsernameAndId>>.NotExist());
 
         var res = new List<UsernameAndId>(rep.Ok().Count);

@@ -3939,12 +3939,12 @@ public static class CountryInfo {
     }
 
 
-    public static Country? FindByName(string name) {
+    public static Option<Country> FindByName(string name) {
         if (CountryKeyName is null) LoadJson();
 
         if (CountryKeyName!.TryGetValue(name, out var value))
-            return value;
-        return null;
+            return Option<Country>.With(value);
+        return Option<Country>.Empty;
     }
 
     private static void LoadJson() {

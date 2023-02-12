@@ -7,19 +7,20 @@ using OsuDroidLib.Database.Entities;
 
 public sealed class Program {
     public static void Main(string[] args) {
-        
         DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
-
+        
+        
+        
         if (args.Length == 0) {
             Security.GetSecurity();
             RunWebsite();
             return;
         }
 
-        static EExitCode ParseAndPrint(Func<Response<string, string>> fn) {
+        static EExitCode ParseAndPrint(Func<Result<string, string>> fn) {
             var resp = fn();
-            WriteLine(resp == EResponse.Ok ? resp.Ok() : resp.Err());
-            return resp == EResponse.Ok ? EExitCode.Success : EExitCode.UnknownError;
+            WriteLine(resp == EResult.Ok ? resp.Ok() : resp.Err());
+            return resp == EResult.Ok ? EExitCode.Success : EExitCode.UnknownError;
         }
 
         static EExitCode ParseAndPrintExistCode(EExitCode code, string console) {

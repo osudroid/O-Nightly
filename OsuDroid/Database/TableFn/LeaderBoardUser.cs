@@ -12,7 +12,7 @@ public static class LeaderBoardUser {
     private static readonly ConcurrentDictionary<long, (DateTime dateTime, Entities.LeaderBoardUser leaderBoardUser)>
         LeaderBoardUserSingleUserBuffer = new();
 
-    public static IReadOnlyList<Entities.LeaderBoardUser> LeaderBoardUsersCountry(
+    public static Result<IReadOnlyList<Entities.LeaderBoardUser>, string> LeaderBoardUsersCountry(
         SavePoco db, int limit, CountryInfo.Country country) {
         var sql = new Sql(@$"
 SELECT rank() OVER (ORDER BY overall_score DESC, bu.last_login_time DESC) as rank_number, 
@@ -36,8 +36,8 @@ LIMIT {limit};
         return res;
     }
 
-    public static IReadOnlyList<Entities.LeaderBoardUser> LeaderBoardUserLikeUserQuery(SavePoco db, int limit,
-        string likeUserQuery) {
+    public static Result<IReadOnlyList<Entities.LeaderBoardUser>, string> LeaderBoardUserLikeUserQuery(
+        SavePoco db, int limit, string likeUserQuery) {
         var sql = new Sql(@$"
 SELECT rank_number,
        bu.uid as id,
@@ -64,7 +64,7 @@ LIMIT {limit}
         return Query(db, sql);
     }
 
-    public static IReadOnlyList<Entities.LeaderBoardUser> LeaderBoardUserNormal(SavePoco db, int limit) {
+    public static Result<IReadOnlyList<Entities.LeaderBoardUser>, string> LeaderBoardUserNormal(SavePoco db, int limit) {
         var sql = new Sql(@$"
 SELECT rank() OVER (ORDER BY overall_score DESC, bu.last_login_time DESC) as rank_number, 
        bu.id as id,
@@ -84,16 +84,22 @@ LIMIT {limit};
 ");
         if (LeaderBoardUserNormalBuffer.List.Count >= limit
             && LeaderBoardUserNormalBuffer.createDate + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
-            return CollectionsMarshal.AsSpan(LeaderBoardUserNormalBuffer.List).Slice(0, limit).ToArray();
+            return Result<IReadOnlyList<Entities.LeaderBoardUser>, string>
+                .Ok(CollectionsMarshal.AsSpan(LeaderBoardUserNormalBuffer.List).Slice(0, limit).ToArray());
+
         var res = Query(db, sql);
-        LeaderBoardUserNormalBuffer = ((List<Entities.LeaderBoardUser>)res, DateTime.UtcNow);
+        if (res == EResult.Err)
+            return Result<IReadOnlyList<Entities.LeaderBoardUser>, string>.Err(res.Err());
+        
+        LeaderBoardUserNormalBuffer = ((List<Entities.LeaderBoardUser>)res.Ok(), DateTime.UtcNow);
         return res;
     }
 
-    public static Entities.LeaderBoardUser? LeaderBoardUserSingleUser(SavePoco db, long userId) {
+    public static Result<Option<Entities.LeaderBoardUser>, string> LeaderBoardUserSingleUser(SavePoco db, long userId) {
         if (LeaderBoardUserSingleUserBuffer.TryGetValue(userId, out var now))
             if (now.dateTime > DateTime.UtcNow - TimeSpan.FromSeconds(10))
-                return now.leaderBoardUser;
+                return Result<Option<Entities.LeaderBoardUser>, string>
+                    .Ok(Option<Entities.LeaderBoardUser>.With(now.leaderBoardUser));
 
         var sql = new Sql(@"
 SELECT rank_number,
@@ -116,20 +122,19 @@ WHERE xx.id = @0
 ;
 ", userId);
 
-        var res = Query(db, sql).ToArray();
-        if (res.Length == 0)
-            return null;
-        var single = res[0];
+        var res = Query(db, sql);
+        if (res == EResult.Err)
+            return Result<Option<Entities.LeaderBoardUser>, string>.Err(res.Err());
+        var leaderBord = res.Ok();
+        if (leaderBord.Count == 0)
+            return Result<Option<Entities.LeaderBoardUser>, string>.Ok(Option<Entities.LeaderBoardUser>.Empty);
+        var single = leaderBord[0];
 
         LeaderBoardUserSingleUserBuffer[single.Id] = (DateTime.UtcNow, single);
 
-        return single;
+        return Result<Option<Entities.LeaderBoardUser>, string>.Ok(Option<Entities.LeaderBoardUser>.With(single));
     }
 
-    private static IReadOnlyList<Entities.LeaderBoardUser> Query(SavePoco db, Sql sql) {
-        return db.Fetch<Entities.LeaderBoardUser>(sql) switch {
-            { Status: EResponse.Ok } res => res.Ok(),
-            _ => Array.Empty<Entities.LeaderBoardUser>()
-        };
-    }
+    private static Result<IReadOnlyList<Entities.LeaderBoardUser>, string> Query(SavePoco db, Sql sql) 
+        => db.Fetch<Entities.LeaderBoardUser>(sql).Map(x => (IReadOnlyList<Entities.LeaderBoardUser>)x);
 }

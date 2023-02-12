@@ -27,11 +27,11 @@ public class BblUserStats {
     [Column("overall_katu")] public long OverallKatu { get; set; }
     [Column("overall_miss")] public long OverallMiss { get; set; }
 
-    public Response<long> GetUserRank(SavePoco db) {
+    public Result<long, string> GetUserRank(SavePoco db) {
         return GetUserRank(db, OverallScore, Uid);
     }
 
-    public static Response<long> GetUserRank(SavePoco db, long score, long userId) {
+    public static Result<long, string> GetUserRank(SavePoco db, long score, long userId) {
         return db.FirstOrDefault<long>(@$"
 SELECT user_rank
 FROM (
