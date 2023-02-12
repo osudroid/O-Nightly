@@ -5,6 +5,7 @@ namespace OsuDroidLib;
 public static class Log {
     private static bool _settingsSet = false;
     public static LamLogger.LamLog GetLog(SavePoco savePoco) {
+        
         if (_settingsSet == false)
             LamLogger.LamLog.Settings = new LamLogSettings() {
 DbTable = Env.LogInDbName,
@@ -18,7 +19,8 @@ PrintDBUseDebug = Env.LogDebug,
 PrintDBUseError = Env.LogError,
 PrintDBUseOk = Env.LogOk
             };
-        return new LamLog(Option<Func<LamLogTable[], Task>>.With(async (tables) => {
+
+        async Task Insert(LamLogTable[] tables) {
             var db = savePoco;
 
             foreach (var log in tables) {
@@ -32,8 +34,10 @@ VALUES (@0, @1, @2, @3, @4, @5)
                     log.Status.ToString(), 
                     log.Stack, 
                     log.Trigger
-                    );
+                );
             }
-        }));
+        }
+        
+        return new LamLog(Option<Func<LamLogTable[], Task>>.With(Insert));
     }
 }

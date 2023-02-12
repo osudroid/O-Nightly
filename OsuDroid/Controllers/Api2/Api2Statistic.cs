@@ -12,6 +12,7 @@ public class Api2Statistic : ControllerExtensions {
     public IActionResult GetActiveUser() {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
         
         var rep = log.AddResultAndTransform(Statistic.ActiveUser());
         if (rep == EResult.Err)
@@ -30,6 +31,8 @@ public class Api2Statistic : ControllerExtensions {
     public IActionResult GetAllPatreon() {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         
         var rep = log.AddResultAndTransform(Statistic.GetActivePatreon());
 

@@ -41,7 +41,7 @@ public static class Service {
 #else
         if (emailsActivePatronEmails == EResult.Err) {
             Console.WriteLine("Get Error emailsActivePatronEmails");
-            return Response.Err();
+            return ResultErr<string>.Err("emailsActivePatronEmails == EResult.Err");
         }
 
 #endif
