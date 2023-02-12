@@ -17,7 +17,7 @@ public class TokenHandlerRam : ITokenHandler {
     public TimeSpan CleanInterval { get; set; }
     public TimeSpan LifeSpanToken { get; set; }
 
-    public Response<List<TokenInfoWithGuid>> GetAll() {
+    public Result<List<TokenInfoWithGuid>, string> GetAll() {
         throw new NotImplementedException();
     }
 
@@ -59,30 +59,31 @@ public class TokenHandlerRam : ITokenHandler {
         return guid;
     }
 
-    public Response Refresh(Guid token) {
+    public ResultErr<string> Refresh(Guid token) {
         if (TokenDictionary.TryGetValue(token, out var tokenInfo) == false)
-            return Response.Err();
+            return ResultErr<string>.Err("Can Refresh token, token Not Found");
         SetOverwrite(new TokenInfoWithGuid {
             TokenInfo = new TokenInfo { CreateDay = DateTime.UtcNow, UserId = tokenInfo.UserId },
             Token = token
         });
 
-        return Response.Ok();
+        return ResultErr<string>.Ok();
     }
 
     public void RemoveToken(Guid token) {
         TokenDictionary.TryRemove(token, out var _);
     }
 
-    public Response<TokenInfo> GetTokenInfo(Guid token) {
-        if (TokenDictionary.TryGetValue(token, out var tokenInfo) == false) return Response<TokenInfo>.Err;
+    public Option<TokenInfo> GetTokenInfo(Guid token) {
+        if (TokenDictionary.TryGetValue(token, out var tokenInfo) == false) 
+            return Option<TokenInfo>.Empty;
 
         if (CheckLifeTime(ref tokenInfo) == false) {
             TokenDictionary.TryRemove(token, out _);
-            return Response<TokenInfo>.Err;
+            return Option<TokenInfo>.Empty;
         }
 
-        return Response<TokenInfo>.Ok(tokenInfo);
+        return Option<TokenInfo>.With(tokenInfo);
     }
 
     public void RemoveDeadTokenIfNextCleanDate() {

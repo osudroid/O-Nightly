@@ -1,7 +1,9 @@
+using OsuDroidLib.Database.Entities;
+
 namespace OsuDroid.Model;
 
 public static class Upload {
-    public static Response<ApiTypes.Work, string> UploadReplay(
+    public static Result<ApiTypes.Work, string> UploadReplay(
         string mapHash,
         long replayId,
         long userId,
@@ -9,20 +11,37 @@ public static class Upload {
     ) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
 
-        var map = SqlFunc.GetBblScoreByIdAndUserId(db, replayId, userId).OkOrDefault();
-        if (map is null)
-            return Response<ApiTypes.Work, string>.Err("Map Not Found");
+        var resultMap = SqlFunc.GetBblScoreByIdAndUserId(db, replayId, userId).Map(x => Option<BblScore>.NullSplit(x));
 
-        var oldesMap = SqlFunc.GetBblScoreOldesByUserIdAndHash(db, userId, mapHash).OkOrDefault();
+        if (resultMap == EResult.Err)
+            return Result<ApiTypes.Work, string>.Err(resultMap.Err());
 
-        if (oldesMap is null)
-            return Response<ApiTypes.Work, string>.Err("Map Not Found");
+        var optionMap = resultMap.Ok();
+        
+        if (optionMap.IsSet() == false)
+            return Result<ApiTypes.Work, string>.Err("Map Not Found");
 
+        var map = optionMap.Unwrap();
+        
+        var resultOldesMap = SqlFunc
+            .GetBblScoreOldesByUserIdAndHash(db, userId, mapHash)
+            .Map(x => Option<BblScore>.NullSplit(x));
+
+        if (resultOldesMap == EResult.Err)
+            return Result<ApiTypes.Work, string>.Err(resultOldesMap.Err());
+
+        var optionOldesMap = resultOldesMap.Ok();
+        
+        if (optionOldesMap.IsSet() == false)
+            return Result<ApiTypes.Work, string>.Err("Map Not Found");
+
+        var oldesMap = optionOldesMap.Unwrap();
+        
         if (oldesMap.Id != map.Id)
-            return Response<ApiTypes.Work, string>.Err("Id Miss Match");
+            return Result<ApiTypes.Work, string>.Err("Id Miss Match");
 
         if (File.Exists($"{Env.ReplayPath}/{oldesMap.Id}.odr"))
-            return Response<ApiTypes.Work, string>.Err("Not Allowed");
+            return Result<ApiTypes.Work, string>.Err("Not Allowed");
 
         using var stream = odrApiStream.OpenReadStream();
         using var file = File.Create($"{Env.ReplayPath}/{oldesMap.Id}.odr");
@@ -31,6 +50,6 @@ public static class Upload {
         CopyStream.Move(stream, file);
         file.Flush();
 
-        return Response<ApiTypes.Work, string>.Ok(ApiTypes.Work.True);
+        return Result<ApiTypes.Work, string>.Ok(ApiTypes.Work.True);
     }
 }

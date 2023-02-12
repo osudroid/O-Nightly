@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Model;
 using OsuDroid.Utils;
+using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
 namespace OsuDroid.Controllers.Api2;
@@ -14,22 +15,28 @@ public class Api2Leaderboard : ControllerExtensions {
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        
         var allRegion = prop.Body!.IsRegionAll();
-        var rep = Response<List<LeaderBoardUser>>.Err;
+        Result<List<LeaderBoardUser>, string> rep;
         switch (allRegion) {
             case true:
                 rep = LeaderBoard.AnyRegion(prop.Body.Limit);
                 break;
             default: {
                 var countyRep = prop.Body!.GetRegionAsCountry();
-                if (countyRep == EResponse.Err)
+                if (countyRep.IsSet() == false) {
+                    log.AddLogDebug("RegionAsCountry Not Found");
                     return BadRequest();
-                rep = LeaderBoard.FilterRegion(prop.Body.Limit, countyRep.Ok());
+                }
+                    
+                rep = LeaderBoard.FilterRegion(prop.Body.Limit, countyRep.Unwrap());
                 break;
             }
         }
-
-        return Ok(rep == EResponse.Err
+        
+        return Ok(rep == EResult.Err
             ? ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.NotExist()
             : ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.Exist(rep.Ok()));
     }
@@ -41,11 +48,14 @@ public class Api2Leaderboard : ControllerExtensions {
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
-        var rep = LeaderBoard.User(prop.Body!.UserId);
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        
+        var rep = log.AddResultAndTransform(LeaderBoard.User(prop.Body!.UserId)).OkOr(Option<LeaderBoardUser>.Empty);
 
-        return Ok(rep == EResponse.Err
+        return Ok(rep.IsSet() == false
             ? ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.NotExist()
-            : ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.Exist(rep.Ok()));
+            : ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.Exist(rep.Unwrap()));
     }
 
     [HttpPost("/api2/leaderboard/search-user")]
@@ -55,15 +65,20 @@ public class Api2Leaderboard : ControllerExtensions {
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        
         ((ILogRequestJsonPrint)prop.Body!).LogRequestJsonPrint();
         
-        var rep = prop.Body!.IsRegionAll() switch {
-            true => LeaderBoard.SearchUser(prop.Body!.Limit, prop.Body!.Query!).OkOr(new()),
-            _ => LeaderBoard.SearchUserWithRegion(prop.Body!.Limit, prop.Body!.Query!,
-                prop.Body.GetRegionAsCountry().OkOr(new()))
+        
+        
+        ResultOk<List<LeaderBoardUser>> rep = prop.Body!.IsRegionAll() switch {
+            true => log.AddResultAndTransform(LeaderBoard.SearchUser(prop.Body!.Limit, prop.Body!.Query!)),
+            _ => log.AddResultAndTransform(LeaderBoard.SearchUserWithRegion(prop.Body!.Limit, prop.Body!.Query!,
+                prop.Body.GetRegionAsCountry().Unwrap()))
         };
 
-        return Ok(rep == EResponse.Err
+        return Ok(rep == EResult.Err
             ? ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.NotExist()
             : ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.Exist(rep.OkOr(new())));
     }
@@ -115,19 +130,15 @@ public class Api2Leaderboard : ControllerExtensions {
         public bool ValuesAreGood() {
             if (Limit <= 0) return false;
             if (Region == "all") return true;
-            var rep = GetRegionAsCountry();
-            return rep == EResponse.Ok;
+            return GetRegionAsCountry().IsSet();
         }
 
         public bool IsRegionAll() {
             return Region == "all";
         }
 
-        public Response<CountryInfo.Country> GetRegionAsCountry() {
-            var res = CountryInfo.FindByName(Region ?? "");
-            return res is null
-                ? Response<CountryInfo.Country>.Err
-                : Response<CountryInfo.Country>.Ok(res.Value);
+        public Option<CountryInfo.Country> GetRegionAsCountry() {
+            return CountryInfo.FindByName(Region ?? "");
         }
     }
 
@@ -164,11 +175,8 @@ public class Api2Leaderboard : ControllerExtensions {
                 && !string.IsNullOrEmpty(Query);
         }
 
-        public Response<CountryInfo.Country> GetRegionAsCountry() {
-            var res = CountryInfo.FindByName(Region ?? "");
-            return res is null
-                ? Response<CountryInfo.Country>.Err
-                : Response<CountryInfo.Country>.Ok(res.Value);
+        public Option<CountryInfo.Country> GetRegionAsCountry() {
+            return CountryInfo.FindByName(Region ?? "");
         }
 
         public bool IsRegionAll() {

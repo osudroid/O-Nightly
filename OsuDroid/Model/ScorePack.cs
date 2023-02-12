@@ -3,21 +3,36 @@ using OsuDroidLib.Database.Entities;
 namespace OsuDroid.Model;
 
 public static class ScorePack {
-    public static Response<(BblScore Score, string Username, string Region)> GetByPlayId(long playId) {
+    public static Result<Option<(BblScore Score, string Username, string Region)>, string> GetByPlayId(long playId) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        var score = db.FirstOrDefault<BblScore>($"SELECT * FROM bbl_user WHERE id = {playId} LIMIT 1").OkOrDefault();
+        var resultScore = db.FirstOrDefault<BblScore>($"SELECT * FROM bbl_user WHERE id = {playId} LIMIT 1")
+            .Map(x => Option<BblScore>.NullSplit(x));
 
-        if (score is null)
-            return Response<(BblScore Score, string Username, string Region)>.Err;
+        if (resultScore == EResult.Err)
+            Result<Option<(BblScore Score, string Username, string Region)>, string>.Err(resultScore.Err());
 
-        var user = db.FirstOrDefault<BblUser>(@$"
+        var optionScore = resultScore.Ok();
+        
+        if (optionScore.IsSet() == false)
+            return Result<Option<(BblScore Score, string Username, string Region)>, string>
+                .Ok(Option<(BblScore Score, string Username, string Region)>.Empty);
+
+        
+        var score = optionScore.Unwrap();
+        var resultUser = db.FirstOrDefault<BblUser>(@$"
 SELECT username, region
 FROM bbl_user
 WHERE id = {score.Uid}
-").OkOrDefault();
-        if (user is null)
-            return Response<(BblScore Score, string Username, string Region)>.Err;
-        return Response<(BblScore Score, string Username, string Region)>
-            .Ok((score, user.Username!, user.Region!));
+").Map(x => Option<BblUser>.NullSplit(x));
+        if (resultUser == EResult.Err)
+            return Result<Option<(BblScore Score, string Username, string Region)>, string>.Err(resultUser.Err());
+        
+        if (resultUser.Ok().IsSet() == false)
+            return Result<Option<(BblScore Score, string Username, string Region)>, string>
+                .Ok(Option<(BblScore Score, string Username, string Region)>.Empty);
+
+        var user = resultUser.Ok().Unwrap();
+        return Result<Option<(BblScore Score, string Username, string Region)>, string>
+            .Ok(Option<(BblScore Score, string Username, string Region)>.With((score, user.Username!, user.Region!)));
     }
 }

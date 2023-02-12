@@ -8,6 +8,7 @@ using OsuDroid.Extensions;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Lib.Validate;
 using OsuDroid.Utils;
+using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
 namespace OsuDroid.Controllers.Api;
@@ -39,13 +40,17 @@ public sealed class Login : ControllerExtensions {
         if (TokenDic.Remove(prop.Token, out var tokenAndTime) == false)
             return BadRequest();
 
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        
         var tokenValue = tokenAndTime.Item1;
         if (prop.Math != tokenValue.MathValue1 + tokenValue.MathValue2)
             return Ok(new WebLoginRes { Work = false });
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        BblUser? fetchResult = db.SingleOrDefault<Entities.BblUser>(
+        
+        BblUser? fetchResult = log.AddResultAndTransform(db.SingleOrDefault<Entities.BblUser>(
             "SELECT id, email, password FROM bbl_user WHERE email = @0 AND banned = false AND password = @1 LIMIT 1",
-            prop.Email ?? "", this.ToPasswdHash(prop.Passwd ?? string.Empty)).OkOrDefault();
+            prop.Email ?? "", this.ToPasswdHash(prop.Passwd ?? string.Empty))).OkOrDefault();
+        
         if (fetchResult is null)
             return Ok(new WebLoginRes { Work = false });
         
@@ -53,9 +58,9 @@ public sealed class Login : ControllerExtensions {
         AppendCookie(ECookie.LoginCookie, guid.ToString());
 
         Database.TableFn.BblUser.UpdateLastLoginTime(fetchResult, db);
-        var ip = GetIpAddress();
-        if (ip == EResponse.Ok)
-            Database.TableFn.BblUser.UpdateIpAndRegionByIp(fetchResult, db, ip.Ok());
+        var ip = log.AddResultAndTransform(GetIpAddress()).OkOr(Option<IPAddress>.Empty);
+        if (ip.IsSet())
+            Database.TableFn.BblUser.UpdateIpAndRegionByIp(fetchResult, db, ip.Unwrap());
         return Ok(new WebLoginRes { Work = true });
     }
 
@@ -82,21 +87,25 @@ public sealed class Login : ControllerExtensions {
             return Ok(new WebLoginRes { Work = false });
 
         using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        
         var passwdHash = this.ToPasswdHash(prop.Passwd ?? string.Empty);
-        var fetchResult = db.SingleOrDefault<Entities.BblUser>(
+        var fetchResult = log.AddResultAndTransform(db.SingleOrDefault<Entities.BblUser>(
             "SELECT id, email, password FROM bbl_user WHERE lower(username) = @0 AND banned = false AND password = @1 LIMIT 1",
-            (prop.Username ?? "").ToLower(), passwdHash).OkOrDefault();
+            (prop.Username ?? "").ToLower(), passwdHash)).OkOrDefault();
 
         if (fetchResult is null)
             return Ok(new WebLoginRes { Work = false });
 
-        var guid = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).Insert(db, fetchResult.Id);
-        AppendCookie(ECookie.LoginCookie, guid.ToString());
+        var resultGuid = log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).Insert(db, fetchResult.Id));
+        if (resultGuid == EResult.Err)
+            return GetInternalServerError();
+        AppendCookie(ECookie.LoginCookie, resultGuid.Ok().ToString());
 
         Database.TableFn.BblUser.UpdateLastLoginTime(fetchResult, db);
-        var ip = GetIpAddress();
-        if (ip == EResponse.Ok)
-            Database.TableFn.BblUser.UpdateIpAndRegionByIp(fetchResult, db, ip.Ok());
+        var optionIp = log.AddResultAndTransform(GetIpAddress()).OkOr(Option<IPAddress>.Empty);
+        if (optionIp.IsSet())
+            Database.TableFn.BblUser.UpdateIpAndRegionByIp(fetchResult, db, optionIp.Unwrap());
 
         return Ok(new WebLoginRes
             { Work = true, EmailExist = true, UsernameExist = true, UserOrPasswdOrMathIsFalse = false });
@@ -107,7 +116,7 @@ public sealed class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(WebLoginRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult WebRegister([FromBody] WebRegisterProp value) {
-        if (value.AnyValidate() == EResponse.Err) {
+        if (value.AnyValidate() == EResult.Err) {
             return Ok(new WebLoginRes { UserOrPasswdOrMathIsFalse = true });
         }
 
@@ -134,7 +143,9 @@ or lower(username) = @1
 ", value.Username.ToLower(), value.Email);
 
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        var userExist = db.SingleOrDefault<Entities.BblUser>(sql).OkOrDefault();
+        using var log = Log.GetLog(db);
+        
+        var userExist = log.AddResultAndTransform(db.SingleOrDefault<Entities.BblUser>(sql)).OkOrDefault();
         if (userExist is not null) {
             if (userExist.Username == value.Username)
                 return Ok(new WebLoginRes { UsernameExist = true });
@@ -142,11 +153,13 @@ or lower(username) = @1
                 return Ok(new WebLoginRes { EmailExist = true });
         }
 
-        var ip = GetIpAddress();
-        if (ip == EResponse.Err)
+        var optionIp = log.AddResultAndTransform(GetIpAddress()).OkOr(Option<IPAddress>.Empty);
+        if (optionIp.IsSet() == false)
             throw new Exception("ip not found");
-
-        var country = CountryInfo.FindByName((IpInfo.Country(ip.Ok())?.Country?.Name) ?? "");
+        var ip = optionIp.Unwrap();
+        
+        
+        var optionCountry = CountryInfo.FindByName((IpInfo.Country(ip)?.Country.Name) ?? "");
         var newUser = new Entities.BblUser {
             Active = true,
             Banned = false,
@@ -154,7 +167,7 @@ or lower(username) = @1
             Email = value.Email,
             Password = this.ToPasswdHash(value.Passwd ?? string.Empty),
             Username = value.Username,
-            Region = country is null ? "" : country.Value.NameShort,
+            Region = optionCountry.IsSet() ? optionCountry.Unwrap().NameShort: "",
             LatestIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
             RegistTime = DateTime.UtcNow,
             RestrictMode = false,
@@ -162,8 +175,8 @@ or lower(username) = @1
             UsernameLastChange = DateTime.UtcNow
         };
         db.Insert(newUser);
-        newUser.Id = db.SingleOrDefault<long>("SELECT id FROM bbl_user WHERE username = @0", newUser.Username)
-            .OkOrDefault();
+        newUser.Id = log.AddResultAndTransform(
+                db.SingleOrDefault<long>("SELECT id FROM bbl_user WHERE username = @0", newUser.Username)).OkOrDefault();
         db.Execute("INSERT INTO bbl_user_stats (uid) VALUES ((SELECT id FROM bbl_user WHERE username = @0))",
             newUser.Username);
 
@@ -186,21 +199,23 @@ or lower(username) = @1
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<UpdateCookieInfo>))]
     public IActionResult WebUpdateCookie() {
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        var response = this.LoginTokenInfo(db);
-        if (response == EResponse.Err) {
+        using var log = Log.GetLog(db);
+        
+        var response = log.AddResultAndTransform(this.LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
+        if (response.IsSet() == false) {
             return Ok(ApiTypes.ExistOrFoundInfo<UpdateCookieInfo>.NotExist());
         }
 
-        var f = this.GetCookieToken();
-        if (f == EResponse.Err)
+        var f = log.AddResultAndTransform(this.GetCookieToken()).OkOr(Option<Guid>.Empty);
+        if (f.IsSet() == false)
             return BadRequest();
-        this.AppendCookie(ECookie.LoginCookie, f.Ok().ToString());
+        this.AppendCookie(ECookie.LoginCookie, f.Unwrap().ToString());
 
-        var dbResp = db.Single<Entities.BblUser>(@$"
+        var dbResp = log.AddResultAndTransform(db.Single<Entities.BblUser>(@$"
 SELECT email, username FROM bbl_user
-WHERE id = {response.Ok().UserId}
-");
-        if (dbResp == EResponse.Err) {
+WHERE id = {response.Unwrap().UserId}
+"));
+        if (dbResp == EResult.Err) {
             return Ok(ApiTypes.ExistOrFoundInfo<UpdateCookieInfo>.NotExist());
         }
 
@@ -228,23 +243,27 @@ WHERE id = {response.Ok().UserId}
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResetPasswdAndSendEmailRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult ResetPasswdAndSendEmail([FromBody] ResetPasswdAndSendEmailProp prop) {
-        if (prop.AnyValidate() == EResponse.Err) {
+        if (prop.AnyValidate() == EResult.Err) {
             return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
         }
 
-        var ipAddress = GetIpAddress();
-        if (ipAddress == EResponse.Err)
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        
+        Option<IPAddress> optionIpAddress = Option<IPAddress>.Trim(log.AddResultAndTransform(GetIpAddress()));
+        if (optionIpAddress.IsSet() == false)
             return BadRequest("IP IS NEEDED");
-
+        var ipAddress = optionIpAddress.Unwrap();
+        
         FilterOldValuesFromCallsForResetPasswdAndResetPasswdTime();
 
-        if (CallsForResetPasswd.TryGetValue(ipAddress.Ok(), out var lastCall)) {
+        if (CallsForResetPasswd.TryGetValue(ipAddress, out var lastCall)) {
             if (lastCall.Calls > 3)
                 return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = true });
-            CallsForResetPasswd[ipAddress.Ok()] = (lastCall.LastCall, lastCall.Calls + 1);
+            CallsForResetPasswd[ipAddress] = (lastCall.LastCall, lastCall.Calls + 1);
         }
         else {
-            CallsForResetPasswd[ipAddress.Ok()] = (lastCall.LastCall, lastCall.Calls + 1);
+            CallsForResetPasswd[ipAddress] = (lastCall.LastCall, lastCall.Calls + 1);
         }
 
         if (Email.ValidateEmail(prop.Email!) == false)
@@ -260,8 +279,8 @@ SELECT username, id, email FROM bbl_user
 WHERE username = @0 
 LIMIT 1", prop.Username)
         };
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        var dbRes = db.SingleOrDefault<Entities.BblUser>(sql).OkOrDefault();
+        
+        var dbRes = log.AddResultAndTransform(db.SingleOrDefault<Entities.BblUser>(sql)).OkOrDefault();
         if (dbRes is null)
             return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
 
@@ -303,13 +322,15 @@ LIMIT 1", prop.Username)
             });
 
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        var response = db.Execute(@$"
+        using var log = Log.GetLog(db);
+        
+        var response = log.AddResultAndTransform(db.Execute(@$"
 UPDATE bbl_user 
 SET password = @0
 WHERE id = {tokenValue.UserId}
-", this.ToPasswdHash(body.NewPasswd));
+", this.ToPasswdHash(body.NewPasswd)));
 
-        if (response == EResponse.Err) {
+        if (response == EResult.Err) {
             return Ok(new WebReplacePasswordWithToken {
                 Work = false,
                 ErrorMsg = "Server Error"

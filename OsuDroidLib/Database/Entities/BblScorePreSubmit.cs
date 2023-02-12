@@ -48,17 +48,14 @@ public class BblScorePreSubmit {
             Mark = string.Empty
         };
         var response = db.Insert(insert);
-        if (response == EResponse.Err)
+        if (response == EResult.Err)
             return null;
 
         insert.Id = (long)response.Ok();
         return insert;
     }
 
-    public static BblScorePreSubmit? GetById(SavePoco db, long id) {
-        return db.SingleOrDefaultById<BblScorePreSubmit>(id) switch {
-            { Status: EResponse.Ok } res => res.Ok(),
-            _ => null
-        };
+    public static Result<Option<BblScorePreSubmit>, string> GetById(SavePoco db, long id) {
+        return db.SingleOrDefaultById<BblScorePreSubmit>(id).Map(x => Option<BblScorePreSubmit>.NullSplit(x));
     }
 }

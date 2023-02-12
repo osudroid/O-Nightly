@@ -16,7 +16,7 @@ public class MapTopPlays {
 }
 
 public static class Rank {
-    public static Response<IReadOnlyList<MapTopPlays>, string> MapTopPlaysByFilenameAndHash(
+    public static Result<IReadOnlyList<MapTopPlays>, string> MapTopPlaysByFilenameAndHash(
         string filename,
         string fileHash,
         int maxResult) {
@@ -54,6 +54,6 @@ LIMIT {maxResult}", filename, fileHash);
 
         for (var i = 0; i < plays.Count; i++) plays[i].PlayRank = i + 1;
 
-        return Response<IReadOnlyList<MapTopPlays>, string>.Ok(plays);
+        return Result<IReadOnlyList<MapTopPlays>, string>.Ok(plays);
     }
 }

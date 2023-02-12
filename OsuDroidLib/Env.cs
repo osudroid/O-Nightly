@@ -45,7 +45,11 @@ public static class Env {
     public static string UpdatePath => GetEnvironmentVariableCheckNull("UPDATE_PATH");
 
     public static string JarPath => GetEnvironmentVariableCheckNull("JAR_PATH");
-    public static bool LogPrint => bool.Parse(GetEnvironmentVariableCheckNull("LOG_PRINT"));
+    public static string LogInDbName => GetEnvironmentVariableCheckNull("LOG_IN_DB_NAME");
+    public static bool LogInDb => bool.Parse(GetEnvironmentVariableCheckNull("LOG_IN_DB"));
+    public static bool LogOk => bool.Parse(GetEnvironmentVariableCheckNull("LOG_OK"));
+    public static bool LogDebug => bool.Parse(GetEnvironmentVariableCheckNull("LOG_DEBUG"));
+    public static bool LogError => bool.Parse(GetEnvironmentVariableCheckNull("LOG_ERROR"));
     public static bool LogRequestJsonPrint => bool.Parse(GetEnvironmentVariableCheckNull("LOG_REQUEST_JSON_PRINT"));
 
     private static string GetEnvironmentVariableCheckNull(string name) {

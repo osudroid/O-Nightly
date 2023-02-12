@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
+using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
@@ -39,18 +40,17 @@ public class Api2Avatar : ControllerExtensions {
         if (size > 1000 || size < 1 || id < 1) return BadRequest();
 
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        var resp = db.Fetch<BblAvatarHash>(@$"
+        using var log = Log.GetLog(db);
+        
+        var resp = log.AddResultAndTransform(db.Fetch<BblAvatarHash>(@$"
 SELECT user_id, hash 
 FROM bbl_avatar_hash
 WHERE size = {size}
 AND user_id = {id}
-");
+")).OkOr(new(0));
 
         return Ok(new AvatarHashes {
-            List = (EResponse)resp switch {
-                EResponse.Err => new List<AvatarHash>(),
-                _ => resp.Ok().Select(x => new AvatarHash { Hash = x.Hash, UserId = x.UserId }).ToList()
-            }
+            List = resp.Select(x => new AvatarHash { Hash = x.Hash, UserId = x.UserId }).ToList()
         });
     }
 
@@ -62,18 +62,17 @@ AND user_id = {id}
             return BadRequest();
 
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        var resp = db.Fetch<BblAvatarHash>(@$"
+        using var log = Log.GetLog(db);
+        
+        var resp = log.AddResultAndTransform(db.Fetch<BblAvatarHash>(@$"
 SELECT user_id, hash 
 FROM bbl_avatar_hash
 WHERE size = {prop.Body!.Size}
 AND user_id in ({string.Join(',', prop.Body.UserIds ?? Array.Empty<long>())})
-");
+")).OkOr(new(0));
 
         return Ok(new AvatarHashes {
-            List = (EResponse)resp switch {
-                EResponse.Err => new List<AvatarHash>(),
-                _ => resp.Ok().Select(x => new AvatarHash { Hash = x.Hash, UserId = x.UserId }).ToList()
-            }
+            List = resp.Select(x => new AvatarHash { Hash = x.Hash, UserId = x.UserId }).ToList()
         });
     }
 

@@ -1,6 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
+using LamLogger;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
+using OsuDroid.Lib.TokenHandler;
+using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
 namespace OsuDroid.Controllers.Api;
@@ -12,13 +15,22 @@ public sealed class CookieInfo : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult GetUserInfoByCookie() {
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        var response = LoginTokenInfo(db);
-        if (response == EResponse.Err) return Ok(ApiTypes.ExistOrFoundInfo<UserInfo>.NotExist());
+        LamLog log = Log.GetLog(db);
+        
+        log.AddLogOk("Start");
+        var optionToken = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
+        if (optionToken.IsSet() == false) 
+            return Ok(ApiTypes.ExistOrFoundInfo<UserInfo>.NotExist());
 
-        var user = db.SingleOrDefaultById<BblUser>(response.Ok().UserId).OkOrDefault();
-        if (user is null)
+        var token = optionToken.Unwrap();
+
+        var optionUser = log.AddResultAndTransform(db.SingleOrDefaultById<BblUser>(token.UserId))
+            .Map(x => Option<BblUser>.NullSplit(x))
+            .OkOr(Option<BblUser>.Empty);
+        if (optionUser.IsSet() == false)
             return Ok(new ApiTypes.ExistOrFoundInfo<UserInfo> { ExistOrFound = false, Value = null });
 
+        var user = optionUser.Unwrap();
         return Ok(new ApiTypes.ExistOrFoundInfo<UserInfo> {
             ExistOrFound = true,
             Value = new UserInfo {

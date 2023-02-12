@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Model;
 using OsuDroid.Utils;
+using OsuDroidLib;
 
 namespace OsuDroid.Controllers.Api2;
 
@@ -18,15 +19,20 @@ public class Api2Rank : ControllerExtensions {
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
 
-        var rep = Rank.MapTopPlaysByFilenameAndHash(
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        
+        var resultRep = log.AddResultAndTransform(Rank.MapTopPlaysByFilenameAndHash(
             prop.Body!.Filename!,
             prop.Body!.FileHash!,
             50
-        );
-
-        return rep == EResponse.Err
-            ? Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<MapTopPlays>> { Value = null, ExistOrFound = false })
-            : Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<MapTopPlays>> { Value = rep.Ok(), ExistOrFound = true });
+        ));
+        
+        if (resultRep == EResult.Err)
+            return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<MapTopPlays>> { Value = null, ExistOrFound = false });
+        
+        var rep = resultRep.OkOr(Array.Empty<MapTopPlays>());
+        return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<MapTopPlays>> { Value = rep, ExistOrFound = true });
     }
 }
 

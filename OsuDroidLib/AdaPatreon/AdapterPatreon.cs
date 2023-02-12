@@ -10,84 +10,60 @@ public sealed class AdapterPatreon : IAdapterPatreon, IAdapterPatreonBuild, IDis
     private DateTime _lastCachingTime;
     private PatreonClient? _patreonClient;
 
-    public async Task<Response<IReadOnlyList<Member>, EAdapterPatreonError>> GetMembers() {
+    public async Task<Result<IReadOnlyList<Member>, EAdapterPatreonError>> GetMembers() {
         if (_patreonClient is null)
-            return Response<IReadOnlyList<Member>, EAdapterPatreonError>.Err(EAdapterPatreonError.PatreonClientIsNull);
+            return Result<IReadOnlyList<Member>, EAdapterPatreonError>.Err(EAdapterPatreonError.PatreonClientIsNull);
         if (string.IsNullOrEmpty(_canpaignId))
-            return Response<IReadOnlyList<Member>, EAdapterPatreonError>.Err(EAdapterPatreonError.IsNullOrEmpty);
+            return Result<IReadOnlyList<Member>, EAdapterPatreonError>.Err(EAdapterPatreonError.IsNullOrEmpty);
 
         if (GetCachingMember() is not null)
-            return Response<IReadOnlyList<Member>, EAdapterPatreonError>.Ok(GetCachingMember() ?? new List<Member>());
+            return Result<IReadOnlyList<Member>, EAdapterPatreonError>.Ok(GetCachingMember() ?? new List<Member>());
 
 
         try {
             var res = await _patreonClient.GetCampaignMembers(_canpaignId);
             if (res is null || res.Count == 0)
-                return Response<IReadOnlyList<Member>, EAdapterPatreonError>.Ok(ArraySegment<Member>.Empty);
+                return Result<IReadOnlyList<Member>, EAdapterPatreonError>.Ok(ArraySegment<Member>.Empty);
 
             SetCachingMember(res);
-            return Response<IReadOnlyList<Member>, EAdapterPatreonError>.Ok(res);
+            return Result<IReadOnlyList<Member>, EAdapterPatreonError>.Ok(res);
         }
         catch (Exception) {
-            return Response<IReadOnlyList<Member>, EAdapterPatreonError>.Err(EAdapterPatreonError.Undefined);
+            return Result<IReadOnlyList<Member>, EAdapterPatreonError>.Err(EAdapterPatreonError.Undefined);
         }
     }
 
-    public async Task<Response<IReadOnlyList<Member>, EAdapterPatreonError>> GetOnlyActivePatronMembers() {
-        var members = await GetMembers();
-        return (EResponse)members switch {
-            EResponse.Ok => Response<IReadOnlyList<Member>, EAdapterPatreonError>
-                .Ok(members.Ok().Where(x => x.Attributes.PatreonStatus == "active_patron").ToList()),
-            _ => members
-        };
+    public async Task<Result<IReadOnlyList<Member>, EAdapterPatreonError>> GetOnlyActivePatronMembers() {
+        return (await GetMembers())
+            .Map<IReadOnlyList<Member>>(o => o
+                .Where(x => x.Attributes.PatreonStatus == "active_patron").ToList());
     }
 
-    public async Task<Response<IReadOnlyList<Member>, EAdapterPatreonError>> GetOnlyInactivePatronMembers() {
-        var members = await GetMembers();
-        return (EResponse)members switch {
-            EResponse.Ok => Response<IReadOnlyList<Member>, EAdapterPatreonError>
-                .Ok(members.Ok().Where(x => x.Attributes.PatreonStatus != "active_patron").ToList()),
-            _ => members
-        };
+    public async Task<Result<IReadOnlyList<Member>, EAdapterPatreonError>> GetOnlyInactivePatronMembers() {
+        return (await GetMembers())
+            .Map<IReadOnlyList<Member>>(x => x
+                .Where(x => x.Attributes.PatreonStatus != "active_patron").ToList());
     }
 
-    public async Task<Response<IReadOnlyList<string>, EAdapterPatreonError>> GetOnlyActivePatronEmails() {
-        var members = await GetMembers();
-        var res = (EResponse)members switch {
-            EResponse.Ok => Response<IReadOnlyList<string>, EAdapterPatreonError>
-                .Ok(members
-                    .Ok()
-                    .Where(x => x.Attributes.PatreonStatus == "active_patron")
-                    .Select(x => x.Attributes.Email)
-                    .ToList()),
-            _ => Response<IReadOnlyList<string>, EAdapterPatreonError>.Err(members.Err())
-        };
-        return res;
+    public async Task<Result<IReadOnlyList<string>, EAdapterPatreonError>> GetOnlyActivePatronEmails() {
+        return (await GetMembers()).Map<IReadOnlyList<string>>(f =>
+            f.Where(x => x.Attributes.PatreonStatus == "active_patron")
+                .Select(x => x.Attributes.Email)
+                .ToList());
     }
 
-    public async Task<Response<IReadOnlyList<string>, EAdapterPatreonError>> GetOnlyInactivePatronEmails() {
-        var members = await GetMembers();
-        var res = (EResponse)members switch {
-            EResponse.Ok => Response<IReadOnlyList<string>, EAdapterPatreonError>
-                .Ok(members
-                    .Ok()
-                    .Where(x => x.Attributes.PatreonStatus != "active_patron")
-                    .Select(x => x.Attributes.Email)
-                    .ToList()),
-            _ => Response<IReadOnlyList<string>, EAdapterPatreonError>.Err(members.Err())
-        };
-        return res;
+    public async Task<Result<IReadOnlyList<string>, EAdapterPatreonError>> GetOnlyInactivePatronEmails() {
+        return (await GetMembers())
+            .Map<IReadOnlyList<string>>(f => 
+                f.Where(x => x.Attributes.PatreonStatus != "active_patron")
+            .Select(x => x.Attributes.Email)
+            .ToList());
     }
 
-    public async Task<Response<Member?, EAdapterPatreonError>> GetOnlyOneMemberByEmail(string email) {
+    public async Task<Result<Option<Member>, EAdapterPatreonError>> GetOnlyOneMemberByEmail(string email) {
+        
         // TODO Not Fetch All Members
-        var res = await GetMembers();
-        return (EResponse)res switch {
-            EResponse.Err => Response<Member?, EAdapterPatreonError>.Err(res.Err()),
-            EResponse.Ok => Response<Member?, EAdapterPatreonError>.Ok(res.Ok()
-                .FirstOrDefault(x => x.Attributes.Email == email)),
-            _ => throw new ArgumentOutOfRangeException()
-        };
+        return (await GetMembers()).Map(x => Option<Member>.NullSplit(x.FirstOrDefault(x => x.Attributes.Email == email)));
     }
 
     public void Close() {

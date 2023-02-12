@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Microsoft.AspNetCore.Http.HttpResults;
 using NPoco;
 using OsuDroidLib.Database.Entities;
 
@@ -16,15 +17,12 @@ public class TokenHandlerDatabase : ITokenHandlerDb {
     public TimeSpan CleanInterval { get; set; }
     public TimeSpan LifeSpanToken { get; set; }
 
-    public Response<List<TokenInfoWithGuid>> GetAll(SavePoco db) {
-        var response = db.Fetch<BblTokenUser>();
-        return response.Status switch {
-            EResponse.Err => Response<List<TokenInfoWithGuid>>.Err,
-            _ => Response<List<TokenInfoWithGuid>>.Ok(response.Ok().Select(x => (TokenInfoWithGuid)x).ToList())
-        };
+    public Result<List<TokenInfoWithGuid>, string> GetAll(SavePoco db) {
+        return db.Fetch<BblTokenUser>("SELECT * FROM bbl_token_user")
+            .Map(x => x.Select(f => (TokenInfoWithGuid)f).ToList());
     }
 
-    public void SetOverwrite(SavePoco db, TokenInfoWithGuid tokenInfoWithGuid) {
+    public ResultErr<string> SetOverwrite(SavePoco db, TokenInfoWithGuid tokenInfoWithGuid) {
         var sql = new Sql(@$"
 INSERT 
 INTO bbl_token_user (token_id, user_id, create_date) 
@@ -33,78 +31,82 @@ ON CONFLICT (token_id) DO UPDATE
 set create_date = '{Time.ToScyllaString(tokenInfoWithGuid.TokenInfo.CreateDay)}',
     user_id = {tokenInfoWithGuid.TokenInfo.UserId}
 ", tokenInfoWithGuid.Token, tokenInfoWithGuid.TokenInfo.UserId);
-        db.Execute(sql);
+        return db.Execute(sql);
     }
 
-    public void SetOverwriteMany(SavePoco db, Span<TokenInfoWithGuid> span) {
+    public ResultErr<string> SetOverwriteMany(SavePoco db, Span<TokenInfoWithGuid> span) {
         ref var searchSpace = ref MemoryMarshal.GetReference(span);
         for (var i = 0; i < span.Length; i++) {
             var iteam = Unsafe.Add(ref searchSpace, i);
-            SetOverwrite(db, iteam);
+            var result = SetOverwrite(db, iteam);
+            if (result == EResult.Err)
+                return result;
         }
+        return ResultErr<string>.Ok();
     }
 
-    public void CheckNow(SavePoco db) {
+    public ResultErr<string> CheckNow(SavePoco db) {
         LastCleanTime = DateTime.UtcNow;
-        RemoveDeadToken(db);
+        return RemoveDeadToken(db);
     }
 
-    public void RemoveAllTokenWithSameUserId(SavePoco db, long userId) {
-        db.Execute(@$"
+    public ResultErr<string> RemoveAllTokenWithSameUserId(SavePoco db, long userId) {
+        return db.Execute(@$"
 DELETE FROM bbl_token_user
 WHERE user_id = {userId}
 ");
     }
 
 
-    public bool TokenExist(SavePoco db, Guid token) {
-        var response = db.First<BblTokenUser>(@"
+    public Result<bool, string> TokenExist(SavePoco db, Guid token) {
+        var sql = new Sql(@"
 SELECT *
 FROM bbl_token_user
 WHERE token_id = @0
 ", token);
 
-        if (response.Status == EResponse.Err)
-            return false;
-
-        return ReturnOrDeleteIfDead(db, response.Ok()) switch {
-            { Delete: true } => false,
-            _ => true
-        };
+        return db.FirstOrDefault<BblTokenUser>(sql)
+            .AndThen(user => {
+                if (user is null)
+                    return Result<bool, string>.Ok(false);
+                return ReturnOrDeleteIfDead(db, user).Map(_ => true);
+            });
     }
 
-    public Guid Insert(SavePoco db, long userId) {
+    public Result<Guid, string> Insert(SavePoco db, long userId) {
         var guid = Guid.NewGuid();
-        db.Insert(new BblTokenUser {
+        var result = db.Insert(new BblTokenUser {
             UserId = userId,
             CreateDate = DateTime.UtcNow,
             TokenId = guid
         });
-        return guid;
+        if (result == EResult.Err)
+            return Result<Guid, string>.Err(result.Err());
+        return Result<Guid, string>.Ok(guid);
     }
 
-    public Response Refresh(SavePoco db, Guid token) {
-        return (Response)db.Execute(@$"
+    public ResultErr<string> Refresh(SavePoco db, Guid token) {
+        return db.Execute(@$"
 UPDATE bbl_token_user
 SET create_date = '{Time.ToScyllaString(DateTime.UtcNow)}'
 WHERE token_id = @0 
 ", token);
     }
 
-    public void RemoveToken(SavePoco db, Guid token) {
-        db.Execute("DELETE FROM bbl_token_user WHERE token_id = @0", token);
+    public ResultErr<string> RemoveToken(SavePoco db, Guid token) {
+        return db.Execute("DELETE FROM bbl_token_user WHERE token_id = @0", token);
     }
 
-    public Response<TokenInfo> GetTokenInfo(SavePoco db, Guid token) {
-        var responseFetch = db.Fetch<BblTokenUser>("SELECT * FROM bbl_token_user WHERE token_id = @0", token);
-        if (responseFetch == EResponse.Err)
-            return Response<TokenInfo>.Err;
-        var list = responseFetch.Ok() ?? new List<BblTokenUser>();
-        if (list.Count == 0) return Response<TokenInfo>.Err;
-        return ReturnOrDeleteIfDead(db, list[0]) switch {
-            { Delete: true } => Response<TokenInfo>.Err,
-            { Delete: false } v => Response<TokenInfo>.Ok(v.tokenInfo)
-        };
+    public Result<Option<TokenInfo>, string> GetTokenInfo(SavePoco db, Guid token) {
+        var sql = new Sql("SELECT * FROM bbl_token_user WHERE token_id = @0", token);
+        return db.Fetch<BblTokenUser>(sql).Map(x => {
+            if (x.Count == 0)
+                return Option<TokenInfo>.Empty;
+            var s = ReturnOrDeleteIfDead(db, x[0]).Map(x => x.tokenInfo);
+            if (s == EResult.Err)
+                return Option<TokenInfo>.Empty;
+            return Option<TokenInfo>.With(s.Ok());
+        });
     }
 
     public void RemoveDeadTokenIfNextCleanDate(SavePoco db) {
@@ -113,9 +115,9 @@ WHERE token_id = @0
         Task.Factory.StartNew(() => { RemoveDeadToken(db); });
     }
 
-    public void RemoveDeadToken(SavePoco db) {
+    public ResultErr<string> RemoveDeadToken(SavePoco db) {
         var time = DateTime.UtcNow.Subtract(LifeSpanToken);
-        db.Execute(@$"
+        return db.Execute(@$"
 DELETE 
 FROM bbl_token_user
 WHERE create_date <= '{Time.ToScyllaString(time)}'
@@ -131,15 +133,14 @@ WHERE create_date <= '{Time.ToScyllaString(time)}'
         return bblTokenUser.CreateDate.Add(LifeSpanToken) < DateTime.UtcNow;
     }
 
-    private (bool Delete, TokenInfo tokenInfo) ReturnOrDeleteIfDead(SavePoco db, BblTokenUser bblTokenUser) {
+    private Result<(bool Delete, TokenInfo tokenInfo), string> ReturnOrDeleteIfDead(SavePoco db, BblTokenUser bblTokenUser) {
         if (IsDead(bblTokenUser)) {
-            db.Execute(@"
+            return db.Execute(@"
 DELETE FROM bbl_token_user
 WHERE token_id = @0
-", bblTokenUser.TokenId);
-            return (true, (TokenInfo)bblTokenUser);
+", bblTokenUser.TokenId).Map(x => (true, (TokenInfo)bblTokenUser));
         }
 
-        return (false, (TokenInfo)bblTokenUser);
+        return Result<(bool Delete, TokenInfo tokenInfo), string>.Ok((false, (TokenInfo)bblTokenUser));
     }
 }

@@ -5,22 +5,22 @@ public interface ITokenHandlerDb : IRefreshAuto {
     public TimeSpan CleanInterval { get; set; }
     public TimeSpan LifeSpanToken { get; set; }
 
-    public Response<List<TokenInfoWithGuid>> GetAll(SavePoco db);
-    public void SetOverwriteMany(SavePoco db, Span<TokenInfoWithGuid> span);
-    public void CheckNow(SavePoco db);
-    public void RemoveAllTokenWithSameUserId(SavePoco db, long userId);
-    public void SetOverwrite(SavePoco db, TokenInfoWithGuid tokenInfoWithGuid);
-    public bool TokenExist(SavePoco db, Guid token);
+    public Result<List<TokenInfoWithGuid>, string> GetAll(SavePoco db);
+    public ResultErr<string> SetOverwriteMany(SavePoco db, Span<TokenInfoWithGuid> span);
+    public ResultErr<string> CheckNow(SavePoco db);
+    public ResultErr<string> RemoveAllTokenWithSameUserId(SavePoco db, long userId);
+    public ResultErr<string> SetOverwrite(SavePoco db, TokenInfoWithGuid tokenInfoWithGuid);
+    public Result<bool, string> TokenExist(SavePoco db, Guid token);
 
-    public Guid Insert(SavePoco db, long userId);
+    public Result<Guid, string> Insert(SavePoco db, long userId);
 
-    public Response Refresh(SavePoco db, Guid token);
+    public ResultErr<string> Refresh(SavePoco db, Guid token);
 
-    public void RemoveToken(SavePoco db, Guid token);
+    public ResultErr<string> RemoveToken(SavePoco db, Guid token);
 
-    public Response<TokenInfo> GetTokenInfo(SavePoco db, Guid token);
+    public Result<Option<TokenInfo>, string> GetTokenInfo(SavePoco db, Guid token);
 
     public void RemoveDeadTokenIfNextCleanDate(SavePoco db);
 
-    public void RemoveDeadToken(SavePoco db);
+    public ResultErr<string> RemoveDeadToken(SavePoco db);
 }
