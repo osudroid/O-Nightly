@@ -55,8 +55,10 @@ public sealed class Login : ControllerExtensions {
         if (fetchResult is null)
             return Ok(new WebLoginRes { Work = false });
         
-        var guid = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).Insert(db, fetchResult.Id);
-        AppendCookie(ECookie.LoginCookie, guid.ToString());
+        var optionGuid = Option<Guid>.Trim(log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).Insert(db, fetchResult.Id)));
+        if (optionGuid.IsSet() == false)
+            return GetInternalServerError();
+        AppendCookie(ECookie.LoginCookie, optionGuid.Unwrap().ToString());
 
         Database.TableFn.BblUser.UpdateLastLoginTime(fetchResult, db);
         var ip = log.AddResultAndTransform(GetIpAddress()).OkOr(Option<IPAddress>.Empty);
