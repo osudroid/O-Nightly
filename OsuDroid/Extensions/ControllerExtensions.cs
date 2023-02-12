@@ -137,8 +137,8 @@ public abstract class ControllerExtensions : ControllerBase {
         if (eCookieToString.IsSet() == false)
             throw new NullReferenceException(nameof(eCookieToString));
         // TODO SET SITE NAME
-
-        Response.Cookies.Append(eCookieToString.Unwrap(), value, new CookieOptions {
+        var cookie = eCookieToString.Unwrap();
+        Response.Cookies.Append(cookie, value, new CookieOptions {
             Secure = false,
             HttpOnly = false,
             SameSite = SameSiteMode.Lax,

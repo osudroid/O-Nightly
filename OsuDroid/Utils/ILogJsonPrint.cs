@@ -10,7 +10,7 @@ public interface ILogRequestJsonPrint {
             Console.WriteLine(JsonConvert.SerializeObject(this));
         }
         catch (Exception e) {
-            Console.WriteLine("{}");
+            Console.WriteLine("{e}");
         }
     }
 }

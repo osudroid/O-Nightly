@@ -19,7 +19,14 @@ public sealed class CookieInfo : ControllerExtensions {
         log.AddLogDebugStart();
 
         log.AddLogOk("Start");
-        var optionToken = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
+        Option<TokenInfo> optionToken;
+        try {
+             optionToken = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
+        }
+        catch (Exception e) {
+            WriteLine(e);
+            throw;
+        }
         if (optionToken.IsSet() == false) 
             return Ok(ApiTypes.ExistOrFoundInfo<UserInfo>.NotExist());
 

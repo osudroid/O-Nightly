@@ -36,34 +36,34 @@ public sealed class AdapterPatreon : IAdapterPatreon, IAdapterPatreonBuild, IDis
     public async Task<Result<IReadOnlyList<Member>, EAdapterPatreonError>> GetOnlyActivePatronMembers() {
         return (await GetMembers())
             .Map<IReadOnlyList<Member>>(o => o
-                .Where(x => x.Attributes.PatreonStatus == "active_patron").ToList());
+                .Where(x => x.Attributes!.PatreonStatus == "active_patron").ToList());
     }
 
     public async Task<Result<IReadOnlyList<Member>, EAdapterPatreonError>> GetOnlyInactivePatronMembers() {
         return (await GetMembers())
             .Map<IReadOnlyList<Member>>(x => x
-                .Where(x => x.Attributes.PatreonStatus != "active_patron").ToList());
+                .Where(x => x.Attributes!.PatreonStatus != "active_patron").ToList());
     }
 
     public async Task<Result<IReadOnlyList<string>, EAdapterPatreonError>> GetOnlyActivePatronEmails() {
         return (await GetMembers()).Map<IReadOnlyList<string>>(f =>
-            f.Where(x => x.Attributes.PatreonStatus == "active_patron")
-                .Select(x => x.Attributes.Email)
+            f.Where(x => x.Attributes!.PatreonStatus == "active_patron")
+                .Select(x => x.Attributes!.Email!)
                 .ToList());
     }
 
     public async Task<Result<IReadOnlyList<string>, EAdapterPatreonError>> GetOnlyInactivePatronEmails() {
         return (await GetMembers())
             .Map<IReadOnlyList<string>>(f => 
-                f.Where(x => x.Attributes.PatreonStatus != "active_patron")
-            .Select(x => x.Attributes.Email)
-            .ToList());
+                f.Where(x => x.Attributes!.PatreonStatus != "active_patron")
+            .Select(x => x.Attributes!.Email)
+            .ToList()!);
     }
 
     public async Task<Result<Option<Member>, EAdapterPatreonError>> GetOnlyOneMemberByEmail(string email) {
         
         // TODO Not Fetch All Members
-        return (await GetMembers()).Map(x => Option<Member>.NullSplit(x.FirstOrDefault(x => x.Attributes.Email == email)));
+        return (await GetMembers()).Map(x => Option<Member>.NullSplit(x.FirstOrDefault(x => x.Attributes!.Email == email)));
     }
 
     public void Close() {

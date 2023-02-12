@@ -423,7 +423,7 @@ VALUES (
             userScores[bblUser.Id] = new List<BblScore>();
         
         foreach (var bblScore in oldDb.Fetch<BblScore>(@$"SELECT * FROM bbl_score").Ok()) {
-            List<BblScore> list; 
+            List<BblScore>? list; 
             if (userScores.TryGetValue(bblScore.Uid, out list) == false) {
                 list = new List<BblScore>(64);
                 userScores[bblScore.Uid] = list;

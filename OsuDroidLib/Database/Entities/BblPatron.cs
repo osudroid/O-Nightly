@@ -35,7 +35,7 @@ ON CONFLICT DO NOTHING", sqlArr);
     public static ResultErr<string> SyncPatronMember(SavePoco db, Member member) {
         var sql = new Sql(@$"
 INSERT INTO bbl_patron (patron_email, active_supporter) 
-VALUES (@0, {member.Attributes.PatreonStatus == "active_patron"})
+VALUES (@0, {member.Attributes!.PatreonStatus == "active_patron"})
 ON CONFLICT DO UPDATE SET active_supporter = {member.Attributes.PatreonStatus == "active_patron"}",
             member.Attributes.Email);
 
