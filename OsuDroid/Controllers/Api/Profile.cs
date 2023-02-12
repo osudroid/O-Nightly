@@ -66,7 +66,7 @@ WHERE uid = {userId}
         List<BblUser.UserRank> userRank = log.AddResultAndTransform(db.Fetch<BblUser.UserRank>(sqlRank)).OkOr(new());
         
         Option<BblPatron> optionBblPatron = Option<BblPatron>.Empty;
-        if (string.IsNullOrEmpty(userAndStats.Email) == false) {
+        if ((userAndStats.Email??"").Length == 0) {
             optionBblPatron = Option<BblPatron>.Transform(log.AddResultAndTransform(
                 Database.TableFn.BblUser.GetBblPatron(new BblUser { PatronEmail = userAndStats.Email }, db)));
         }
