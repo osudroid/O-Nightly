@@ -46,7 +46,7 @@ public class BblUserAndBblUserStats {
 
 
     [Column("uid")] public long Uid { get; set; }
-    [Column("playcount")] public long Playcount { get; set; }
+    [Column("overall_playcount")] public long OverallPlaycount { get; set; }
     [Column("overall_score")] public long OverallScore { get; set; }
     [Column("overall_accuracy")] public long OverallAccuracy { get; set; }
     [Column("overall_combo")] public long OverallCombo { get; set; }
@@ -68,6 +68,6 @@ public class BblUserAndBblUserStats {
     [Column("overall_miss")] public long OverallMiss { get; set; }
 
     public long FormatAccuracy() {
-        return BblUserStats.FormatAccuracy(Playcount, OverallAccuracy);
+        return BblUserStats.FormatAccuracy(OverallPlaycount, OverallAccuracy);
     }
 }
