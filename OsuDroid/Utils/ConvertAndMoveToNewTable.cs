@@ -154,7 +154,7 @@ WHERE mode not like '%|';
 
             var userStats = new BblUserStats {
                 Uid = user.Id,
-                Playcount = 0,
+                OverallPlaycount = 0,
                 OverallScore = 0,
                 OverallAccuracy = 0,
                 OverallCombo = 0,
@@ -250,7 +250,7 @@ VALUES (@Uid,
                 Parameters = {
                     new NpgsqlParameter { Value = userStats.Uid, DbType = DbType.Int64, ParameterName = "Uid" },
                     new NpgsqlParameter
-                        { Value = userStats.Playcount, DbType = DbType.Int64, ParameterName = "Playcount" },
+                        { Value = userStats.OverallPlaycount, DbType = DbType.Int64, ParameterName = "Playcount" },
                     new NpgsqlParameter
                         { Value = userStats.OverallScore, DbType = DbType.Int64, ParameterName = "OverallScore" },
                     new NpgsqlParameter
@@ -445,7 +445,7 @@ VALUES (
                 
                 var bblUserStats = new BblUserStats() {
                     Uid = userId,
-                    Playcount = 0,
+                    OverallPlaycount = 0,
                     OverallScore = 0,
                     OverallAccuracy = 0,
                     OverallCombo = 0,
@@ -471,7 +471,7 @@ VALUES (
                 foreach (var bblScore in listBblScores) {
                     if (bblScore.Hash is null) continue;
 
-                    bblUserStats.Playcount++;
+                    bblUserStats.OverallPlaycount++;
                     
                     if (dictionary.TryGetValue(bblScore.Hash, out var inDic) == false) {
                         dictionary[bblScore.Hash] = bblScore;
@@ -527,7 +527,7 @@ VALUES (
             db.Execute(@$"
 Update public.bbl_user_stats 
 SET
-    playcount = {userStats.Playcount}, 
+    playcount = {userStats.OverallPlaycount}, 
     overall_score = {userStats.OverallScore}, 
     overall_accuracy = {userStats.OverallAccuracy}, 
     overall_combo = {userStats.OverallCombo}, 

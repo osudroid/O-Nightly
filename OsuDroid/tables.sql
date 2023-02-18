@@ -217,3 +217,11 @@ CREATE TABLE IF NOT EXISTS log(
     trigger text NOT NULL,
     PRIMARY KEY (id, date_time)
 );
+
+
+
+-- RI 13
+alter table bbl_user_stats
+    rename column playcount to overall_playcount; 
+    
+    
