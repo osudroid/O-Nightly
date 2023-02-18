@@ -75,8 +75,7 @@ WHERE uid = {userId}
             Username = userAndStats.Username,
             Id = userAndStats.Id,
             Found = true,
-            Playcount = userAndStats.Playcount,
-            Accuracy = userAndStats.OverallAccuracy,
+            OverallPlaycount = userAndStats.OverallPlaycount,
             Region = userAndStats.Region,
             Active = userAndStats.Active,
             Supporter = optionBblPatron.IsSet() && optionBblPatron.Unwrap().ActiveSupporter,
@@ -569,7 +568,6 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
         public long Id { get; set; }
         public string? Username { get; set; }
         public bool Found { get; set; }
-        public long Accuracy { get; set; }
         public string? Region { get; set; }
         public bool Active { get; set; }
         public bool Supporter { get; set; }
@@ -597,6 +595,6 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
         public long OverallGeki { get; set; }
         public long OverallKatu { get; set; }
         public long OverallMiss { get; set; }
-        public long Playcount { get; set; }
+        public long OverallPlaycount { get; set; }
     }
 }

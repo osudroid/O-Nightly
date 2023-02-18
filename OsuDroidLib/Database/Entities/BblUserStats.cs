@@ -7,7 +7,7 @@ namespace OsuDroidLib.Database.Entities;
 [PrimaryKey(new[] { "uid" }, AutoIncrement = true)]
 public class BblUserStats {
     [Column("uid")] public long Uid { get; set; }
-    [Column("playcount")] public long Playcount { get; set; }
+    [Column("overall_playcount")] public long OverallPlaycount { get; set; }
     [Column("overall_score")] public long OverallScore { get; set; }
     [Column("overall_accuracy")] public long OverallAccuracy { get; set; }
     [Column("overall_combo")] public long OverallCombo { get; set; }
@@ -46,7 +46,7 @@ WHERE uid = {userId};
     /// <summary> Need OverallAccuracy And Playcount </summary>
     /// <returns></returns>
     public long FormatAccuracy() {
-        return FormatAccuracy(Playcount, OverallAccuracy);
+        return FormatAccuracy(OverallPlaycount, OverallAccuracy);
     }
 
     public static long FormatAccuracy(long playcount, long overallAccuracy) {

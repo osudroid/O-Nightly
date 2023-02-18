@@ -8,7 +8,7 @@ public class LeaderBoardUser {
     [Column("username")] public string? Username { get; set; }
     [Column("region")] public string? Region { get; set; }
     [Column("overall_score")] public long OverallScore { get; set; }
-    [Column("playcount")] public long Playcount { get; set; }
+    [Column("overall_playcount")] public long OverallPlaycount { get; set; }
     [Column("overall_ss")] public long OverallSs { get; set; }
     [Column("overall_s")] public long OverallS { get; set; }
     [Column("overall_a")] public long OverallA { get; set; }

@@ -20,7 +20,7 @@ SELECT rank() OVER (ORDER BY overall_score DESC, bu.last_login_time DESC) as ran
        username,
        region,
        overall_score,
-       playcount,
+       overall_playcount,
        overall_ss,
        overall_s,
        overall_a,
@@ -32,7 +32,7 @@ ORDER BY rank_number ASC
 LIMIT {limit};
 ", country.NameShort.ToUpper());
 
-        var res = Query(db, sql);
+        Result<IReadOnlyList<Entities.LeaderBoardUser>, string> res = Query(db, sql);
         return res;
     }
 
@@ -44,7 +44,7 @@ SELECT rank_number,
        username,
        region,
        overall_score,
-       playcount,
+       overall_playcount,
        overall_ss,
        overall_s,
        overall_a,
@@ -71,7 +71,7 @@ SELECT rank() OVER (ORDER BY overall_score DESC, bu.last_login_time DESC) as ran
        username,
        region,
        overall_score,
-       playcount,
+       overall_playcount,
        overall_ss,
        overall_s,
        overall_a,
@@ -106,7 +106,7 @@ SELECT rank_number,
        username,
        region,
        overall_score,
-       playcount,
+       overall_playcount,
        overall_ss,
        overall_s,
        overall_a,
@@ -122,7 +122,7 @@ WHERE xx.id = @0
 ;
 ", userId);
 
-        var res = Query(db, sql);
+        Result<IReadOnlyList<Entities.LeaderBoardUser>, string> res = Query(db, sql);
         if (res == EResult.Err)
             return Result<Option<Entities.LeaderBoardUser>, string>.Err(res.Err());
         var leaderBord = res.Ok();
