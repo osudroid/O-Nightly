@@ -41,7 +41,7 @@ Someone has requested to add your Patreon account to your osu!droid Account.
 
 This Session Expires in : 5 min's
 If this was you, click the link below.
-https://{Env.Domain}/api/profile/accept/patreonemail/token/{token}
+https://{Env.Domain}/profile/accept/patreonemail/token/{token}
 
 _________________________________________________
 This e-mail is sent by the system, do not reply.
@@ -62,7 +62,7 @@ Someone has requested to delete your osu!droid Account.
 
 This Session Expires in : 5 min's
 If this was you, click the link below.
-https://{Env.Domain}/api/profile/drop-account/token/{token}
+https://{Env.Domain}/deletion/{token}
 
 If this was not you, ignore this Email.
 

@@ -9,7 +9,7 @@ public static class Service {
         return new ServiceState();
     }
 
-    public static Response<ServiceState> RunClean(ServiceState state) {
+    public static Result<ServiceState, string> RunClean(ServiceState state) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
 
         WriteLine("Start Update Patreon");
@@ -24,27 +24,28 @@ public static class Service {
         var task = UpdatePatreonStatusLoop(adapterPatreon, db);
         task.Wait();
         var resp = task.Result;
-        WriteLine($"Finish Update Patreon (Status; {resp == EResponse.Ok})");
-
-        return resp == EResponse.Ok ? Response<ServiceState>.Ok(state) : Response<ServiceState>.Err;
+        WriteLine($"Finish Update Patreon (Status: Work = {resp == EResult.Ok})");
+        
+        return resp == EResult.Ok 
+            ? Result<ServiceState, string>.Ok(state) 
+            : Result<ServiceState, string>.Err(resp.Err());
     }
 
-    private static async Task<Response> UpdatePatreonStatusLoop(IAdapterPatreon adapterPatreon, SavePoco db) {
+    private static async Task<ResultErr<string>> UpdatePatreonStatusLoop(IAdapterPatreon adapterPatreon, SavePoco db) {
         var emailsActivePatronEmails = await adapterPatreon.GetOnlyActivePatronEmails();
 
 #if DEBUG
-        if (emailsActivePatronEmails == EResponse.Err)
-            throw new Exception("emailsActivePatronEmails == EResponse.Err");
+        if (emailsActivePatronEmails == EResult.Err)
+            throw new Exception("emailsActivePatronEmails == EResult.Err");
 
 #else
-        if (emailsActivePatronEmails == EResponse.Err) {
+        if (emailsActivePatronEmails == EResult.Err) {
             Console.WriteLine("Get Error emailsActivePatronEmails");
-            return Response.Err();
+            return ResultErr<string>.Err("emailsActivePatronEmails == EResult.Err");
         }
 
 #endif
 
-        BblPatron.SyncPatronMembersByEmails(db, emailsActivePatronEmails.Ok());
-        return Response.Ok();
+        return BblPatron.SyncPatronMembersByEmails(db, emailsActivePatronEmails.Ok());
     }
 }

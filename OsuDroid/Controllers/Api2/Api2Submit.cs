@@ -4,6 +4,7 @@ using OsuDroid.Extensions;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Model;
 using OsuDroid.Utils;
+using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
 namespace OsuDroid.Controllers.Api2;
@@ -13,26 +14,33 @@ public class Api2Submit : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PushPlayStartResult200))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult PushPlayStart([FromBody] ApiTypes.Api2GroundWithHash<PushPlayStartProp> prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
 
-        using var db = DbBuilder.BuildPostSqlAndOpen();
+        
         var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
-        var tokenInfoResp = tokenHandler.GetTokenInfo(db, prop.Header!.Token);
-        if (tokenInfoResp == EResponse.Err)
+        var tokenInfoResp = log
+            .AddResultAndTransform(tokenHandler.GetTokenInfo(db, prop.Header!.Token))
+            .OkOr(Option<TokenInfo>.Empty);
+        
+        if (tokenInfoResp.IsSet() == false)
             return BadRequest("Token Error");
 
-        var resp = Submit.InsertPreBuildPlay(
-            tokenInfoResp.Ok().UserId,
+        var resp = log.AddResultAndTransform(Submit.InsertPreBuildPlay(
+            tokenInfoResp.Unwrap().UserId,
             prop.Body!.Filename!,
             prop.Body!.FileHash!
-        );
+        ));
 
-        return resp == EResponse.Err
-            ? BadRequest(resp.Err())
+        return resp == EResult.Err 
+            ? GetInternalServerError()
             : Ok(new PushPlayStartResult200 { PlayId = resp.Ok() });
     }
 
@@ -41,24 +49,33 @@ public class Api2Submit : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult PushReplay([FromBody] ApiTypes.Api2GroundWithHash<PushPlayProp> prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
-
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        var tokenInfoResp = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User)
-            .GetTokenInfo(db, prop.Header!.Token);
-        if (tokenInfoResp == EResponse.Err)
+        
+        var tokenInfoResp = log
+            .AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User)
+            .GetTokenInfo(db, prop.Header!.Token))
+            .OkOr(Option<TokenInfo>.Empty);
+        
+        if (tokenInfoResp.IsSet() == false)
             return BadRequest("Token Error");
 
-        var resp = Submit.InsertFinishPlayAndUpdateUserScore(tokenInfoResp.Ok().UserId, prop.Body!);
-        return resp == EResponse.Err
-            ? BadRequest(resp.Err())
+        var resp = log
+            .AddResultAndTransform(Submit.InsertFinishPlayAndUpdateUserScore(tokenInfoResp.Unwrap().UserId, prop.Body!))
+            .OkOr(Option<(BblUserStats userStats, long BestPlayScoreId)>.Empty);
+        
+        return resp.IsSet() == false
+            ? GetInternalServerError()
             : Ok(new PushReplayResult200 {
-                UserStats = resp.Ok().userStats,
-                BestPlayScoreId = resp.Ok().BestPlayScoreId
+                UserStats = resp.Unwrap().userStats,
+                BestPlayScoreId = resp.Unwrap().BestPlayScoreId
             });
     }
 
@@ -68,6 +85,11 @@ public class Api2Submit : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult UploadReplayFile([FromForm] Api2UploadReplayFilePropAsFormWrapper form) {
         ApiTypes.Api2GroundWithHash<Api2UploadReplayFileProp> prop;
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        
         try {
             var value =
                 JsonConvert.DeserializeObject<ApiTypes.Api2GroundWithHash<Api2UploadReplayFileProp>>(form.Prop ?? "");
@@ -75,7 +97,8 @@ public class Api2Submit : ControllerExtensions {
                 return BadRequest("JSON is false");
             prop = value;
         }
-        catch (Exception) {
+        catch (Exception e) {
+            log.AddLogError(e.ToString());
             return BadRequest("JSON is false");
         }
 
@@ -85,19 +108,25 @@ public class Api2Submit : ControllerExtensions {
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
 
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        var tokenInfoResp = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User)
-            .GetTokenInfo(db, prop.Header!.Token);
-        if (tokenInfoResp == EResponse.Err)
+        
+        var tokenInfoResp = log
+            .AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User)
+            .GetTokenInfo(db, prop.Header!.Token))
+            .OkOr(Option<TokenInfo>.Empty);
+        
+        if (tokenInfoResp.IsSet() == false)
             return BadRequest("Token Error");
 
         var resp = Upload.UploadReplay(
             prop.Body!.MapHash ?? "",
             prop.Body!.ReplayId,
-            tokenInfoResp.Ok().UserId,
+            tokenInfoResp.Unwrap().UserId,
             form.File!);
 
-        return resp == EResponse.Err
+        if (resp == EResult.Err)
+            log.AddLogError(resp.Err());
+        
+        return resp == EResult.Err
             ? BadRequest(resp.Err())
             : Ok(resp.Ok());
     }

@@ -8,7 +8,7 @@ internal interface IServiceModeRun {
 }
 
 internal sealed class ServiceModeRun<T> : IDisposable, IServiceModeRun {
-    private readonly List<Func<T, Response>> _actions;
+    private readonly List<Func<T, ResultErr<string>>> _actions;
     private T? _state;
     private Task? _task;
     private TimeSpan _timeSpan;
@@ -17,7 +17,7 @@ internal sealed class ServiceModeRun<T> : IDisposable, IServiceModeRun {
 
     private ServiceModeRun() {
         _timeSpan = TimeSpan.FromDays(1);
-        _actions = new List<Func<T, Response>>(4);
+        _actions = new List<Func<T, ResultErr<string>>>(4);
     }
 
     public void Dispose() {
@@ -33,13 +33,16 @@ internal sealed class ServiceModeRun<T> : IDisposable, IServiceModeRun {
     }
 
     private async Task Loop() {
-        static Response ForeActions(Span<Func<T, Response>> actions, T? state) {
+        static ResultErr<string> ForeActions(Span<Func<T, ResultErr<string>>> actions, T? state) {
             if (state is null)
                 throw new NullReferenceException(nameof(state));
-            foreach (var action in actions)
-                if (action(state) == EResponse.Err)
-                    return Response.Err();
-            return Response.Ok();
+            foreach (var action in actions) {
+                var resultErr = action(state);
+                if (resultErr == EResult.Err)
+                    return resultErr;
+            }
+
+            return ResultErr<string>.Ok();
         }
 
         try {
@@ -48,17 +51,17 @@ internal sealed class ServiceModeRun<T> : IDisposable, IServiceModeRun {
             _state = FuncState();
 
             while (true) {
-                var response = Response.Empty;
+                var response = ResultErr<string>.Ok();
                 if (FirstSleep) {
                     await Task.Delay(_timeSpan);
                     response = ForeActions(CollectionsMarshal.AsSpan(_actions), _state);
-                    if (response == EResponse.Err)
+                    if (response == EResult.Err)
                         _state = FuncState();
                     continue;
                 }
 
                 response = ForeActions(CollectionsMarshal.AsSpan(_actions), _state);
-                if (response == EResponse.Err)
+                if (response == EResult.Err)
                     _state = FuncState();
                 await Task.Delay(_timeSpan);
             }
@@ -79,7 +82,7 @@ internal sealed class ServiceModeRun<T> : IDisposable, IServiceModeRun {
         return this;
     }
 
-    public ServiceModeRun<T> AddFunction(Func<T, Response> action) {
+    public ServiceModeRun<T> AddFunction(Func<T, ResultErr<string>> action) {
         _actions.Add(action);
         return this;
     }

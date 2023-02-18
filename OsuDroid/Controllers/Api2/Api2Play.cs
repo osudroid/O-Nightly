@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Model;
 using OsuDroid.Utils;
+using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
@@ -13,20 +14,26 @@ public class Api2Play : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PlayInfoById))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(string))]
     public IActionResult GetPlayById([FromBody] ApiTypes.Api2GroundWithHash<Api2PlayById> prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
 
-        var rep = ScorePack.GetByPlayId(prop.Body!.PlayId);
-
-        return rep == EResponse.Err
+        
+        var optionRep = log.AddResultAndTransform(ScorePack.GetByPlayId(prop.Body!.PlayId))
+            .OkOr(Option<(BblScore Score, string Username, string Region)>.Empty);
+        
+        return optionRep.IsSet() == false
             ? BadRequest("Not Found")
             : Ok(new PlayInfoById {
-                Region = rep.Ok().Region,
-                Score = rep.Ok().Score,
-                Username = rep.Ok().Username
+                Region = optionRep.Unwrap().Region,
+                Score = optionRep.Unwrap().Score,
+                Username = optionRep.Unwrap().Username
             });
     }
 
@@ -34,6 +41,10 @@ public class Api2Play : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK,
         Type = typeof(ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.BblScoreWithUsername>>))]
     public async Task<IActionResult> GetRecentPlay([FromBody] ApiTypes.Api2GroundNoHeader<RecentPlays> prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        await log.AddLogDebugStartAsync();
+        
         if (prop.ValuesAreGood() == false)
             return BadRequest();
         try {
@@ -91,15 +102,13 @@ public class Api2Play : ControllerExtensions {
         }
 
         public bool ValuesAreGood() {
-            if (ValidateFilterPlays() == EResponse.Err
-                || ValidateOrderBy() == EResponse.Err
-                || ValidateLimit() == EResponse.Err
-                || ValidateStartAt() == EResponse.Err)
-                return false;
-            return true;
+            return ValidateFilterPlays()
+                   && ValidateOrderBy()
+                   && ValidateLimit()
+                   && ValidateStartAt();
         }
 
-        private Response ValidateFilterPlays() {
+        private bool ValidateFilterPlays() {
             return FilterPlays switch {
                 "Any"
                     or "XSS_Plays"
@@ -111,12 +120,12 @@ public class Api2Play : ControllerExtensions {
                     or "C_Plays"
                     or "D_Plays"
                     or "Accuracy_100"
-                    => LamLibAllOver.Response.Ok(),
-                _ => LamLibAllOver.Response.Err()
+                    => true,
+                _ => false
             };
         }
 
-        private Response ValidateOrderBy() {
+        private bool ValidateOrderBy() {
             return OrderBy switch {
                 "Time_ASC"
                     or "Time_DESC"
@@ -132,21 +141,21 @@ public class Api2Play : ControllerExtensions {
                     or "300_DESC"
                     or "Miss_ASC"
                     or "Miss_DESC"
-                    => LamLibAllOver.Response.Ok(),
-                _ => LamLibAllOver.Response.Err()
+                    => true,
+                _ => false
             };
         }
 
-        private Response ValidateLimit() {
+        private bool ValidateLimit() {
             if (Limit > 100 || Limit < 1)
-                return LamLibAllOver.Response.Err();
-            return LamLibAllOver.Response.Ok();
+                return false;
+            return true;
         }
 
-        private Response ValidateStartAt() {
+        private bool ValidateStartAt() {
             if (StartAt < 0)
-                return LamLibAllOver.Response.Err();
-            return LamLibAllOver.Response.Ok();
+                return false;
+            return true;
         }
     }
 

@@ -6,20 +6,32 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
     <ItemGroup>
-        <PackageReference Include="LamLibAllOver" Version="1.0.1"/>
-        <PackageReference Include="LamSavePoco" Version="1.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="7.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="7.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="7.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0"/>
-        <PackageReference Include="Npgsql" Version="7.0.1"/>
-        <PackageReference Include="NPoco" Version="5.7.0"/>
+        <PackageReference Include="LamLibAllOver" Version="2.3.0" />
+        <PackageReference Include="LamLogger" Version="1.1.3" />
+        <PackageReference Include="LamSavePoco" Version="2.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="7.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="7.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="7.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
+        <PackageReference Include="Npgsql" Version="7.0.1" />
+        <PackageReference Include="NPoco" Version="5.7.0" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Patreon.NET\Patreon.NET.csproj"/>
+        <ProjectReference Include="..\Patreon.NET\Patreon.NET.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Lib" />
+    </ItemGroup>
 </Project>

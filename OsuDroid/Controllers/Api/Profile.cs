@@ -1,11 +1,13 @@
-using System.Diagnostics.CodeAnalysis;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NPoco;
 using OsuDroid.Database.TableFn;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
+using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Lib.Validate;
 using OsuDroid.Utils;
+using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
@@ -31,17 +33,22 @@ public sealed class Profile : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProfileStats))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult WebProfileStats([FromRoute(Name = "id")] long userId) {
-        BblUserAndBblUserStats? userAndStats;
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         var sql = new Sql(
             "SELECT * FROM public.bbl_user JOIN bbl_user_stats bus on bus.uid = bbl_user.id WHERE id = @0", userId);
-        using var db = DbBuilder.BuildPostSqlAndOpen();
+        
+        var optionUserAndStats = log.AddResultAndTransform(db.SingleOrDefault<BblUserAndBblUserStats>(sql))
+            .Map(x => Option<BblUserAndBblUserStats>.NullSplit(x))
+            .OkOr(Option<BblUserAndBblUserStats>.Empty);
 
-
-        userAndStats = db.SingleOrDefault<BblUserAndBblUserStats>(sql).OkOrDefault();
-
-        if (userAndStats is null)
+        if (optionUserAndStats.IsSet() == false)
             return Ok(new ProfileStats { Found = false });
 
+        BblUserAndBblUserStats userAndStats = optionUserAndStats.Unwrap();
+        
         var sqlRank = new Sql(@$"
 SELECT t.global_rank as global_rank, t.country_rank as country_rank
 FROM (
@@ -55,15 +62,13 @@ FROM (
      ) as t
 WHERE uid = {userId}
 ");
-        var userRank = db.Fetch<BblUser.UserRank>(sqlRank).OkOrDefault()?.FirstOrDefault();
 
-        if (userRank is null)
-            return GetInternalServerError();
-
-        BblPatron? bblPatron = null;
-        if (string.IsNullOrEmpty(userAndStats.Email) == false) {
-            var response = Database.TableFn.BblUser.GetBblPatron(new BblUser { PatronEmail = userAndStats.Email }, db);
-            bblPatron = response == EResponse.Ok ? response.Ok() : null;
+        List<BblUser.UserRank> userRank = log.AddResultAndTransform(db.Fetch<BblUser.UserRank>(sqlRank)).OkOr(new());
+        
+        Option<BblPatron> optionBblPatron = Option<BblPatron>.Empty;
+        if ((userAndStats.Email??"").Length == 0) {
+            optionBblPatron = Option<BblPatron>.Transform(log.AddResultAndTransform(
+                Database.TableFn.BblUser.GetBblPatron(new BblUser { PatronEmail = userAndStats.Email }, db)));
         }
 
         return Ok(new ProfileStats {
@@ -74,9 +79,9 @@ WHERE uid = {userId}
             Accuracy = userAndStats.OverallAccuracy,
             Region = userAndStats.Region,
             Active = userAndStats.Active,
-            Supporter = bblPatron is null ? false : bblPatron.ActiveSupporter,
-            GlobalRanking = userRank.globalRank,
-            CountryRanking = userRank.CountryRank,
+            Supporter = optionBblPatron.IsSet() && optionBblPatron.Unwrap().ActiveSupporter,
+            GlobalRanking = userRank[0].globalRank,
+            CountryRanking = userRank[0].CountryRank,
             OverallScore = userAndStats.OverallScore,
             OverallAccuracy = userAndStats.OverallAccuracy,
             OverallCombo = userAndStats.OverallCombo,
@@ -105,20 +110,25 @@ WHERE uid = {userId}
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UserRankTimeLine))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult WebProfileStatsTimeLine([FromRoute(Name = "id")] long userId) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (userId < 0)
             return BadRequest();
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        var res = BblGlobalRankingTimeline
-            .BuildTimeLine(db, userId, DateTime.UtcNow - TimeSpan.FromDays(90))
+        
+        var rankingTimeline = log.AddResultAndTransform(BblGlobalRankingTimeline
+            .BuildTimeLine(db, userId, DateTime.UtcNow - TimeSpan.FromDays(90)))
+            .OkOr(Array.Empty<Entities.BblGlobalRankingTimeline>())
             .Select(x => new UserRankTimeLine.RankTimeLineValue {
                 Date = x.Date,
                 Score = x.Score,
                 Rank = x.GlobalRanking
             }).ToList();
-
+        
         return Ok(new UserRankTimeLine {
             UserId = userId,
-            List = res
+            List = rankingTimeline
         });
     }
 
@@ -128,6 +138,8 @@ WHERE uid = {userId}
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult WebProfileTopPlays([FromRoute(Name = "id")] long userId) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
         
         return Ok(new Plays {
             Found = true,
@@ -140,14 +152,17 @@ WHERE uid = {userId}
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(Plays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult WebProfileTopRecent([FromRoute(Name = "id")] long userId) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         var sql = new Sql(@$"
 SELECT * FROM bbl_score 
 WHERE uid = {userId}
 ORDER BY bbl_score.id DESC 
 LIMIT 50;
 ");
-
-        using var db = DbBuilder.BuildPostSqlAndOpen();
+        
         return Ok(new Plays {
             Found = true,
             Scores = db.Fetch<BblScore>(sql).OkOrDefault() ?? new List<BblScore>(0)
@@ -159,17 +174,20 @@ LIMIT 50;
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult UpdateEmail([FromBody] UpdateEmailProp prop) {
-        if (prop.AnyValidate() == EResponse.Err)
-            return Ok(new ApiTypes.Work { HasWork = false });
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        var tokenInfoResp = LoginTokenInfo(db);
-        if (tokenInfoResp == EResponse.Err) return Ok(ApiTypes.Work.False);
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (prop.AnyValidate() == EResult.Err)
+            return Ok(new ApiTypes.Work { HasWork = false });
+        
+        var tokenInfoResp = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
+        if (tokenInfoResp.IsSet() == false) return Ok(ApiTypes.Work.False);
 
-        var userId = tokenInfoResp.Ok().UserId;
+        var userId = tokenInfoResp.Unwrap().UserId;
 
-        var bblUser = db
-            .SingleOrDefault<BblUser>($"SELECT email, password FROM bbl_user WHERE id = {userId}")
+        var bblUser = log.AddResultAndTransform(db
+                .SingleOrDefault<BblUser>($"SELECT email, password FROM bbl_user WHERE id = {userId}"))
             .OkOrDefault();
 
         if (bblUser is null)
@@ -186,11 +204,14 @@ LIMIT 50;
         try {
             System.IO.File.Move(filePathOld, filePathNew);
         }
-        catch {
-            /* ignored */
+        catch(Exception e) {
+            log.AddLogError(e.ToString());
         }
 
-        db.Execute(@$"UPDATE bbl_user SET email = @0 WHERE id = {userId}", prop.NewEmail!);
+        if (log.AddResultAndTransform(
+                db.Execute(@$"UPDATE bbl_user SET email = @0 WHERE id = {userId}", prop.NewEmail!)) == EResult.Err) {
+            return Ok(ApiTypes.Work.False);
+        }
         return Ok(new ApiTypes.Work { HasWork = true });
     }
 
@@ -199,18 +220,21 @@ LIMIT 50;
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult UpdatePasswd([FromBody] UpdatePasswdProp prop) {
-        if (prop.AnyValidate() == EResponse.Err)
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (prop.AnyValidate() == EResult.Err)
             return Ok(new ApiTypes.Work { HasWork = false });
 
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        var tokenInfoResp = LoginTokenInfo(db);
-        if (tokenInfoResp == EResponse.Err) return Ok(ApiTypes.Work.False);
+        var optiontokenInfoResp = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
+        if (optiontokenInfoResp.IsSet() == false) 
+            return Ok(ApiTypes.Work.False);
 
-        var userId = tokenInfoResp.Ok().UserId;
+        var userId = optiontokenInfoResp.Unwrap().UserId;
 
-        var bblUser = db
-            .SingleOrDefault<BblUser>($"SELECT password FROM bbl_user WHERE id = {userId}")
-            .OkOrDefault();
+        var bblUser = log.AddResultAndTransform(db
+            .SingleOrDefault<BblUser>($"SELECT password FROM bbl_user WHERE id = {userId}")).OkOrDefault();
         if (bblUser is null)
             return Ok(new ApiTypes.Work { HasWork = false });
 
@@ -219,7 +243,7 @@ LIMIT 50;
         if (bblUser.Password != oldPasswdHash)
             return Ok(new ApiTypes.Work { HasWork = false });
 
-        db.Execute(@$"UPDATE bbl_user SET password = @0 WHERE id = {userId}", newPasswdHash!);
+        log.AddResultAndTransform(db.Execute(@$"UPDATE bbl_user SET password = @0 WHERE id = {userId}", newPasswdHash!));
         return Ok(new ApiTypes.Work { HasWork = true });
     }
 
@@ -228,19 +252,22 @@ LIMIT 50;
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(UpdateUsernameRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult UpdateUsername([FromBody] UpdateUsernameProp prop) {
-        prop.NewUsername = prop.NewUsername?.Trim();
-        if (prop.AnyValidate() == EResponse.Err)
-            return Ok(new UpdateUsernameRes { HasWork = false });
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        var tokenInfoResp = LoginTokenInfo(db);
-        if (tokenInfoResp == EResponse.Err) return Ok(new UpdateUsernameRes { HasWork = false });
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        prop.NewUsername = prop.NewUsername?.Trim();
+        if (prop.AnyValidate() == EResult.Err)
+            return Ok(new UpdateUsernameRes { HasWork = false });
+        
+        var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
+        if (optionTokenInfo.IsSet() == false) return Ok(new UpdateUsernameRes { HasWork = false });
 
-        var userId = tokenInfoResp.Ok().UserId;
+        var userId = optionTokenInfo.Unwrap().UserId;
 
         var bblUser =
-            db.SingleOrDefault<BblUser>(
-                    $"SELECT username, password, username_last_change FROM bbl_user WHERE id = {userId}")
+            log.AddResultAndTransform(db.SingleOrDefault<BblUser>(
+                    $"SELECT username, password, username_last_change FROM bbl_user WHERE id = {userId}"))
                 .OkOrDefault();
 
         if (bblUser is null
@@ -256,10 +283,10 @@ LIMIT 50;
                 WaitTimeForNextDayToUpdate = (bblUser.LastLoginTime + TimeSpan.FromDays(7) - DateTime.UtcNow).Days
             });
 
-        db.Execute(@$"
+        log.AddResultAndTransform(db.Execute(@$"
 UPDATE bbl_user 
 SET username = @0, username_last_change = @1 
-WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow);
+WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
 
         return Ok(new ApiTypes.Work { HasWork = true });
     }
@@ -269,14 +296,17 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow);
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult UpdateAvatar([FromBody] UpdateAvatarProp prop) {
-        if (prop.AnyValidate() == EResponse.Err)
-            return Ok(new UpdateAvatarRes { PasswdFalse = true });
-
         using var db = DbBuilder.BuildPostSqlAndOpen();
-        var tokenInfoResp = LoginTokenInfo(db);
-        if (tokenInfoResp == EResponse.Err) return BadRequest();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (prop.AnyValidate() == EResult.Err)
+            return Ok(new UpdateAvatarRes { PasswdFalse = true });
+        
+        var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
+        if (optionTokenInfo.IsSet() == false) return BadRequest();
 
-        var userId = tokenInfoResp.Ok().UserId;
+        var userId = optionTokenInfo.Unwrap().UserId;
 
         byte[] imageBytes;
         try {
@@ -284,12 +314,13 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow);
             // TODO Write one Convert.FromBase64String With Span
             imageBytes = Convert.FromBase64CharArray(charArr, 0, charArr.Length);
         }
-        catch (Exception) {
+        catch (Exception e) {
+            log.AddLogError(e.ToString());
             return BadRequest();
         }
 
-        var bblUser = db
-            .SingleOrDefault<BblUser>($"SELECT username, password, email, id FROM bbl_user WHERE id = {userId}")
+        var bblUser = log.AddResultAndTransform(db
+            .SingleOrDefault<BblUser>($"SELECT username, password, email, id FROM bbl_user WHERE id = {userId}"))
             .OkOrDefault();
         if (bblUser is null || bblUser.Password != ToPasswdHash(prop.Passwd ?? ""))
             return Ok(new UpdateAvatarRes { PasswdFalse = true });
@@ -329,19 +360,22 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow);
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult UpdatePatreonEmail([FromBody] UpdatePatreonEmailProp prop) {
-        if (prop.AnyValidate() == EResponse.Err)
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
+        if (prop.AnyValidate() == EResult.Err)
             return Ok(ApiTypes.Work.False);
 
-        using var db = DbBuilder.BuildPostSqlAndOpen();
+        var checkRes = log.AddResultAndTransform(Database.TableFn.BblUser.CheckPasswordGetId(db, prop.Username ?? "",
+            Database.TableFn.BblUser.HashPasswd(prop.Passwd ?? "", Env.PasswdSeed))).OkOr(Option<long>.Empty);
+        if (checkRes.IsSet() == false) return Ok(new ApiTypes.Work { HasWork = false });
+        var userId = checkRes.Unwrap();
 
-        var checkRes = Database.TableFn.BblUser.CheckPasswordGetId(db, prop.Username ?? "",
-            Database.TableFn.BblUser.HashPasswd(prop.Passwd ?? "", Env.PasswdSeed));
-        if (checkRes == EResponse.Err) return Ok(new ApiTypes.Work { HasWork = false });
-        var userId = checkRes.Ok();
+        var optionBblUser = log.AddResultAndTransform(Database.TableFn.BblUser.GetUserById(db, userId)).OkOr(Option<BblUser>.Empty);
+        if (optionBblUser.IsSet() == false) return Ok(new ApiTypes.Work { HasWork = false });
 
-        var bblUser = Database.TableFn.BblUser.GetUserById(db, userId);
-        if (bblUser is null) return Ok(new ApiTypes.Work { HasWork = false });
-
+        var bblUser = optionBblUser.Unwrap(); 
 
         var token = Guid.NewGuid();
 
@@ -357,20 +391,33 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow);
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult AcceptPatreonEmail([FromRoute(Name = "token")] Guid token) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (token == Guid.Empty)
             return Ok(new ApiTypes.Work { HasWork = false });
-
+        
         var response = _patreoneMailToken.Pop(token);
 
-        if (response == EResponse.Err)
+        if (response.IsSet() == false) {
+            log.AddLogDebug($"Token Not Found: {token}");
             return Ok(new ApiTypes.Work { HasWork = false });
+        }
 
-        var userIdAndEmail = response.Ok();
+        var userIdAndEmail = response.Unwrap();
 
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-
-        Database.TableFn.BblUser.SetPatreonEmail(db, userIdAndEmail.UserId, userIdAndEmail.Email!);
-        Database.TableFn.BblUser.SetAcceptPatreonEmail(db, userIdAndEmail.UserId);
+        var err = Database.TableFn.BblUser.SetPatreonEmail(db, userIdAndEmail.UserId, userIdAndEmail.Email!);
+        if (err == EResult.Err) {
+            log.AddLogError(err.Err());
+            return Ok(new ApiTypes.Work { HasWork = false });
+        }
+        err = Database.TableFn.BblUser.SetAcceptPatreonEmail(db, userIdAndEmail.UserId);
+        if (err == EResult.Err) {
+            log.AddLogError(err.Err());
+            return Ok(new ApiTypes.Work { HasWork = false });
+        }
+        
         return Ok(new ApiTypes.Work { HasWork = true });
     }
 
@@ -378,19 +425,23 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow);
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CreateDropAccountTokenRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult CreateDropAccountToken([FromBody] ApiTypes.Api2GroundNoHeader<CreateDropAccountTokenProp> prop) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+        
         if (prop.ValuesAreGood() == false) 
             return Ok(CreateDropAccountTokenRes.HasElseError());
         
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        var tokenInfoRes = LoginTokenInfo(db);
-        if (tokenInfoRes == EResponse.Err)
-            return Ok(CreateDropAccountTokenRes.CookieIsDead());
+        var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
+        if (optionTokenInfo.IsSet() == false) return BadRequest();
+
+        var userId = optionTokenInfo.Unwrap().UserId;
         
-        var userId = tokenInfoRes.Ok().UserId;
-        var bblUser = Database.TableFn.BblUser.GetUserById(db, userId);
-        if (bblUser is null)
+        var optionBblUser = log.AddResultAndTransform(Database.TableFn.BblUser.GetUserById(db, userId)).OkOr(Option<BblUser>.Empty);
+        if (optionBblUser.IsSet() == false)
             return Ok(CreateDropAccountTokenRes.HasElseError());
-        
+
+        var bblUser = optionBblUser.Unwrap();
         if (Database.TableFn.BblUser.PasswordEqual(bblUser, prop.Body!.Password ?? "") == false) 
             return Ok(CreateDropAccountTokenRes.PasswordIsFalse());
         
@@ -407,18 +458,22 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow);
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult DropAccountWithToken([FromRoute(Name = "token")] Guid token) {
-        _deleteAccMailToken.CleanDeadTokens();
         using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
         
-        var tokenInfoRes = LoginTokenInfo(db);
+        _deleteAccMailToken.CleanDeadTokens();
+        
+        var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
         var deleteAccTokenResponse = _deleteAccMailToken.Pop(token: token);
-        if (tokenInfoRes == EResponse.Err || deleteAccTokenResponse == EResponse.Err)
+        if (optionTokenInfo.IsSet() == false || deleteAccTokenResponse.IsSet() == false)
             return BadRequest();
 
-        var userId = deleteAccTokenResponse.Ok().UserId;
+        var userId = deleteAccTokenResponse.Unwrap().UserId;
 
-        var deleteAccountResponse = Bbl.DeleteAccount(db, userId);
-        
+        ResultErr<string> deleteAccountResponse = Bbl.DeleteAccount(db, userId);
+        if (deleteAccountResponse == EResult.Err)
+            log.AddLogError(deleteAccountResponse.Err());
         this.RemoveCookieByEName(ECookie.LoginCookie);
         return Ok(ApiTypes.Work.True);
     }

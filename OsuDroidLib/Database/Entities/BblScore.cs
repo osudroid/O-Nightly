@@ -98,7 +98,7 @@ WHERE filename = '{new SqlString(filename).ToString()}'
     LIMIT 50;
 ";
         var response = db.Fetch<BblScoreWithUsername>(sqlStr);
-        if (response == EResponse.Err)
+        if (response == EResult.Err)
             return null;
         foreach (var bblScoreWithUsername in response.Ok()) {
             bblScoreWithUsername.Username ??= string.Empty;
@@ -140,26 +140,19 @@ WHERE filename = '{new SqlString(filename).ToString()}'
         // return res;
     }
 
-    public static BblScore? GetUserTopScore(SavePoco db, long userID, string filename, string fileHash) {
+    public static Result<Option<BblScore>, string> GetUserTopScore(SavePoco db, long userID, string filename, string fileHash) {
         return db.FirstOrDefault<BblScore>(
-                "SELECT * FROM bbl_score WHERE uid = @0 AND filename = @1 AND hash = @2",
-                userID, filename, fileHash)
-            switch {
-                { Status: EResponse.Ok } res => res.Ok(),
-                _ => null
-            };
+            "SELECT * FROM bbl_score WHERE uid = @0 AND filename = @1 AND hash = @2",
+            userID, filename, fileHash).Map(x => Option<BblScore>.NullSplit(x));
     }
 
-    public static BblScore? GetById(SavePoco db, long playID) {
+    public static Result<Option<BblScore>, string> GetById(SavePoco db, long playID) {
         return db.FirstOrDefault<BblScore>($"SELECT * FROM bbl_score WHERE id = {playID} LIMIT 1")
-            switch {
-                { Status: EResponse.Ok } res => res.Ok(),
-                _ => null
-            };
+            .Map(x => Option<BblScore>.NullSplit(x));
     }
 
 
-    public static Response<long> GetUserMapRank(SavePoco db, long playID) {
+    public static Result<long, string> GetUserMapRank(SavePoco db, long playID) {
         return db.First<long>(@$"
 SELECT count(*) + 1 
 FROM bbl_score 

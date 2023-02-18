@@ -1,24 +1,3 @@
-CREATE SEQUENCE IF NOT EXISTS bbl_user_id_seq AS bigint START WITH 1 INCREMENT BY 1 CACHE 1;
-
-CREATE TABLE IF NOT EXISTS bbl_token_user
-(
-    token_id    uuid      NOT NULL,
-    user_id     bigint    NOT NULL,
-    create_date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (token_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_bbl_token_user ON bbl_token_user USING brin (create_date);
-
-CREATE TABLE IF NOT EXISTS bbl_patron
-(
-    patron_email     text    NOT NULL,
-    active_supporter boolean NOT NULL DEFAULT false,
-    PRIMARY KEY (patron_email)
-);
-
-
-
 CREATE TABLE IF NOT EXISTS bbl_user
 (
     id                   bigint    NOT NULL DEFAULT nextval('bbl_user_id_seq'),
@@ -39,6 +18,34 @@ CREATE TABLE IF NOT EXISTS bbl_user
     FOREIGN KEY (patron_email) REFERENCES bbl_patron (patron_email),
     PRIMARY KEY (id)
 );
+
+
+CREATE SEQUENCE IF NOT EXISTS bbl_user_id_seq AS bigint START WITH 1 INCREMENT BY 1 CACHE 1;
+
+CREATE TABLE IF NOT EXISTS bbl_token_user
+(
+    token_id    uuid      NOT NULL,
+    user_id     bigint    NOT NULL,
+    create_date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (token_id),
+    CONSTRAINT setting
+        FOREIGN KEY (user_id)
+        REFERENCES bbl_user(id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_bbl_token_user ON bbl_token_user USING brin (create_date);
+
+CREATE TABLE IF NOT EXISTS bbl_patron
+(
+    patron_email     text    NOT NULL,
+    active_supporter boolean NOT NULL DEFAULT false,
+    PRIMARY KEY (patron_email)
+);
+
+
+
+
 
 ALTER SEQUENCE bbl_user_id_seq OWNED BY bbl_user.id;
 
@@ -69,10 +76,14 @@ CREATE TABLE IF NOT EXISTS bbl_user_stats
     overall_miss     bigint NOT NULL DEFAULT 0,
     overall_xss      bigint NOT NULL DEFAULT 0,
     PRIMARY KEY (uid),
-    FOREIGN KEY (uid) REFERENCES bbl_user (id)
+    FOREIGN KEY (uid) REFERENCES bbl_user (id),
+    CONSTRAINT setting
+        FOREIGN KEY (uid)
+            REFERENCES bbl_user(id)
+            ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_bbl_user_stats_uid ON bbl_user_stats USING brin (uid);
+CREATE INDEX IF NOT EXISTS idx_bbl_user_stats_score_many ON bbl_user_stats(overall_score) INCLUDE (uid);
 
 
 
@@ -99,7 +110,11 @@ CREATE TABLE IF NOT EXISTS bbl_score
     miss     bigint    NOT NULL DEFAULT 0,
     date     timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     accuracy bigint    NOT NULL DEFAULT 0,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT setting
+        FOREIGN KEY (uid)
+            REFERENCES bbl_user(id)
+            ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid ON bbl_score USING brin (uid);
@@ -129,13 +144,16 @@ CREATE TABLE IF NOT EXISTS bbl_score_pre_submit
     miss     bigint    NOT NULL DEFAULT 0,
     date     timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     accuracy bigint    NOT NULL DEFAULT 0,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT setting
+        FOREIGN KEY (uid)
+            REFERENCES bbl_user(id)
+            ON DELETE CASCADE
 );
 
 ALTER SEQUENCE bbl_score_id_seq OWNED BY bbl_score_pre_submit.id;
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON bbl_score_pre_submit USING brin (uid);
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON bbl_score_pre_submit USING brin (uid, id);
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_date ON bbl_score_pre_submit USING brin (date);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON bbl_score_pre_submit(uid) INCLUDE (id);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON bbl_score_pre_submit(id) INCLUDE (uid);
 
 
 CREATE TABLE IF NOT EXISTS
@@ -165,12 +183,12 @@ CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline
     date           date   NOT NULL DEFAULT current_date,
     global_ranking bigint NOT NULL,
     score          bigint NOT NULL,
-    PRIMARY KEY (user_id, date)
+    PRIMARY KEY (user_id, date),
+    CONSTRAINT setting
+        FOREIGN KEY (user_id)
+            REFERENCES bbl_user(id)
+            ON DELETE CASCADE
 );
-
-CREATE INDEX IF NOT EXISTS idx_global_ranking_timeline ON bbl_global_ranking_timeline USING brin (user_id, date);
-CREATE INDEX idx_date_btree on bbl_global_ranking_timeline (date desc);
-
 
 CREATE TABLE IF NOT EXISTS bbl_avatar_hash
 (
@@ -178,4 +196,24 @@ CREATE TABLE IF NOT EXISTS bbl_avatar_hash
     size    int,
     hash    TEXT,
     PRIMARY KEY (user_id, size)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bbl_avatar_hash_full ON bbl_avatar_hash(user_id, size) INCLUDE (hash);
+
+
+-- Only IN Production (Need Space)
+-- CREATE INDEX IF NOT EXISTS idx_bbl_global_ranking_timeline_any
+--     on bbl_global_ranking_timeline (user_id, date) INCLUDE (score, global_ranking);
+-- CREATE INDEX IF NOT EXISTS idx_bbl_global_ranking_timeline_date
+--     on bbl_global_ranking_timeline (date) INCLUDE (score, global_ranking);
+
+
+CREATE TABLE IF NOT EXISTS log(
+    id uuid NOT NULL ,
+    date_time timestamp NOT NULL,
+    message text NOT NULL,
+    status text NOT NULL,
+    stack text NOT NULL,
+    trigger text NOT NULL,
+    PRIMARY KEY (id, date_time)
 );

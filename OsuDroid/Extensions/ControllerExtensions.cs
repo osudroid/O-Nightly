@@ -16,105 +16,102 @@ public abstract class ControllerExtensions : ControllerBase {
         return username.Trim();
     }
 
-    public Response<TokenInfo> LoginTokenInfo(SavePoco db) {
+    public Result<Option<TokenInfo>, string> LoginTokenInfo(SavePoco db) {
         try {
             var cookies = GetCookies();
             if (cookies.TryGetValue(ECookie.LoginCookie, out var cookie) == false)
-                return Response<TokenInfo>.Err;
-            if (Guid.TryParse(cookie, out var guid) == false) return Response<TokenInfo>.Err;
+                return Result<Option<TokenInfo>, string>.Ok(Option<TokenInfo>.Empty);
+            
+            if (Guid.TryParse(cookie, out var guid) == false) 
+                return Result<Option<TokenInfo>, string>.Err("cookie Is Not Valid Guid");
+            
             var resp = TokenHandlerManger
                 .GetOrCreateCacheDatabase(ETokenHander.User)
                 .GetTokenInfo(db, guid);
-            if (resp == EResponse.Err) {
-                RemoveCookieByEName(ECookie.LoginCookie);
-                return resp;
-            }
 
-            return resp;
+            return resp.Map<Option<TokenInfo>>(x => {
+                if (x.IsSet() == false) {
+                    RemoveCookieByEName(ECookie.LoginCookie);
+                    return Option<TokenInfo>.Empty;
+                }
+
+                return Option<TokenInfo>.With(x.Unwrap());
+            });
         }
-#if DEBUG
         catch (Exception e) {
-            WriteLine(e);
-            throw;
+            return Result<Option<TokenInfo>, string>.Err(e.ToString());
         }
-#else
-        catch (Exception) {
-            return Response<TokenInfo>.Err;
-        }
-#endif
     }
 
-    public Response<Guid> GetCookieToken() {
+    public Result<Option<Guid>, string> GetCookieToken() {
         var cookies = GetCookies();
         if (cookies.TryGetValue(ECookie.LoginCookie, out var cookie) == false)
-            return Response<Guid>.Err;
-        if (Guid.TryParse(cookie, out var guid) == false) return Response<Guid>.Err;
-        return Response<Guid>.Ok(guid);
+            return Result<Option<Guid>, string>.Ok(Option<Guid>.Empty);
+        
+        if (Guid.TryParse(cookie, out var guid) == false) 
+            return Result<Option<Guid>, string>.Err("cookie Is Not Valid Guid");
+
+        return Result<Option<Guid>, string>.Ok(Option<Guid>.With(guid));
     }
 
-    public Response LoginTokenInfoRefresh(SavePoco db) {
+    public ResultErr<string> LoginTokenRefreshTime(SavePoco db) {
         try {
             var cookies = GetCookies();
             if (cookies.TryGetValue(ECookie.LoginCookie, out var cookie) == false)
-                return LamLibAllOver.Response.Err();
-            if (Guid.TryParse(cookie, out var guid) == false) return LamLibAllOver.Response.Err();
+                return ResultErr<string>.Err("LoginToken In Cookies Not Found");
+            if (Guid.TryParse(cookie, out var guid) == false)
+                return ResultErr<string>.Err("cookie Is Not Valid Guid");
             var resp = TokenHandlerManger
                 .GetOrCreateCacheDatabase(ETokenHander.User)
                 .Refresh(db, guid);
-
-            if (resp == EResponse.Err) {
+            
+            if (resp == EResult.Err) {
                 RemoveCookieByEName(ECookie.LoginCookie);
-                return resp;
             }
-
-            return resp;
+            
+            return ResultErr<string>.Ok();
         }
-#if DEBUG
         catch (Exception e) {
-            WriteLine(e);
-            throw;
+            return ResultErr<string>.Err(e.ToString());
         }
-#else
-        catch (Exception) {
-            return LamLibAllOver.Response.Err();
-        }
-#endif
     }
 
     public string ToPasswdHash(string passwd) {
         return Password.Hash(passwd).OkOr("");
     }
 
-    internal Response<IPAddress> GetIpAddress() {
+    internal Result<Option<IPAddress>, string> GetIpAddress() {
         try {
             if (!Request.Headers.TryGetValue("X-Forwarded-For", out var ip) || ip.Count == 0)
-                return Response<IPAddress>.Err;
-            return Response<IPAddress>.Ok(IPAddress.Parse(ip.FirstOrDefault()!.Split(",")[0]));
+                return Result<Option<IPAddress>, string>.Ok(Option<IPAddress>.Empty);
+            return Result<Option<IPAddress>, string>
+                .Ok(Option<IPAddress>.With(IPAddress.Parse(ip.FirstOrDefault()!.Split(",")[0])));
         }
-        catch (Exception) {
-            return Response<IPAddress>.Err;
+        catch (Exception e) {
+            return Result<Option<IPAddress>, string>.Err(e.ToString());
         }
     }
 
-    public ECookie? NameToECookie(string name) {
+    public Option<ECookie> NameToECookie(string name) {
         return name switch {
-            "LoginCookie" => ECookie.LoginCookie,
-            _ => null
+            "LoginCookie" => Option<ECookie>.With(ECookie.LoginCookie),
+            _ => Option<ECookie>.Empty
         };
     }
 
-    private string? ECookieToString(ECookie eCookie) {
-        return eCookie switch {
+    private Option<string> ECookieToString(ECookie eCookie) {
+        return Option<string>.NullSplit(eCookie switch {
             ECookie.LoginCookie => "LoginCookie",
             _ => null
-        };
+        });
     }
 
     public Dictionary<ECookie, string> GetCookies() {
         try {
             var request = Request;
             var stringValues = request.Headers["Cookie"];
-            if (stringValues.Count == 0) return new Dictionary<ECookie, string>(0);
+            if (stringValues.Count == 0) 
+                return new Dictionary<ECookie, string>(0);
 
             var res = new Dictionary<ECookie, string>(10);
 
@@ -122,33 +119,26 @@ public abstract class ControllerExtensions : ControllerBase {
                 var nameAndValue = (i ?? "").Split("=", StringSplitOptions.TrimEntries);
                 var eCookie = NameToECookie(nameAndValue[0]);
 
-                if (eCookie.HasValue == false) continue;
+                if (eCookie.IsSet() == false) continue;
 
-                res.Add(eCookie.Value, nameAndValue[1]);
+                res.Add(eCookie.Unwrap(), nameAndValue[1]);
             }
 
             return res;
         }
-#if DEBUG
-        catch (Exception e) {
-            WriteLine(e);
-            throw;
-        }
-#else
         catch (Exception) {
-            return new Dictionary<ECookie, string>();
+            return new Dictionary<ECookie, string>(0);
         }
-#endif
     }
 
     public void AppendCookie(ECookie eCookie, string value) {
         var eCookieToString = ECookieToString(eCookie);
 
-        if (eCookieToString is null)
+        if (eCookieToString.IsSet() == false)
             throw new NullReferenceException(nameof(eCookieToString));
         // TODO SET SITE NAME
-
-        Response.Cookies.Append(eCookieToString, value, new CookieOptions {
+        var cookie = eCookieToString.Unwrap();
+        Response.Cookies.Append(cookie, value, new CookieOptions {
             Secure = false,
             HttpOnly = false,
             SameSite = SameSiteMode.Lax,
@@ -157,11 +147,16 @@ public abstract class ControllerExtensions : ControllerBase {
         });
     }
 
-    public void RemoveCookieByEName(ECookie eCookie) {
-        Response.Cookies.Delete(ECookieToString(eCookie)!, new CookieOptions {
+    public ResultErr<string> RemoveCookieByEName(ECookie eCookie) {
+        var cookieToString = ECookieToString(eCookie);
+        if (cookieToString.IsSet() == false)
+            return ResultErr<string>.Err("Can Not Convert Cookie To String");
+        
+        Response.Cookies.Delete(cookieToString.Unwrap(), new CookieOptions {
             Domain = Env.Domain,
             SameSite = SameSiteMode.Lax
         });
+        return ResultErr<string>.Ok();
     }
 
     /// <summary> StatusCodes.Status500InternalServerError </summary>

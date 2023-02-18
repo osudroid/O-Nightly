@@ -7,17 +7,14 @@ public static class Service {
         return new ServiceState();
     }
 
-    public static Response<ServiceState> RunClean(ServiceState state) {
+    public static Result<ServiceState, string> RunClean(ServiceState state) {
         WriteLine("Start Clean");
         using var db = DbBuilder.BuildPostSqlAndOpen();
         try {
             return db.Execute(new Sql(@"
 DELETE FROM bbl_score_pre_submit 
        WHERE date < @0 
-", DateTime.UtcNow - TimeSpan.FromDays(1)))
-                   == EResponse.Ok
-                ? Response<ServiceState>.Ok(state)
-                : Response<ServiceState>.Err;
+", DateTime.UtcNow - TimeSpan.FromDays(1))).Map(x => state);
         }
         finally {
             WriteLine("Finish Clean");
