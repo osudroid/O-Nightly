@@ -27,12 +27,13 @@ FROM bbl_score
 WHERE uid = {userId}
 GROUP BY osu_droid.public.bbl_score.mark
 ;");
-        var fetchResult = db.Fetch<CountMarkPlaysByUserIdClass>(sql);
-        if (fetchResult == EResult.Err)
-            return Result<Dictionary<Entities.BblScore.EMark, long>, string>.Err(fetchResult.Err());
+        var fetchMarkResult = db.Fetch<CountMarkPlaysByUserIdClass>(sql);
+        if (fetchMarkResult == EResult.Err)
+            return Result<Dictionary<Entities.BblScore.EMark, long>, string>.Err(fetchMarkResult.Err());
         
         var res = new Dictionary<Entities.BblScore.EMark, long>(8);
-        foreach (var row in fetchResult.Ok()) {
+        
+        foreach (var row in fetchMarkResult.Ok()) {
             res[row.Mark] = row.Count;
         }
 
