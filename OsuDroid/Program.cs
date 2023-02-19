@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using AspNetCoreRateLimit;
 
 using Npgsql;
@@ -33,6 +34,7 @@ public sealed class Program {
             ["--transfer"] => (int)RunTransferDb(),
             ["--reload-timeline" or "-f"] => (int)FullReloadRankingTimeline(),
             ["--hashpass", var password] => (int)ParseAndPrint(() => Password.Hash(password)),
+            ["--gc-replayfiles" or "-r"] => (int)(OsuDroid.Lib.ReplayFileManager.DeleteAllReplayFilesWithNoScoreInTable() == EResult.Err? EExitCode.UnknownError: EExitCode.Success),
             _ => (int)ParseAndPrintExistCode(EExitCode.ArgNotExist, "Argument Not Exist")
         });
     }

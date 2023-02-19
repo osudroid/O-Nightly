@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
+using OsuDroid.Lib;
 using OsuDroid.Lib.OdrZip;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
@@ -11,13 +13,19 @@ public class Api2Odr : ControllerExtensions {
     public ActionResult GetOdrFile([FromRoute(Name = "replayId")] string replayId) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+
+        var result = log.AddResultAndTransform(ReplayFileManager.GetReplayOdrByReplayId(db, replayId));
+        if (result == EResult.Err)
+            return this.GetInternalServerError();// "Server Error"
         
-        var filePath = $"{Env.ReplayPath}/{replayId}.odr";
+        
+        
+        FileStream? fileStream = result.OkOrDefault().OrNull();
 
-        if (System.IO.File.Exists(filePath) == false) return BadRequest("File Not Exist");
+        if (fileStream is null)
+            return BadRequest("File Not Exist");
 
-        return File(System.IO.File.OpenRead(filePath), "Application/octet-stream");
+        return File(fileStream, "Application/octet-stream");
     }
 
     [HttpGet("/api2/odr/{replayId:long}.zip")]
@@ -25,15 +33,14 @@ public class Api2Odr : ControllerExtensions {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
-        var res = log.AddResultAndTransform(OdrZip.Factory(db, replayId))
-            .OkOr(Option<(FileStream stream, string name)>.Empty);
 
+        var res = log
+            .AddResultAndTransform(Lib.ReplayFileManager.GetReplayOdrAsZipByReplayId(db, replayId.ToString()))
+            .OkOr(Option<FileStream>.Empty);
+        
         if (res.IsSet() == false) return BadRequest();
 
-        var (stream, name) = res.Unwrap();
-
-        return File(stream, "Application/octet-stream");
+        return File(res.Unwrap(), "Application/octet-stream");
     }
 
     [HttpGet("/api2/odr/fullname/{replayId:long}/{fullname}.zip")]
@@ -52,7 +59,8 @@ public class Api2Odr : ControllerExtensions {
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
         
-        var bblScore = db.SingleOrDefault<BblScore>($"SELECT filename, date, uid FROM bbl_score WHERE id = {replayId}")
+        var bblScore = log.AddResultAndTransform(db.SingleOrDefault<BblScore>(
+                $"SELECT filename, date, uid FROM bbl_score WHERE id = {replayId}"))
             .OkOrDefault();
 
         if (bblScore is null)

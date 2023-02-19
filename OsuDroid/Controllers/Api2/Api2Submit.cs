@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using OsuDroid.Extensions;
+using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Model;
 using OsuDroid.Utils;
@@ -117,18 +118,19 @@ public class Api2Submit : ControllerExtensions {
         if (tokenInfoResp.IsSet() == false)
             return BadRequest("Token Error");
 
-        var resp = Upload.UploadReplay(
+        var resultError = ReplayFileManager.CreateZipAndOdrFiles(
+            db,
             prop.Body!.MapHash ?? "",
             prop.Body!.ReplayId,
             tokenInfoResp.Unwrap().UserId,
             form.File!);
 
-        if (resp == EResult.Err)
-            log.AddLogError(resp.Err());
-        
-        return resp == EResult.Err
-            ? BadRequest(resp.Err())
-            : Ok(resp.Ok());
+        if (resultError == EResult.Err) {
+            log.AddLogError(resultError.Err());
+            return GetInternalServerError();
+        }
+
+        return Ok(ApiTypes.Work.True);
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
