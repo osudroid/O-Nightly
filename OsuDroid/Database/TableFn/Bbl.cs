@@ -9,6 +9,10 @@ public static class Bbl {
         if (resultBblUser.Ok().IsSet() == false)
             return ResultErr<string>.Err($"userId Not Found: {userId}");
 
+        var deleteAllByUserId = OsuDroid.Lib.ReplayFileManager.DeleteAllByUserId(db, userId);
+        if (deleteAllByUserId == EResult.Err)
+            return deleteAllByUserId;
+
         return BblUser.DeleteBblUser(db, userId);
     }
 }
