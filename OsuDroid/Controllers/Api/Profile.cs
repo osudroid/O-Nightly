@@ -522,6 +522,8 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
         return Ok(new Plays() { Found = true, Scores = scores });
     }
     
+    
+    
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class CreateDropAccountTokenProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString {
         public string? Password { get; set; }
@@ -618,6 +620,7 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
         public long PlaysB { get; set; }
         public long PlaysC { get; set; }
         public long PlaysD { get; set; }
+        public long PlaysAll { get; set; }
 
         public static PlaysMarksLength Factory(Dictionary<BblScore.EMark, long> dictionary) {
             return new PlaysMarksLength() {
@@ -629,6 +632,7 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
                 PlaysB = dictionary.ContainsKey(BblScore.EMark.B)? dictionary[BblScore.EMark.B]: 0,
                 PlaysC = dictionary.ContainsKey(BblScore.EMark.C)? dictionary[BblScore.EMark.C]: 0,
                 PlaysD = dictionary.ContainsKey(BblScore.EMark.D)? dictionary[BblScore.EMark.D]: 0,
+                PlaysAll = dictionary.Select(x => x.Value).Sum()
             };
         }
     }
