@@ -477,6 +477,51 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
         return Ok(ApiTypes.Work.True);
     }
 
+
+    [HttpGet("/api/profile/top-play-by-marks-length/user-id/{userId:long}")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PlaysMarksLength))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public IActionResult WebProfileTopPlaysByMarksLength([FromRoute] long userId) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+
+        if (userId < 0) return BadRequest("UserId < 0");
+
+        var result = log.AddResultAndTransform(OsuDroid.Database.TableFn.BblScore.CountMarkPlaysByUserId(db, userId));
+        if (result == EResult.Err)
+            return GetInternalServerError();
+
+        return Ok(PlaysMarksLength.Factory(result.Ok()));
+    }
+
+    [HttpGet("/api/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Plays))]
+    public IActionResult WebProfileTopPlaysByMark(
+        [FromRoute] long userId, [FromRoute] string markString, [FromRoute] int page) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+
+        if (long.IsNegative(userId))
+            return BadRequest("userid Is Negative");
+        if (string.IsNullOrEmpty(markString))
+            return BadRequest("markString Is Null Or Empty");
+        if (int.IsNegative(page))
+            return BadRequest("page Is Negative");
+        
+        if (!Enum.TryParse<BblScore.EMark>(markString, out BblScore.EMark mark))
+            return BadRequest("markString Case Not Exist");
+
+        var fetchResult = log.AddResultAndTransform(OsuDroid.Database.TableFn.BblScore.GetTopScoreFromUserIdFilterMark(db, userId, page, 50, mark));
+        if (fetchResult == EResult.Err)
+            return GetInternalServerError();
+
+        var scores = fetchResult.Ok();
+        return Ok(new Plays() { Found = true, Scores = scores });
+    }
+    
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class CreateDropAccountTokenProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString {
         public string? Password { get; set; }
@@ -561,6 +606,31 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     public sealed class Plays {
         public bool Found { get; set; }
         public IReadOnlyList<BblScore>? Scores { get; set; }
+    }
+    
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class PlaysMarksLength {
+        public long PlaysXSS { get; set; }
+        public long PlaysSS { get; set; }
+        public long PlaysXS { get; set; }
+        public long PlaysS { get; set; }
+        public long PlaysA { get; set; }
+        public long PlaysB { get; set; }
+        public long PlaysC { get; set; }
+        public long PlaysD { get; set; }
+
+        public static PlaysMarksLength Factory(Dictionary<BblScore.EMark, long> dictionary) {
+            return new PlaysMarksLength() {
+                PlaysXSS = dictionary.ContainsKey(BblScore.EMark.XSS)? dictionary[BblScore.EMark.XSS]: 0,
+                PlaysSS = dictionary.ContainsKey(BblScore.EMark.SS)? dictionary[BblScore.EMark.SS]: 0,
+                PlaysXS = dictionary.ContainsKey(BblScore.EMark.XS)? dictionary[BblScore.EMark.XS]: 0,
+                PlaysS = dictionary.ContainsKey(BblScore.EMark.S)? dictionary[BblScore.EMark.S]: 0,
+                PlaysA = dictionary.ContainsKey(BblScore.EMark.A)? dictionary[BblScore.EMark.A]: 0,
+                PlaysB = dictionary.ContainsKey(BblScore.EMark.B)? dictionary[BblScore.EMark.B]: 0,
+                PlaysC = dictionary.ContainsKey(BblScore.EMark.C)? dictionary[BblScore.EMark.C]: 0,
+                PlaysD = dictionary.ContainsKey(BblScore.EMark.D)? dictionary[BblScore.EMark.D]: 0,
+            };
+        }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
