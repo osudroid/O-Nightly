@@ -142,10 +142,31 @@ WHERE uid = {userId}
         
         return Ok(new Plays {
             Found = true,
-            Scores = Database.TableFn.BblScore.GetTopScoreFromUserId(db, userId).OkOr(new List<BblScore>(0))
+            Scores = Database.TableFn.BblScore.GetTopScoreFromUserId(db, userId).OkOr(new List<BblScore>(0)) 
         });
     }
 
+    [HttpGet("/api/profile/topplays/{id:long}/page/{page:int}")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Plays))]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public IActionResult WebProfileTopPlaysPage([FromRoute(Name = "id")] long userId, int page) {
+        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var log = Log.GetLog(db);
+        log.AddLogDebugStart();
+
+        if (long.IsNegative(userId))
+            return BadRequest("userid Is Negative");
+        if (int.IsNegative(page))
+            return BadRequest("page Is Negative");
+        
+        var fetchResult = log.AddResultAndTransform(OsuDroid.Database.TableFn.BblScore.GetTopScoreFromUserIdWithPage(db, userId, page, 50));
+        if (fetchResult == EResult.Err)
+            return GetInternalServerError();
+
+        var scores = fetchResult.Ok();
+        return Ok(new Plays() { Found = true, Scores = scores });
+    }
+    
     [HttpGet("/api/profile/recentplays/{id:long}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Plays))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(Plays))]

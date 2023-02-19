@@ -59,6 +59,24 @@ OFFSET {page * pageSize}
         return db.Fetch<Entities.BblScore>(sql);
     }
     
+    public static Result<List<Entities.BblScore>, string> GetTopScoreFromUserIdWithPage(
+        SavePoco db, long userId, long page, int pageSize) {
+
+        var sql = new Sql(@$"
+SELECT *
+FROM (
+         SELECT distinct ON (filename) * FROM bbl_score
+         WHERE uid = {userId}
+         ORDER BY filename, score DESC
+     ) x
+ORDER BY score
+LIMIT {pageSize}
+OFFSET {page * pageSize}
+;");
+
+        return db.Fetch<Entities.BblScore>(sql);
+    }
+    
     private class CountMarkPlaysByUserIdClass {
         [Column("count")] public long Count { get; set; }
         [Column("mark")] public Entities.BblScore.EMark Mark { get; set; }
