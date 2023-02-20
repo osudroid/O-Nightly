@@ -1,4 +1,5 @@
 using NPoco;
+using OsuDroid.Utils;
 
 namespace OsuDroid.Database.TableFn; 
 
@@ -34,7 +35,9 @@ GROUP BY osu_droid.public.bbl_score.mark
         var res = new Dictionary<Entities.BblScore.EMark, long>(8);
         
         foreach (var row in fetchMarkResult.Ok()) {
-            res[row.Mark] = row.Count;
+            if (Enum.TryParse<Entities.BblScore.EMark>(row.Mark, out var _) == false)
+                return Result<Dictionary<Entities.BblScore.EMark, long>, string>.Err(StackTrace.WithMessage($"String ({row.Mark}) Parse To Entities.BblScore.EMark "));
+            res[row.GetMarkAsEMark()] = row.Count;
         }
 
         return Result<Dictionary<Entities.BblScore.EMark, long>, string>.Ok(res);
@@ -79,6 +82,10 @@ OFFSET {page * pageSize}
     
     private class CountMarkPlaysByUserIdClass {
         [Column("count")] public long Count { get; set; }
-        [Column("mark")] public Entities.BblScore.EMark Mark { get; set; }
+        [Column("mark")] public string? Mark { get; set; }
+
+        public Entities.BblScore.EMark GetMarkAsEMark() {
+            return Enum.Parse<Entities.BblScore.EMark>(Mark??throw new NullReferenceException(nameof(Mark)));
+        }
     }
 }

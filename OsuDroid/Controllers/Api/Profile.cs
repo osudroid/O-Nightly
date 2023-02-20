@@ -508,7 +508,8 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
 
-        if (userId < 0) return BadRequest("UserId < 0");
+        
+        if (long.IsNegative(userId)) return BadRequest("UserId < 0");
 
         var result = log.AddResultAndTransform(OsuDroid.Database.TableFn.BblScore.CountMarkPlaysByUserId(db, userId));
         if (result == EResult.Err)
