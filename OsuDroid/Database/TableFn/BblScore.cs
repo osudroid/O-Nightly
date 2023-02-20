@@ -26,7 +26,7 @@ LIMIT 50;
 SELECT count(*) as count, mark as mark
 FROM bbl_score
 WHERE uid = {userId}
-GROUP BY osu_droid.public.bbl_score.mark
+GROUP BY mark
 ;");
         var fetchMarkResult = db.Fetch<CountMarkPlaysByUserIdClass>(sql);
         if (fetchMarkResult == EResult.Err)
