@@ -60,6 +60,9 @@ public static class Service {
             var response = CalcTableGlobalForThisDay(dateTime);
             WriteLine("( END   ) ADD New GlobalTimeLine For: " + Time.ToScyllaString(dateTime));
             WriteLine($"Response Ok: {response == EResult.Err}");
+            if (response == EResult.Err) {
+                WriteLine($"Response Message: " +response.Err() );
+            }
             return response;
         }
 
@@ -94,16 +97,9 @@ ORDER BY global_ranking;
 ";
             com.ExecuteNonQuery();
         }
-#if DEBUG
         catch (Exception e) {
-            WriteLine(e);
-            throw;
+            return ResultErr<string>.Err(e.ToString());
         }
-#else
-        catch (Exception e) {
-            return Response.Err();
-        }
-#endif
 
         return ResultErr<string>.Ok();
     }

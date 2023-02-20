@@ -54,7 +54,7 @@ FROM (
 ORDER BY score
 LIMIT {pageSize}
 OFFSET {page * pageSize}
-;", mark);
+;", mark.ToString());
 
         return db.Fetch<Entities.BblScore>(sql);
     }
