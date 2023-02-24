@@ -14,12 +14,14 @@
         <PlatformTarget>x64</PlatformTarget>
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
         <DebugType>embedded</DebugType>
+        <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
         <PlatformTarget>x64</PlatformTarget>
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
         <DebugType>embedded</DebugType>
+        <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     </PropertyGroup>
 
     <ItemGroup>

@@ -20,8 +20,13 @@ public class Api2Rank : ControllerExtensions {
         if (prop.ValuesAreGood() == false)
             return BadRequest("Values Are Bad");
 
-        if (prop.HashValidate() == false)
+
+        if (prop.HashValidate() == false) {
+            Console.WriteLine("X");
             return BadRequest(prop.PrintHashOrder());
+        }
+            
+        
         
         var resultRep = log.AddResultAndTransform(Rank.MapTopPlaysByFilenameAndHash(
             prop.Body!.Filename!,
