@@ -42,8 +42,8 @@ FROM (SELECT
           ur.username
       FROM bbl_score
           FULL JOIN bbl_user ur on bbl_score.uid = ur.id
-      WHERE filename = @1
-        AND hash = @2
+      WHERE filename = @0
+        AND hash = @1
       ORDER BY bbl_score.score DESC, bbl_score.accuracy DESC, bbl_score.date DESC 
       ) x
 LIMIT {maxResult}", filename, fileHash);
