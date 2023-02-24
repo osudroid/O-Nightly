@@ -95,7 +95,7 @@ public static class ApiTypes {
         public string? HashBodyData { get; set; }
 
         public bool ValuesAreGood() {
-            return Token != Guid.Empty && string.IsNullOrEmpty(HashBodyData) == false;
+            return Token != Guid.Empty && HashBodyData is not null;
         }
     }
 

@@ -18,7 +18,7 @@ public class Api2Rank : ControllerExtensions {
         log.AddLogDebugStart();
         
         if (prop.ValuesAreGood() == false)
-            return BadRequest();
+            return BadRequest("Values Are Bad");
 
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
