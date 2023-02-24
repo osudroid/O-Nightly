@@ -1,11 +1,11 @@
+using System.Xml.Linq;
 using OsuDroidLib.Database.Entities;
 
 namespace OsuDroid.Model;
 
 public static class ScorePack {
-    public static Result<Option<(BblScore Score, string Username, string Region)>, string> GetByPlayId(long playId) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        var resultScore = db.FirstOrDefault<BblScore>($"SELECT * FROM bbl_user WHERE id = {playId} LIMIT 1")
+    public static Result<Option<(BblScore Score, string Username, string Region)>, string> GetByPlayId(SavePoco db, long playId) {
+        var resultScore = db.FirstOrDefault<BblScore>($"SELECT * FROM bbl_score WHERE id = {playId} LIMIT 1")
             .Map(x => Option<BblScore>.NullSplit(x));
 
         if (resultScore == EResult.Err)
