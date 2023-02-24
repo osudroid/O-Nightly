@@ -17,9 +17,8 @@ public class MapTopPlays {
 
 public static class Rank {
     public static Result<IReadOnlyList<MapTopPlays>, string> MapTopPlaysByFilenameAndHash(
-        string filename,
-        string fileHash,
-        int maxResult) {
+        string filename, string fileHash, int maxResult) {
+        
         var sql = new Sql(@$"
 SELECT DISTINCT ON (uid) 
     x.id as play_id, 
@@ -52,8 +51,11 @@ LIMIT {maxResult}", filename, fileHash);
         using var db = DbBuilder.BuildPostSqlAndOpen();
         var plays = db.Fetch<MapTopPlays>(sql).OkOr(new List<MapTopPlays>());
 
-        for (var i = 0; i < plays.Count; i++) plays[i].PlayRank = i + 1;
-
+        for (var i = 0; i < plays.Count; i++) {
+            Console.WriteLine($"i={i}");
+            plays[i].PlayRank = i + 1;
+        }
+        Console.WriteLine("End");
         return Result<IReadOnlyList<MapTopPlays>, string>.Ok(plays);
     }
 }
