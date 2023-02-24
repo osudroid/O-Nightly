@@ -27,35 +27,35 @@ public static class Security {
 
     public class PassSecurity : ISecurity {
         public bool Api2HashValidate(string checkHash, string data, string token) {
-            throw new NotImplementedException();
+            return true;
         }
 
         public bool DecodeString(string content, string hashStr) {
-            throw new NotImplementedException(nameof(DecodeString));
+            return true;
         }
 
         public string EncryptString(string content) {
-            throw new NotImplementedException(nameof(EncryptString));
+            return content;
         }
 
         public string SignRequest(params string[] arr) {
-            throw new NotImplementedException(nameof(SignRequest));
+            return Merge.ObjectsToString(arr);
         }
 
         public bool CheckRequest(string sign, params string[] arr) {
-            throw new NotImplementedException(nameof(CheckRequest));
+            return true;
         }
 
         public bool CheckApiKey(string key) {
-            throw new NotImplementedException(nameof(CheckApiKey));
+            return true;
         }
 
         public bool CheckIfApiKeyIsRoot(string key) {
-            throw new NotImplementedException(nameof(CheckIfApiKeyIsRoot));
+            return true;
         }
 
         public bool CheckSudo(string key, string permissionName) {
-            throw new NotImplementedException(nameof(CheckSudo));
+            return true;
         }
     }
 }
