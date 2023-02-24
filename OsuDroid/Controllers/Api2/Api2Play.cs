@@ -18,15 +18,28 @@ public class Api2Play : ControllerExtensions {
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
         
-        if (prop.ValuesAreGood() == false)
+        if (prop.ValuesAreGood() == false) {
+            log.AddLogDebug("Values Are Bad");
             return BadRequest();
+        }
 
-        if (prop.HashValidate() == false)
+
+        if (prop.HashValidate() == false) {
+            log.AddLogDebug("Hash Not Valid");
             return BadRequest(prop.PrintHashOrder());
+        }
+            
 
-        
-        var optionRep = log.AddResultAndTransform(ScorePack.GetByPlayId(prop.Body!.PlayId))
+        log.AddLogDebug("PlayId: " + prop.Body!.PlayId);
+        var optionRep = log.AddResultAndTransform(ScorePack.GetByPlayId(db, prop.Body!.PlayId))
             .OkOr(Option<(BblScore Score, string Username, string Region)>.Empty);
+
+        if (optionRep.IsSet()) {
+            log.AddLogDebug("PlayId Found");
+        }
+        else {
+            log.AddLogDebug("PlayId Not Found");
+        }
         
         return optionRep.IsSet() == false
             ? BadRequest("Not Found")
@@ -177,7 +190,7 @@ public class Api2Play : ControllerExtensions {
         }
 
         public string ToSingleString() {
-            return Merge.ObjectsToString(new[] { PlayId.ToString() });
+            return Merge.ObjectsToString(new object[] { PlayId });
         }
 
         public bool ValuesAreGood() {
