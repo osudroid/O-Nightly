@@ -22,7 +22,6 @@ public class Api2Rank : ControllerExtensions {
 
 
         if (prop.HashValidate() == false) {
-            Console.WriteLine("X");
             return BadRequest(prop.PrintHashOrder());
         }
             
