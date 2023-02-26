@@ -14,7 +14,7 @@ Rimu Backend
 
 # Goals
 
-### Finish Goals
+### Goals
 #### (1.0.0)
 - Split Cronjobs to own Dockerimages.
 - Stable Backend
