@@ -224,7 +224,7 @@ VALUES (
 
             batchUserStats.BatchCommands.Add(new NpgsqlBatchCommand {
                 CommandText = @"
-INSERT INTO public.bbl_user_stats (uid, playcount, overall_score, overall_accuracy, overall_combo, overall_xs, overall_ss, overall_s, overall_a, overall_b, overall_c, overall_d, overall_hits, overall_300, overall_100, overall_50, overall_geki, overall_katu, overall_miss, overall_xss) 
+INSERT INTO public.bbl_user_stats (uid, overall_playcount, overall_score, overall_accuracy, overall_combo, overall_xs, overall_ss, overall_s, overall_a, overall_b, overall_c, overall_d, overall_hits, overall_300, overall_100, overall_50, overall_geki, overall_katu, overall_miss, overall_xss) 
 VALUES (@Uid, 
         @Playcount, 
         @OverallScore, 
@@ -527,7 +527,7 @@ VALUES (
             db.Execute(@$"
 Update public.bbl_user_stats 
 SET
-    playcount = {userStats.OverallPlaycount}, 
+    overall_playcount = {userStats.OverallPlaycount}, 
     overall_score = {userStats.OverallScore}, 
     overall_accuracy = {userStats.OverallAccuracy}, 
     overall_combo = {userStats.OverallCombo}, 
