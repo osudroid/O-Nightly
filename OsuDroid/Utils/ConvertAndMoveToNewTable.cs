@@ -246,7 +246,7 @@ VALUES (@Uid,
         @OverallMiss, 
         @OverallXss
         ) 
-ON CONFLICT DO NOTHING 
+ON CONFLICT (uid) DO NOTHING RETURNING * AS s
 ",
                 Parameters = {
                     new NpgsqlParameter { Value = userStats.Uid, DbType = DbType.Int64, ParameterName = "Uid" },
@@ -345,7 +345,7 @@ VALUES (
         @miss,
         @date,
         @accuracy)
-ON CONFLICT DO NOTHING 
+ON CONFLICT (uid) DO NOTHING RETURNING * AS s
 ",
                         Parameters = {
                             new NpgsqlParameter { Value = score.Id, DbType = DbType.Int64, ParameterName = "id" },
@@ -384,7 +384,7 @@ ON CONFLICT DO NOTHING
         using var db = DbBuilder.BuildNpgsqlConnection();
 
         WriteLine("Move Score");
-        var scoreSpan = CollectionsMarshal.AsSpan(
+        Span<bbl_score?> scoreSpan = CollectionsMarshal.AsSpan(
             oldDb.Fetch<bbl_score?>($@"SELECT * FROM {Env.OldDatabase}.bbl_score").OkOrDefault() ??
             new List<bbl_score?>(0));
         WriteLine("Score Fetch Count: " + scoreSpan.Length);
@@ -548,8 +548,7 @@ SET
     overall_geki = {userStats.OverallGeki}, 
     overall_katu = {userStats.OverallKatu}, 
     overall_miss = {userStats.OverallMiss}
-WHERE uid = {userStats.Uid}   
-ON CONFLICT DO NOTHING 
+WHERE uid = {userStats.Uid}
 ");
         });
         
