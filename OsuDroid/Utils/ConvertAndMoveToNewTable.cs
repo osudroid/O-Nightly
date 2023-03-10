@@ -246,6 +246,7 @@ VALUES (@Uid,
         @OverallMiss, 
         @OverallXss
         ) 
+ON CONFLICT DO NOTHING 
 ",
                 Parameters = {
                     new NpgsqlParameter { Value = userStats.Uid, DbType = DbType.Int64, ParameterName = "Uid" },
@@ -344,6 +345,7 @@ VALUES (
         @miss,
         @date,
         @accuracy)
+ON CONFLICT DO NOTHING 
 ",
                         Parameters = {
                             new NpgsqlParameter { Value = score.Id, DbType = DbType.Int64, ParameterName = "id" },
@@ -547,6 +549,7 @@ SET
     overall_katu = {userStats.OverallKatu}, 
     overall_miss = {userStats.OverallMiss}
 WHERE uid = {userStats.Uid}   
+ON CONFLICT DO NOTHING 
 ");
         });
         
