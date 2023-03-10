@@ -163,7 +163,7 @@ public class Api2Submit : ControllerExtensions {
 
         public string ToSingleString() {
             return Merge
-                .ObjectsToString(new[] {
+                .ObjectsToString(new Object[] {
                     Filename ?? "",
                     FileHash ?? ""
                 });

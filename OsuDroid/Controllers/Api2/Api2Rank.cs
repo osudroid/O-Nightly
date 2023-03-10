@@ -18,10 +18,14 @@ public class Api2Rank : ControllerExtensions {
         log.AddLogDebugStart();
         
         if (prop.ValuesAreGood() == false)
-            return BadRequest();
+            return BadRequest("Values Are Bad");
 
-        if (prop.HashValidate() == false)
+
+        if (prop.HashValidate() == false) {
             return BadRequest(prop.PrintHashOrder());
+        }
+            
+        
         
         var resultRep = log.AddResultAndTransform(Rank.MapTopPlaysByFilenameAndHash(
             prop.Body!.Filename!,

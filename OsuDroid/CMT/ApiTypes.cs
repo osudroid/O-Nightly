@@ -59,7 +59,7 @@ public static class ApiTypes {
         public T? Body { get; set; }
 
         public string PrintHashOrder() {
-            return Body is not null ? PrintHashOrder() : "";
+            return Body is not null ? Body.PrintHashOrder() : "";
         }
 
         public bool ValuesAreGood() {
@@ -95,7 +95,7 @@ public static class ApiTypes {
         public string? HashBodyData { get; set; }
 
         public bool ValuesAreGood() {
-            return Token != Guid.Empty && string.IsNullOrEmpty(HashBodyData) == false;
+            return Token != Guid.Empty && HashBodyData is not null;
         }
     }
 
