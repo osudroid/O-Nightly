@@ -246,7 +246,7 @@ VALUES (@Uid,
         @OverallMiss, 
         @OverallXss
         ) 
-ON CONFLICT (uid) DO NOTHING RETURNING *
+ON CONFLICT (uid) DO NOTHING RETURNING *;
 ",
                 Parameters = {
                     new NpgsqlParameter { Value = userStats.Uid, DbType = DbType.Int64, ParameterName = "Uid" },
