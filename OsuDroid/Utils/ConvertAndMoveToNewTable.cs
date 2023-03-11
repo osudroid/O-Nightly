@@ -245,8 +245,7 @@ VALUES (@Uid,
         @OverallKatu, 
         @OverallMiss, 
         @OverallXss
-        ) 
-ON CONFLICT (uid) DO NOTHING RETURNING *;
+        )
 ",
                 Parameters = {
                     new NpgsqlParameter { Value = userStats.Uid, DbType = DbType.Int64, ParameterName = "Uid" },
@@ -294,6 +293,7 @@ ON CONFLICT (uid) DO NOTHING RETURNING *;
 
         WriteLine($"Insert User: {userList.Count}");
         batchUser.ExecuteNonQuery();
+        WriteLine($"Insert User Stats: {userList.Count}");
         batchUserStats.ExecuteNonQuery();
         WriteLine("Insert Done");
     }
@@ -345,7 +345,6 @@ VALUES (
         @miss,
         @date,
         @accuracy)
-ON CONFLICT (uid) DO NOTHING RETURNING *;
 ",
                         Parameters = {
                             new NpgsqlParameter { Value = score.Id, DbType = DbType.Int64, ParameterName = "id" },
