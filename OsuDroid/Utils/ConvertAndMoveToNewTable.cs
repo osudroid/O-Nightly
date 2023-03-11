@@ -381,19 +381,41 @@ ON CONFLICT (uid) DO NOTHING RETURNING *;
             return task;
         }
 
+        static HashSet<long> GetUserIds(SavePoco db) {
+            var dbRes = db.Fetch<BblUser>("SELECT id FROM public.bbl_user").Ok();
+            var res = new HashSet<long>(dbRes.Count);
+            foreach (var bblUser in dbRes) {
+                res.Add(bblUser.Id);
+            }
+
+            return res;
+        }
+
         using var db = DbBuilder.BuildNpgsqlConnection();
 
+        static List<bbl_score> GetScoreWithFixUserIds(SavePoco db) {
+            var userIds = GetUserIds(db);
+
+            var scores = db.Fetch<bbl_score>($@"SELECT * FROM {Env.OldDatabase}.bbl_score").OkOrDefault() ??
+                         new List<bbl_score>(0);
+            for (var i = scores.Count - 1; i >= 0; i--) {
+                if (userIds.Contains(scores[i].Uid))
+                    continue;
+                scores.RemoveAt(i);
+            }
+
+            return scores;
+        }
+
         WriteLine("Move Score");
-        Span<bbl_score?> scoreSpan = CollectionsMarshal.AsSpan(
-            oldDb.Fetch<bbl_score?>($@"SELECT * FROM {Env.OldDatabase}.bbl_score").OkOrDefault() ??
-            new List<bbl_score?>(0));
-        WriteLine("Score Fetch Count: " + scoreSpan.Length);
+        Span<bbl_score> scoreSpan = CollectionsMarshal.AsSpan(GetScoreWithFixUserIds(this.oldDb));
+        WriteLine($"Score Fetch Count: {scoreSpan.Length}");
         for (var i = scoreSpan.Length - 1; i >= 0; i--) {
             var score = scoreSpan[i];
             if (score!.Score == 0 || string.IsNullOrWhiteSpace(score.Hash) || score.Hash is null) scoreSpan[i] = null;
         }
 
-        WriteLine("Score Fetch After Filter Count: " + scoreSpan.Length);
+        WriteLine($"Score Fetch After Filter Count: {scoreSpan.Length}");
 
         var posi = 0;
         var maxPosi = scoreSpan.Length;

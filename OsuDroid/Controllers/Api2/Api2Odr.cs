@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib.OdrZip;
-using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
 namespace OsuDroid.Controllers.Api2;

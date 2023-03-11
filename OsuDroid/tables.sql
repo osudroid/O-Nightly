@@ -1,3 +1,12 @@
+CREATE TABLE IF NOT EXISTS bbl_patron
+(
+    patron_email     text    NOT NULL,
+    active_supporter boolean NOT NULL DEFAULT false,
+    PRIMARY KEY (patron_email)
+);
+
+CREATE SEQUENCE IF NOT EXISTS bbl_user_id_seq AS bigint START WITH 1 INCREMENT BY 1 CACHE 1;
+
 CREATE TABLE IF NOT EXISTS bbl_user
 (
     id                   bigint    NOT NULL DEFAULT nextval('bbl_user_id_seq'),
@@ -20,7 +29,7 @@ CREATE TABLE IF NOT EXISTS bbl_user
 );
 
 
-CREATE SEQUENCE IF NOT EXISTS bbl_user_id_seq AS bigint START WITH 1 INCREMENT BY 1 CACHE 1;
+
 
 CREATE TABLE IF NOT EXISTS bbl_token_user
 (
@@ -36,12 +45,7 @@ CREATE TABLE IF NOT EXISTS bbl_token_user
 
 CREATE INDEX IF NOT EXISTS idx_bbl_token_user ON bbl_token_user USING brin (create_date);
 
-CREATE TABLE IF NOT EXISTS bbl_patron
-(
-    patron_email     text    NOT NULL,
-    active_supporter boolean NOT NULL DEFAULT false,
-    PRIMARY KEY (patron_email)
-);
+
 
 
 
