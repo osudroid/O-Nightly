@@ -16,30 +16,37 @@ public class Api2Login : ControllerExtensions {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-
+        
         var user = log.AddResultAndTransform(db.SingleOrDefault<BblUser>(
-            "SELECT id, username, password FROM bbl_user WHERE username = lower(@0)", prop.Username ?? ""))
+            "SELECT id, username, password FROM bbl_user WHERE lower(username) = lower(@0)", prop.Username ?? ""))
             .OkOrDefault();
 
-        if (user is null)
+        if (user is null) {
+            log.AddLogDebug("User Not Found");
             return Ok(new CreateApi2TokenResult {
                 Token = Guid.Empty,
                 PasswdFalse = false,
                 UsernameFalse = true
             });
+        }
 
-        if (user.Password != ToPasswdHash(prop.Passwd ?? string.Empty))
+        if (user.Password != ToPasswdHash(prop.Passwd ?? string.Empty)) {
+            log.AddLogDebug("User Password False");
             return Ok(new CreateApi2TokenResult {
                 Token = Guid.Empty,
                 PasswdFalse = true,
                 UsernameFalse = false
             });
+        }
 
         var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
         var optionToken = log.AddResultAndTransform(
                 tokenHandler.Insert(db, user.Id)).Map(x => Option<Guid>.NullSplit(x)).OkOr(Option<Guid>.Empty);
-        if (optionToken.IsSet() == false)
+        if (optionToken.IsSet() == false) {
             return this.GetInternalServerError();
+        }
+        
+        log.AddLogDebug("Return Token");
         return Ok(new CreateApi2TokenResult {
             Token = optionToken.Unwrap(),
             PasswdFalse = false,
