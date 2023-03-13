@@ -89,7 +89,8 @@ LIMIT {limit};
 
     public static Result<Option<LeaderBoardUser>, string> LeaderBoardUserRank(SavePoco db, long userId) {
         var sql = new Sql(@"
-SELECT rank_number,
+SELECT id,
+       rank_number,
        username,
        region,
        overall_score,

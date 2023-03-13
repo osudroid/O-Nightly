@@ -53,8 +53,9 @@ public class Api2Leaderboard : ControllerExtensions {
         if (prop.ValuesAreGood() == false)
             return BadRequest();
         
-        var rep = log.AddResultAndTransform(LeaderBoard.User(prop.Body!.UserId)).OkOr(Option<LeaderBoardUser>.Empty);
-
+        var rep = log.AddResultAndTransform(
+            LeaderBoard.User(prop.Body!.UserId)).OkOr(Option<LeaderBoardUser>.Empty);
+        
         return Ok(rep.IsSet() == false
             ? ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.NotExist()
             : ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.Exist(rep.Unwrap()));
