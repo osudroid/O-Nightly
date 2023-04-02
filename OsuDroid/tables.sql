@@ -34,13 +34,9 @@ CREATE TABLE IF NOT EXISTS bbl_user
 CREATE TABLE IF NOT EXISTS bbl_token_user
 (
     token_id    uuid      NOT NULL,
-    user_id     bigint    NOT NULL,
+    user_id     bigint    NOT NULL REFERENCES bbl_user(id) ON DELETE CASCADE,
     create_date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (token_id),
-    CONSTRAINT setting
-        FOREIGN KEY (user_id)
-        REFERENCES bbl_user(id)
-        ON DELETE CASCADE
+    PRIMARY KEY (token_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_bbl_token_user ON bbl_token_user USING brin (create_date);
@@ -59,32 +55,27 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_bbl_user_username ON bbl_user USING btree 
 
 CREATE TABLE IF NOT EXISTS bbl_user_stats
 (
-    uid              bigint NOT NULL,
-    playcount        bigint NOT NULL DEFAULT 0,
-    overall_score    bigint NOT NULL DEFAULT 0,
-    overall_accuracy bigint NOT NULL DEFAULT 0,
-    overall_combo    bigint NOT NULL DEFAULT 0,
-    overall_xs       bigint NOT NULL DEFAULT 0,
-    overall_ss       bigint NOT NULL DEFAULT 0,
-    overall_s        bigint NOT NULL DEFAULT 0,
-    overall_a        bigint NOT NULL DEFAULT 0,
-    overall_b        bigint NOT NULL DEFAULT 0,
-    overall_c        bigint NOT NULL DEFAULT 0,
-    overall_d        bigint NOT NULL DEFAULT 0,
-    overall_hits     bigint NOT NULL DEFAULT 0,
-    overall_300      bigint NOT NULL DEFAULT 0,
-    overall_100      bigint NOT NULL DEFAULT 0,
-    overall_50       bigint NOT NULL DEFAULT 0,
-    overall_geki     bigint NOT NULL DEFAULT 0,
-    overall_katu     bigint NOT NULL DEFAULT 0,
-    overall_miss     bigint NOT NULL DEFAULT 0,
-    overall_xss      bigint NOT NULL DEFAULT 0,
-    PRIMARY KEY (uid),
-    FOREIGN KEY (uid) REFERENCES bbl_user (id),
-    CONSTRAINT setting
-        FOREIGN KEY (uid)
-            REFERENCES bbl_user(id)
-            ON DELETE CASCADE
+    uid               bigint NOT NULL REFERENCES bbl_user(id) ON DELETE CASCADE,
+    overall_playcount bigint NOT NULL DEFAULT 0,
+    overall_score     bigint NOT NULL DEFAULT 0,
+    overall_accuracy  bigint NOT NULL DEFAULT 0,
+    overall_combo     bigint NOT NULL DEFAULT 0,
+    overall_xs        bigint NOT NULL DEFAULT 0,
+    overall_ss        bigint NOT NULL DEFAULT 0,
+    overall_s         bigint NOT NULL DEFAULT 0,
+    overall_a         bigint NOT NULL DEFAULT 0,
+    overall_b         bigint NOT NULL DEFAULT 0,
+    overall_c         bigint NOT NULL DEFAULT 0,
+    overall_d         bigint NOT NULL DEFAULT 0,
+    overall_hits      bigint NOT NULL DEFAULT 0,
+    overall_300       bigint NOT NULL DEFAULT 0,
+    overall_100       bigint NOT NULL DEFAULT 0,
+    overall_50        bigint NOT NULL DEFAULT 0,
+    overall_geki      bigint NOT NULL DEFAULT 0,
+    overall_katu      bigint NOT NULL DEFAULT 0,
+    overall_miss      bigint NOT NULL DEFAULT 0,
+    overall_xss       bigint NOT NULL DEFAULT 0,
+    PRIMARY KEY (uid)
 );
 
 CREATE INDEX IF NOT EXISTS idx_bbl_user_stats_score_many ON bbl_user_stats(overall_score) INCLUDE (uid);
@@ -99,7 +90,7 @@ CREATE SEQUENCE IF NOT EXISTS public.bbl_score_id_seq
 CREATE TABLE IF NOT EXISTS bbl_score
 (
     id       bigint    NOT NULL DEFAULT nextval('bbl_score_id_seq'),
-    uid      bigint    NOT NULL,
+    uid      bigint    NOT NULL REFERENCES bbl_user(id) ON DELETE CASCADE,
     filename text      NOT NULL,
     hash     text      NOT NULL,
     mode     text      NOT NULL DEFAULT '',
@@ -114,11 +105,7 @@ CREATE TABLE IF NOT EXISTS bbl_score
     miss     bigint    NOT NULL DEFAULT 0,
     date     timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     accuracy bigint    NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT setting
-        FOREIGN KEY (uid)
-            REFERENCES bbl_user(id)
-            ON DELETE CASCADE
+    PRIMARY KEY (id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid ON bbl_score USING brin (uid);
@@ -148,7 +135,7 @@ ALTER SEQUENCE bbl_score_id_seq OWNED BY bbl_score.id;
 CREATE TABLE IF NOT EXISTS bbl_score_pre_submit
 (
     id       bigint    NOT NULL DEFAULT nextval('bbl_score_id_seq'),
-    uid      bigint    NOT NULL,
+    uid      bigint    NOT NULL REFERENCES bbl_user(id) ON DELETE CASCADE,
     filename text      NOT NULL,
     hash     text      NOT NULL,
     mode     text      NOT NULL DEFAULT '',
@@ -163,11 +150,7 @@ CREATE TABLE IF NOT EXISTS bbl_score_pre_submit
     miss     bigint    NOT NULL DEFAULT 0,
     date     timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     accuracy bigint    NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT setting
-        FOREIGN KEY (uid)
-            REFERENCES bbl_user(id)
-            ON DELETE CASCADE
+    PRIMARY KEY (id)
 );
 
 ALTER SEQUENCE bbl_score_id_seq OWNED BY bbl_score_pre_submit.id;
@@ -198,33 +181,24 @@ CREATE TABLE IF NOT EXISTS
 
 CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline
 (
-    user_id        bigint NOT NULL,
+    user_id        bigint NOT NULL REFERENCES bbl_user(id) ON DELETE CASCADE,
     date           date   NOT NULL DEFAULT current_date,
     global_ranking bigint NOT NULL,
     score          bigint NOT NULL,
-    PRIMARY KEY (user_id, date),
-    CONSTRAINT setting
-        FOREIGN KEY (user_id)
-            REFERENCES bbl_user(id)
-            ON DELETE CASCADE
+    PRIMARY KEY (user_id, date)
 );
 
 CREATE TABLE IF NOT EXISTS bbl_avatar_hash
 (
-    user_id BIGINT,
+    user_id BIGINT REFERENCES bbl_user(id) ON DELETE CASCADE,
     size    int,
     hash    TEXT,
     PRIMARY KEY (user_id, size)
 );
 
-CREATE INDEX IF NOT EXISTS idx_bbl_avatar_hash_full ON bbl_avatar_hash(user_id, size) INCLUDE (hash);
-
-
 -- Only IN Production (Need Space)
 -- CREATE INDEX IF NOT EXISTS idx_bbl_global_ranking_timeline_any
 --     on bbl_global_ranking_timeline (user_id, date) INCLUDE (score, global_ranking);
--- CREATE INDEX IF NOT EXISTS idx_bbl_global_ranking_timeline_date
---     on bbl_global_ranking_timeline (date) INCLUDE (score, global_ranking);
 
 
 CREATE TABLE IF NOT EXISTS log(
@@ -239,8 +213,78 @@ CREATE TABLE IF NOT EXISTS log(
 
 
 
--- RI 13
-alter table bbl_user_stats
-    rename column playcount to overall_playcount; 
-    
-    
+CREATE TABLE IF NOT EXISTS
+    group_privilege (
+                        id uuid NOT NULL DEFAULT gen_random_uuid(),
+                        name text UNIQUE NOT NULL ,
+                        description text NOT NULL ,
+                        PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS
+    bbl_user_group_privilege (
+                                 user_id BIGINT          NOT NULL REFERENCES bbl_user(id)        ON DELETE CASCADE,
+                                 group_privilege_id uuid NOT NULL REFERENCES group_privilege(id) ON DELETE CASCADE,
+                                 PRIMARY KEY (user_id, group_privilege_id),
+                                 FOREIGN KEY (user_id) REFERENCES bbl_user (id),
+                                 FOREIGN KEY (group_privilege_id) REFERENCES group_privilege (id)
+);
+
+CREATE TABLE IF NOT EXISTS
+    privilege(
+                 id uuid DEFAULT gen_random_uuid() NOT NULL,
+                 name text UNIQUE NOT NULL,
+                 description text NOT NULL,
+                 PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS
+    group_privilege_privilege (
+                                  group_privilege_id uuid NOT NULL REFERENCES group_privilege(id) ON DELETE CASCADE,
+                                  mode_allow bool NOT NULL,
+                                  privilege_id uuid NOT NULL,
+                                  primary key (group_privilege_id, privilege_id)
+);
+
+
+INSERT INTO privilege 
+    (name, description) 
+VALUES 
+    ('admin_pannel_login', 'you can login to admin pannel'),
+    ('admin_pannel_change_user_settings', 'you can change other settings from other user'),
+    ('admin_pannel_user_delete', 'delete user'),
+    ('admin_pannel_user_delete_plays', 'delte userplays'),
+    ('admin_pannel_privilege_rwd', 'read, write, delete privilege'),
+    ('admin_pannel_group_priviege_rwd', 'read, write, delete group_privilege'),
+    ('admin_pannel_user_group_privilege_rwd', 'read, write, delete user_group_privilege')
+;
+
+INSERT INTO group_privilege 
+    (name, description) 
+VALUES
+    ('admin', 'can do all'),
+    ('player', 'none')
+;
+
+INSERT INTO group_privilege_privilege
+    (group_privilege_id, mode_allow, privilege_id) 
+SELECT gp.id, true, privilege.id FROM privilege 
+    join group_privilege gp on gp.name = 'admin';
+
+
+-- SELECT * 
+-- FROM privilege
+--     join group_privilege_privilege gpp on privilege.id = gpp.privilege_id
+--     join group_privilege gp on gpp.group_privilege_id = gp.id
+-- WHERE gp.name = 'admin';
+
+
+INSERT INTO bbl_user_group_privilege (user_id, group_privilege_id) 
+SELECT 22578, id FROM group_privilege
+    WHERE name = 'admin';
+
+SELECT * 
+FROM privilege
+    join group_privilege_privilege gpp on privilege.id = gpp.privilege_id
+    join group_privilege gp on gpp.group_privilege_id = gp.id
+WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user_group_privilege WHERE user_id = 22578);

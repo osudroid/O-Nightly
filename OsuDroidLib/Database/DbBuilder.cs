@@ -45,4 +45,11 @@ public static class DbBuilder {
         con.Open();
         return con;
     }
+
+    public static (NpgsqlConnection Npgsql, SavePoco SavePoco) BuildNpgsqlSavePoco() {
+        var npgsql = BuildNpgsqlConnection();
+        var savePoco = new SavePoco(DatabaseFactory!.GetDatabase());
+
+        return (npgsql, savePoco);
+    }
 }

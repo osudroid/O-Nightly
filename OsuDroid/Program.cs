@@ -6,10 +6,11 @@ using OsuDroid.Utils;
 using OsuDroidLib.Database.Entities;
 
 public sealed class Program {
-    public static void Main(string[] args) {
+    public static async Task Main(string[] args) {
         DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
-        
-        
+
+        await new ConvertAndMoveToNewTable().RunFixUserStats();
+        return;
         
         if (args.Length == 0) {
             Security.GetSecurity();
@@ -30,7 +31,7 @@ public sealed class Program {
 
         Environment.Exit(args switch {
             ["--reload-user-stats" or "-s"] => (int)ReloadUserStats(),
-            ["--transfer"] => (int)RunTransferDb(),
+            ["--transfer"] => (int)(await RunTransferDb()),
             ["--reload-timeline" or "-f"] => (int)FullReloadRankingTimeline(),
             ["--hashpass", var password] => (int)ParseAndPrint(() => Password.Hash(password)),
             _ => (int)ParseAndPrintExistCode(EExitCode.ArgNotExist, "Argument Not Exist")
@@ -38,7 +39,7 @@ public sealed class Program {
     }
 
     private static EExitCode ReloadUserStats() {
-        new ConvertAndMoveToNewTable().Run(true);
+        new ConvertAndMoveToNewTable().Run().Wait();
         return EExitCode.Success;
     }
     
@@ -57,8 +58,8 @@ public sealed class Program {
         return EExitCode.Success;
     }
 
-    private static EExitCode RunTransferDb() {
-        new ConvertAndMoveToNewTable().Run();
+    private static async Task<EExitCode> RunTransferDb() {
+        await new ConvertAndMoveToNewTable().Run();
         return EExitCode.Success;
     }
 
