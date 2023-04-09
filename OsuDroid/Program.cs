@@ -12,8 +12,6 @@ public sealed class Program {
 
         // FullReloadRankingTimeline();
         
-        FullRecalcUserRankingTimeline.Run(new DateTime(2021, 1, 1, 0,0,0, DateTimeKind.Utc));
-        return;
         
         if (args.Length == 0) {
             Security.GetSecurity();
