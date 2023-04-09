@@ -1,5 +1,5 @@
 using AspNetCoreRateLimit;
-
+using Dapper;
 using Npgsql;
 using OsuDroid.Lib;
 using OsuDroid.Utils;
@@ -8,8 +8,11 @@ using OsuDroidLib.Database.Entities;
 public sealed class Program {
     public static async Task Main(string[] args) {
         DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
+        Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
-        await new ConvertAndMoveToNewTable().RunFixUserStats();
+        // FullReloadRankingTimeline();
+        
+        FullRecalcUserRankingTimeline.Run(new DateTime(2021, 1, 1, 0,0,0, DateTimeKind.Utc));
         return;
         
         if (args.Length == 0) {
@@ -46,7 +49,12 @@ public sealed class Program {
     private static EExitCode FullReloadRankingTimeline() {
         BblScore? s = null;
         using (var db = DbBuilder.BuildPostSqlAndOpen()) {
-            s = db.First<BblScore>("SELECT * FROM public.bbl_score ORDER BY date LIMIT 1").OkOrDefault();
+            var result = db.First<BblScore>("SELECT * FROM public.bbl_score ORDER BY date LIMIT 1");;
+            if (result == EResult.Err) {
+                Console.WriteLine(result.Err());
+                return EExitCode.UnknownError;
+            } 
+            s = result.OkOrDefault();
         }
 
         if (s is null) {
@@ -133,10 +141,12 @@ public sealed class Program {
         connStringBuilder.Username = Env.CrDbUsername;
         connStringBuilder.Database = Env.CrDbDatabase;
         connStringBuilder.Pooling = true;
+        connStringBuilder.Multiplexing = false;
+        connStringBuilder.SocketSendBufferSize = 4_048_576;
         connStringBuilder.ReadBufferSize = 1048576;
         connStringBuilder.WriteBufferSize = 1048576;
         connStringBuilder.MaxPoolSize = 1024;
-        connStringBuilder.MinPoolSize = 256;
+        connStringBuilder.MinPoolSize = 32;
         connStringBuilder.KeepAlive = 10;
         connStringBuilder.TcpKeepAlive = true;
 

@@ -42,6 +42,11 @@ public class BblUser {
     [Column("patron_email")] public string? PatronEmail { get; set; }
     [Column("patron_email_accept")] public bool PatronEmailAccept { get; set; }
 
+    /*
+     * key = GroupPrivilegeId
+     */
+    public Dictionary<Guid, BblUserGroupPrivilege> BblUserGroupPrivilege { get; set; }
+    
     public class UserRank {
         [Column("global_rank")] public long globalRank { get; set; }
         [Column("country_rank")] public long CountryRank { get; set; }

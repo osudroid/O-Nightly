@@ -186,7 +186,31 @@ CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline
     global_ranking bigint NOT NULL,
     score          bigint NOT NULL,
     PRIMARY KEY (user_id, date)
-);
+) PARTITION BY RANGE (date);
+
+
+
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2010 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2010-01-01') TO ('2011-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2011 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2011-01-01') TO ('2012-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2012 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2012-01-01') TO ('2013-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2013 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2013-01-01') TO ('2014-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2014 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2014-01-01') TO ('2015-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2015 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2015-01-01') TO ('2016-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2016 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2016-01-01') TO ('2017-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2017 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2017-01-01') TO ('2018-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2018 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2018-01-01') TO ('2019-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2019 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2019-01-01') TO ('2020-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2020 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2020-01-01') TO ('2021-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2021 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2021-01-01') TO ('2022-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2022 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2022-01-01') TO ('2023-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2023 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2024 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2025 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2026 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2027 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2027-01-01') TO ('2028-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2028 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2028-01-01') TO ('2029-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2029 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2029-01-01') TO ('2030-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2030 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2030-01-01') TO ('2031-01-01');
 
 CREATE TABLE IF NOT EXISTS bbl_avatar_hash
 (
@@ -257,6 +281,7 @@ VALUES
     ('admin_pannel_privilege_rwd', 'read, write, delete privilege'),
     ('admin_pannel_group_priviege_rwd', 'read, write, delete group_privilege'),
     ('admin_pannel_user_group_privilege_rwd', 'read, write, delete user_group_privilege')
+ON CONFLICT DO NOTHING 
 ;
 
 INSERT INTO group_privilege 
@@ -264,12 +289,14 @@ INSERT INTO group_privilege
 VALUES
     ('admin', 'can do all'),
     ('player', 'none')
+ON CONFLICT DO NOTHING
 ;
 
 INSERT INTO group_privilege_privilege
-    (group_privilege_id, mode_allow, privilege_id) 
+    (group_privilege_id, mode_allow, privilege_id)
 SELECT gp.id, true, privilege.id FROM privilege 
-    join group_privilege gp on gp.name = 'admin';
+    join group_privilege gp on gp.name = 'admin'
+ON CONFLICT DO NOTHING ;
 
 
 -- SELECT * 
@@ -279,12 +306,12 @@ SELECT gp.id, true, privilege.id FROM privilege
 -- WHERE gp.name = 'admin';
 
 
-INSERT INTO bbl_user_group_privilege (user_id, group_privilege_id) 
-SELECT 22578, id FROM group_privilege
-    WHERE name = 'admin';
-
-SELECT * 
-FROM privilege
-    join group_privilege_privilege gpp on privilege.id = gpp.privilege_id
-    join group_privilege gp on gpp.group_privilege_id = gp.id
-WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user_group_privilege WHERE user_id = 22578);
+-- INSERT INTO bbl_user_group_privilege (user_id, group_privilege_id) 
+-- SELECT 22578, id FROM group_privilege
+--     WHERE name = 'admin';
+-- 
+-- SELECT p.*, gpp.*, gp.* 
+-- FROM privilege p
+--          join group_privilege_privilege gpp on p.id = gpp.privilege_id
+--          join group_privilege gp on gpp.group_privilege_id = gp.id
+-- WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user_group_privilege WHERE user_id = 22578);

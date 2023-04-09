@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using OsuDroidLib.Database.Entities;
@@ -6,62 +7,74 @@ namespace OsuDroid.Utils;
 
 public static class FullRecalcUserRankingTimeline {
     public static void Run(DateTime startDate) {
-        using var mainDb = DbBuilder.BuildPostSqlAndOpen();
-
-        WriteLine("Start FullRecalcUserRankingTimeline");
-        WriteLine("DELETE Old Values");
-        mainDb.Execute(@"
-DELETE FROM public.bbl_global_ranking_timeline
-WHERE date >= @0 
-", DateTime.SpecifyKind(startDate, DateTimeKind.Utc));
-
-        WriteLine("Get ALl User");
-        var userList = CollectionsMarshal.AsSpan(mainDb.Fetch<BblUser>(
-                                                     "SELECT id, regist_time FROM public.bbl_user ORDER BY regist_time ASC")
-                                                 .OkOrDefault() ??
-                                                 new List<BblUser>(0)).ToArray();
-
-        var scoreMapKeyUser = new Dictionary<long, List<BblScore>>();
-
-        foreach (var bblUser in userList) scoreMapKeyUser.Add(bblUser.Id, new List<BblScore>(128));
-
-        WriteLine("Get ALl Score");
-        foreach (var bblScore in CollectionsMarshal.AsSpan(mainDb.Fetch<BblScore>(
-                                                               "SELECT id, hash, uid, score, date FROM public.bbl_score")
-                                                           .OkOrDefault() ??
-                                                           new List<BblScore>(0))) {
-            if (!scoreMapKeyUser.TryGetValue(bblScore.Uid, out var list)) continue;
-            list.Add(bblScore);
-        }
-
-        GC.Collect();
-
-        var now = DateTime.UtcNow;
-        var endDate = DateTime.SpecifyKind(new DateTime(now.Year, now.Month, now.Day), DateTimeKind.Utc);
-
-
-        var dates = new List<DateTime>();
-
         var iter = startDate;
-        while (iter < endDate) {
-            dates.Add(iter.Date);
-            iter = iter.AddDays(1);
+        var dates = new List<DateTime>();
+        var scoreMapKeyUser = new Dictionary<long, List<BblScore>>();
+        BblUser[] userList;
+        
+        using (var mainDb = DbBuilder.BuildPostSqlAndOpen()) {
+            WriteLine("Start FullRecalcUserRankingTimeline");
+            WriteLine("DELETE Old Values");
+            var dateStr = $"{startDate.Year}-{startDate.Month}-{startDate.Day}";
+            mainDb.Execute(@$"
+DELETE FROM public.bbl_global_ranking_timeline
+WHERE date >= '{dateStr}' 
+");
+
+            WriteLine("Get ALl User");
+            userList = CollectionsMarshal.AsSpan(
+                mainDb.Fetch<BblUser>(
+                        "SELECT id, regist_time FROM public.bbl_user ORDER BY regist_time ASC")
+                    .OkOrDefault() ??
+                new List<BblUser>(0)).ToArray();
+
+            
+
+            foreach (var bblUser in userList) scoreMapKeyUser.Add(bblUser.Id, new List<BblScore>(128));
+
+            WriteLine("Get ALl Score");
+            foreach (var bblScore in CollectionsMarshal.AsSpan(
+                         mainDb.Fetch<BblScore>(
+                                 "SELECT id, hash, uid, score, date FROM public.bbl_score")
+                             .OkOrDefault() ??
+                         new List<BblScore>(0))) {
+                if (!scoreMapKeyUser.TryGetValue(bblScore.Uid, out var list)) continue;
+                list.Add(bblScore);
+            }
+
+            GC.Collect();
+
+            var now = DateTime.UtcNow;
+            var endDate = new DateTime(now.Year, now.Month, now.Day, 0,0,0, System.DateTimeKind.Utc);
+        
+            while (iter <= endDate) {
+                dates.Add(iter.Date);
+                iter = iter.AddDays(1);
+            }
         }
 
-        StrongBox<long> countBox = new(0);
+      
+
+        StrongBox<long> countCountBox = new(0);
 
         void MultiIter(int iPosi) {
-            Interlocked.Increment(ref countBox.Value);
-            var i = dates[iPosi];
-            WriteLine($"FROM: {dates.Count} AT: {countBox.Value} | Calc Rank For: Y{i.Year} M{i.Month} D{i.Day}");
-            var timeLineArr = GetFullRecalcUserRankingTimelineForThisDay(scoreMapKeyUser, userList, i);
-            WriteLine(
-                $"FROM: {dates.Count} AT: {countBox.Value} | Insert Values For: Y{i.Year} M{i.Month} D{i.Day} Start");
-            using var db = DbBuilder.BuildPostSqlAndOpenNormalPoco();
-            db.InsertBatch(timeLineArr);
+            try {
+                var count = Interlocked.Increment(ref countCountBox.Value);
+                var i = dates[iPosi];
+                WriteLine($"FROM: {dates.Count} AT: {count} | Calc Rank For: Y{i.Year} M{i.Month} D{i.Day}");
+                var timeLineArr = GetFullRecalcUserRankingTimelineForThisDay(scoreMapKeyUser, userList, i);
+                WriteLine(
+                    $"FROM: {dates.Count} AT: {count} | Insert Values For: Y{i.Year} M{i.Month} D{i.Day} Start");
+                using var db = DbBuilder.BuildPostSqlAndOpenNormalPoco();
+                db.InsertBatch(timeLineArr);
+            }
+            catch (Exception e) {
+                WriteLine(e);
+                throw;
+            }
         }
 
-        Parallel.For(0, dates.Count, new ParallelOptions { MaxDegreeOfParallelism = 13 }, MultiIter);
+        Parallel.For(0, dates.Count, new ParallelOptions { MaxDegreeOfParallelism = 14 }, MultiIter);
     }
 
     private static BblGlobalRankingTimeline[] GetFullRecalcUserRankingTimelineForThisDay(
