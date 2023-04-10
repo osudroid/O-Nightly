@@ -1,5 +1,6 @@
 using AspNetCoreRateLimit;
 using Dapper;
+using Microsoft.VisualBasic.CompilerServices;
 using Npgsql;
 using OsuDroid.Lib;
 using OsuDroid.Utils;
@@ -65,7 +66,7 @@ public sealed class Program {
     }
 
     private static async Task<EExitCode> RunTransferDb() {
-        await new ConvertAndMoveToNewTable().Run();
+        await (new OsuDroid.Utils.ConvertAndMoveToNewTable()).OpiRun();
         return EExitCode.Success;
     }
 

@@ -6,10 +6,161 @@ using System.Runtime.InteropServices;
 using Npgsql;
 using OsuDroid.Database.OldEntities;
 using OsuDroidLib.Database.Entities;
+using System.Collections.Generic;
+using NPoco;
+using NPoco.Expressions;
 
 namespace OsuDroid.Utils;
 
 public class ConvertAndMoveToNewTable {
+    public async Task OpiRun() {
+        BblUser[] allUserFromOldDb;
+        
+        using (var db = DbBuilder.BuildNpgsqlConnection()) {
+            WriteLine($"Start Remove New Tables");
+            RemoveAllRowsFromNewTables(db);
+            WriteLine($"Fetch Old Users");
+            WriteLine("Insert Users");
+            allUserFromOldDb = await GetBblUser();
+            InsertAllUsers(db, allUserFromOldDb);
+            var com = db.CreateCommand();
+            com.CommandText = "DELETE FROM public.bbl_user_stats;";
+            com.ExecuteNonQuery();
+        }
+
+        await ParallelTransfer();
+    }
+
+    public async Task ParallelTransfer() {
+        try {
+            ConcurrentDictionary<long, ConcurrentBag<BblScore>> bblScores = new();
+            
+            using (var db = DbBuilder.BuildPostSqlAndOpen()) {
+                foreach (var bblUser in db.Fetch<BblUser>("SELECT id FROM public.bbl_user").Ok()) {
+                    bblScores[bblUser.Id] = new();
+                }
+                WriteLine($"User Count: {bblScores.Count}");
+                List<bbl_score> oldScore = db.Fetch<bbl_score>("SELECT * FROM old_osu.bbl_score").Ok();
+                WriteLine($"oldScore Count: {oldScore}");
+                
+                WriteLine("Bind Score To User Step 1");
+                Parallel.ForEach(
+                    oldScore, 
+                    new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, 
+                    MergeUserWithScore
+                );
+                
+                void MergeUserWithScore(bbl_score score) {
+                    score.Mode ??= "|";
+                    
+                    if (score.Mode.IndexOf("x", StringComparison.Ordinal) != -1
+                        || score.Mode.IndexOf("AR", StringComparison.Ordinal) != -1
+                        || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.Mark)
+                        || score.Score <= 0
+                        || score.Accuracy <= 0
+                        || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.Hash)
+                        || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.Filename))
+                        return;
+                    
+                    if (score.Mode is null)
+                        score.Mode = "|";
+                    if (score.Mode.Length == 0)
+                        score.Mode = "|";
+                    if (score.Mode.IndexOf("-", StringComparison.Ordinal) != -1)
+                        score.Mode = "|";
+                    if (score.Mode[^1] != '|')
+                        score.Mode = "|";
+
+                    var bblScore = new BblScore {
+                        Id = score.Id,
+                        Uid = score.Uid,
+                        Filename = score.Filename,
+                        Hash = score.Hash,
+                        Mode = score.Mode,
+                        Score = score.Score,
+                        Combo = score.Combo,
+                        Mark = score.Mark,
+                        Geki = score.Geki,
+                        Perfect = score.Perfect,
+                        Katu = score.Katu,
+                        Good = score.Good,
+                        Bad = score.Bad,
+                        Miss = score.Miss,
+                        Date = DateTime.SpecifyKind(score.Date, DateTimeKind.Utc),
+                        Accuracy = score.Accuracy
+                    };
+
+                    if (bblScores.TryGetValue(bblScore.Uid, out var concurrentBag) == false) {
+                        return;
+                    }
+                    concurrentBag.Add(bblScore);
+                }
+                
+                WriteLine("Bind Score To User Finish");
+            }
+            
+            
+            GC.Collect();
+
+            {
+                WriteLine("Pre Insert Scores");
+                var bblScoresList = new List<BblScore>(10_000_000);
+                foreach (KeyValuePair<long,ConcurrentBag<BblScore>> keyValuePair in bblScores) {
+                    foreach (var bblScore in keyValuePair.Value) {
+                        bblScoresList.Add(bblScore);
+                    }
+                }
+                
+                WriteLine($"Pre Insert Scores Count: {bblScoresList.Count}");
+                WriteLine("Insert All Scores");
+                
+                using (var buildPostSqlAndOpen = DbBuilder.BuildPostSqlAndOpen()) {
+                    long posi = 0;
+                    var list = new List<BblScore>(10_000);
+                    foreach (var i in bblScoresList) {
+                        if (list.Count == 10_000) {
+                            WriteLine($"{bblScoresList.Count}: {posi}");
+                            buildPostSqlAndOpen.InsertBulk(list);
+                            posi += 10_000;
+                            list.Clear();
+                        }
+                        list.Add(i);
+                    }
+                    buildPostSqlAndOpen.InsertBulk(list);
+                    WriteLine($"Insert End");
+                }
+            }
+
+            ConcurrentBag<BblUserStats> stats = new ConcurrentBag<BblUserStats>();
+            
+            using (var db = DbBuilder.BuildPostSqlAndOpen()) {
+                WriteLine("Calc Stats");
+                Parallel.ForEach(
+                    bblScores, 
+                    new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                    pair => {
+                        var userId = pair.Key;
+                        var scores = pair.Value.ToArray();
+                        var userStats = CreateUserStats(userId, scores);
+                        WriteLine($"Calc Stats UserId: {userId}, Score: {userStats.OverallScore}, ScoresRows: {scores.Length}");
+                        stats.Add(userStats);
+                    }
+                );
+
+                db.InsertBulk(stats.ToArray());
+            }
+            
+            WriteLine($"Finish");
+        }
+        catch (Exception e) {
+            WriteLine(e);
+            WriteLine("------------------------------------------");
+            System.Environment.Exit(1);
+            throw;
+        }
+    }
+    
+    
     
     public async Task Run() {
         BblUser[] allUserFromOldDb;
@@ -36,7 +187,7 @@ public class ConvertAndMoveToNewTable {
         await RunFixUserStats();
     }
 
-    public async Task RunFixUserStats() {
+    private async Task RunFixUserStats() {
         BblUser[] allUserFromOldDb;
         using (var db = DbBuilder.BuildPostSqlAndOpen()) {
             allUserFromOldDb = db.Fetch<BblUser>("SELECT id FROM public.bbl_user").OkOr(new(0)).ToArray();
@@ -383,9 +534,9 @@ VALUES (
     private static void RemoveAllRowsFromNewTables(NpgsqlConnection db) {
         using var batch = db.CreateBatch();
         NpgsqlCommand s;
-        s = db.CreateCommand();
-        s.CommandText = "DELETE FROM public.bbl_global_ranking_timeline";
-        s.ExecuteNonQuery();
+        // s = db.CreateCommand();
+        // s.CommandText = "DELETE FROM public.bbl_global_ranking_timeline";
+        // s.ExecuteNonQuery();
         s = db.CreateCommand();
         s.CommandText = "DELETE FROM public.bbl_patron";
         s.ExecuteNonQuery();
@@ -409,7 +560,8 @@ VALUES (
         batch.ExecuteNonQuery();
     }
 
-    private static BblUserStats? CreateUserStats(long userId, BblScore[] listBblScores) {
+    private static BblUserStats CreateUserStats(long userId, BblScore[] listBblScores) {
+        
         var bblUserStats = new BblUserStats() {
                 Uid = userId,
                 OverallPlaycount = 0,
