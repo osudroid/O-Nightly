@@ -74,7 +74,8 @@ WHERE date >= '{dateStr}'
             }
         }
 
-        Parallel.For(0, dates.Count, new ParallelOptions { MaxDegreeOfParallelism = 14 }, MultiIter);
+        
+        Parallel.For(0, dates.Count, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount + 2 }, MultiIter);
     }
 
     private static BblGlobalRankingTimeline[] GetFullRecalcUserRankingTimelineForThisDay(
