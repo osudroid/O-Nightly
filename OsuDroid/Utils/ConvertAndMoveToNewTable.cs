@@ -27,10 +27,9 @@ public class ConvertAndMoveToNewTable {
         }
 
 
-
         await Parallel.ForEachAsync(
             allUserFromOldDb, 
-            new ParallelOptions { MaxDegreeOfParallelism = 1 }, 
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount + 2 }, 
             SingleTransfer
         );
         
