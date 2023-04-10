@@ -1,15 +1,10 @@
 using System.Collections.Concurrent;
 using System.Data;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using Npgsql;
 using OsuDroid.Database.OldEntities;
 using OsuDroidLib.Database.Entities;
-using System.Collections.Generic;
-using NPoco;
-using NPoco.Expressions;
-
+using Dapper;
 namespace OsuDroid.Utils;
 
 public class ConvertAndMoveToNewTable {
@@ -193,19 +188,64 @@ public class ConvertAndMoveToNewTable {
             pair => {
                 var userId = pair.Key;
                 var scores = pair.Value.ToArray();
-                var userStats = CreateUserStats(userId, scores);
+                BblUserStats userStats = CreateUserStats(userId, scores);
                 WriteLine($"Calc Stats UserId: {userId}, Score: {userStats.OverallScore}, ScoresRows: {scores.Length}");
                 stats.Add(userStats);
             }
         );
 
-        var statsArray = stats.ToArray();
+        BblUserStats[] statsArray = stats.ToArray();
         WriteLine($"Stats Insert Count: {statsArray.Length}");
-        using (var db = DbBuilder.BuildPostSqlAndOpenNormalPoco()) {
+        using (var db = DbBuilder.BuildNpgsqlConnection()) {
             WriteLine($"Delete Old Stats");
             db.Execute("DELETE FROM bbl_user_stats");
             WriteLine($"Insert");
-            db.InsertBulk(statsArray);
+            db.Execute(@"
+INSERT 
+INTO bbl_user_stats (
+uid,
+overall_playcount,
+overall_score,
+overall_accuracy,
+overall_combo,
+overall_xss,
+overall_ss,
+overall_xs,
+overall_s,
+overall_a,
+overall_b,
+overall_c,
+overall_d,
+overall_hits,
+overall_300,
+overall_100,
+overall_50,
+overall_geki,
+overall_katu,
+overall_miss
+) VALUES (
+   @Uid,
+   @OverallPlaycount,
+   @OverallScore,
+   @OverallAccuracy,
+   @OverallCombo,
+   @OverallXss,
+   @OverallSs,
+   @OverallXs,
+   @OverallS,
+   @OverallA,
+   @OverallB,
+   @OverallC,
+   @OverallD,
+   @OverallHits,
+   @Overall300,
+   @Overall100,
+   @Overall50,
+   @OverallGeki,
+   @OverallKatu,
+   @OverallMiss
+)      
+", statsArray);
         }
         
         WriteLine($"Finish");
