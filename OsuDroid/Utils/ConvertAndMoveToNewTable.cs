@@ -159,8 +159,57 @@ public class ConvertAndMoveToNewTable {
             throw;
         }
     }
-    
-    
+
+
+    public void RunRecalcStats() {
+        ConcurrentDictionary<long, ConcurrentBag<BblScore>> bblScores = new();
+        ConcurrentBag<BblUserStats> stats = new ConcurrentBag<BblUserStats>();
+        
+        using (var db = DbBuilder.BuildPostSqlAndOpen()) {
+            foreach (var bblUser in db.Fetch<BblUser>("SELECT id FROM public.bbl_user").Ok()) {
+                bblScores[bblUser.Id] = new();
+            }
+            
+            WriteLine($"User Count: {bblScores.Count}");
+            List<BblScore> scores = db.Fetch<BblScore>("SELECT * FROM bbl_score").Ok();
+            WriteLine($"Score Count: {scores.Count}");
+                
+            WriteLine("Bind Score To User");
+            Parallel.ForEach(
+                scores,
+                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                score => {
+                    bblScores[score.Uid].Add(score);
+                }
+            );
+
+            WriteLine("Bind Score To User Finish");
+        }
+        
+        WriteLine("Calc Stats");
+        Parallel.ForEach(
+            bblScores, 
+            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            pair => {
+                var userId = pair.Key;
+                var scores = pair.Value.ToArray();
+                var userStats = CreateUserStats(userId, scores);
+                WriteLine($"Calc Stats UserId: {userId}, Score: {userStats.OverallScore}, ScoresRows: {scores.Length}");
+                stats.Add(userStats);
+            }
+        );
+
+        var statsArray = stats.ToArray();
+        WriteLine($"Stats Insert Count: {statsArray.Length}");
+        using (var db = DbBuilder.BuildPostSqlAndOpenNormalPoco()) {
+            WriteLine($"Delete Old Stats");
+            db.Execute("DELETE FROM bbl_user_stats");
+            WriteLine($"Insert");
+            db.InsertBulk(statsArray);
+        }
+        
+        WriteLine($"Finish");
+    }
     
     public async Task Run() {
         BblUser[] allUserFromOldDb;
@@ -561,7 +610,6 @@ VALUES (
     }
 
     private static BblUserStats CreateUserStats(long userId, BblScore[] listBblScores) {
-        
         var bblUserStats = new BblUserStats() {
                 Uid = userId,
                 OverallPlaycount = 0,

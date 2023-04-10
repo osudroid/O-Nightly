@@ -30,7 +30,7 @@ public static class DbBuilder {
     public static SavePoco BuildPostSqlAndOpen() {
         return new(BuildPostSqlAndOpenNormalPoco());
     }
-
+    
     public static NPoco.Database BuildPostSqlAndOpenNormalPoco() {
         if (DatabaseFactory is null) DatabaseFactoryBuild();
 

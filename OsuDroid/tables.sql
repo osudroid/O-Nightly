@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS bbl_user_stats
     overall_score     bigint NOT NULL DEFAULT 0,
     overall_accuracy  bigint NOT NULL DEFAULT 0,
     overall_combo     bigint NOT NULL DEFAULT 0,
+    overall_xss       bigint NOT NULL DEFAULT 0,
     overall_xs        bigint NOT NULL DEFAULT 0,
     overall_ss        bigint NOT NULL DEFAULT 0,
     overall_s         bigint NOT NULL DEFAULT 0,
@@ -74,7 +75,6 @@ CREATE TABLE IF NOT EXISTS bbl_user_stats
     overall_geki      bigint NOT NULL DEFAULT 0,
     overall_katu      bigint NOT NULL DEFAULT 0,
     overall_miss      bigint NOT NULL DEFAULT 0,
-    overall_xss       bigint NOT NULL DEFAULT 0,
     PRIMARY KEY (uid)
 );
 

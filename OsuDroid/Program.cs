@@ -41,7 +41,7 @@ public sealed class Program {
     }
 
     private static EExitCode ReloadUserStats() {
-        new ConvertAndMoveToNewTable().Run().Wait();
+        (new ConvertAndMoveToNewTable()).RunRecalcStats();
         return EExitCode.Success;
     }
     
