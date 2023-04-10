@@ -4,6 +4,4 @@ public class GroupPrivilegePrivilege {
     public Guid GroupPrivilegeId { get; set; }
     public bool ModeAllow { get; set; }
     public Guid PrivilegeId { get; set; }
-
-    public Dictionary<Guid, Privilege> Privilege { get; set; }
 }

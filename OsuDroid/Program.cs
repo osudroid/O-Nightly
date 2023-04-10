@@ -6,11 +6,13 @@ using OsuDroid.Lib;
 using OsuDroid.Utils;
 using OsuDroidLib.Database.Entities;
 
+
 public sealed class Program {
     public static async Task Main(string[] args) {
         DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
         Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
-
+        
+        
         // FullReloadRankingTimeline();
         
         
