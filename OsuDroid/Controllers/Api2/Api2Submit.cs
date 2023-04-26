@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using OsuDroid.Extensions;
+using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Model;
 using OsuDroid.Utils;
@@ -11,25 +12,26 @@ namespace OsuDroid.Controllers.Api2;
 
 public class Api2Submit : ControllerExtensions {
     [HttpPost("/api2/submit/play-start")]
+    [PrivilegeRoute(route: "/api2/submit/play-start")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PushPlayStartResult200))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult PushPlayStart([FromBody] ApiTypes.Api2GroundWithHash<PushPlayStartProp> prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
 
-        
+
         var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
         var tokenInfoResp = log
             .AddResultAndTransform(tokenHandler.GetTokenInfo(db, prop.Header!.Token))
             .OkOr(Option<TokenInfo>.Empty);
-        
+
         if (tokenInfoResp.IsSet() == false)
             return BadRequest("Token Error");
 
@@ -39,12 +41,13 @@ public class Api2Submit : ControllerExtensions {
             prop.Body!.FileHash!
         ));
 
-        return resp == EResult.Err 
+        return resp == EResult.Err
             ? GetInternalServerError()
             : Ok(new PushPlayStartResult200 { PlayId = resp.Ok() });
     }
 
     [HttpPost("/api2/submit/play-end")]
+    [PrivilegeRoute(route: "/api2/submit/play-end")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PushReplayResult200))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -52,25 +55,25 @@ public class Api2Submit : ControllerExtensions {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
-        
+
         var tokenInfoResp = log
             .AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User)
             .GetTokenInfo(db, prop.Header!.Token))
             .OkOr(Option<TokenInfo>.Empty);
-        
+
         if (tokenInfoResp.IsSet() == false)
             return BadRequest("Token Error");
 
         var resp = log
             .AddResultAndTransform(Submit.InsertFinishPlayAndUpdateUserScore(tokenInfoResp.Unwrap().UserId, prop.Body!))
             .OkOr(Option<(BblUserStats userStats, long BestPlayScoreId)>.Empty);
-        
+
         return resp.IsSet() == false
             ? GetInternalServerError()
             : Ok(new PushReplayResult200 {
@@ -80,6 +83,7 @@ public class Api2Submit : ControllerExtensions {
     }
 
     [HttpPost("/api2/submit/replay-file")]
+    [PrivilegeRoute(route: "/api2/submit/replay-file")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -88,8 +92,8 @@ public class Api2Submit : ControllerExtensions {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
-        
+
+
         try {
             var value =
                 JsonConvert.DeserializeObject<ApiTypes.Api2GroundWithHash<Api2UploadReplayFileProp>>(form.Prop ?? "");
@@ -108,12 +112,12 @@ public class Api2Submit : ControllerExtensions {
         if (prop.HashValidate() == false)
             return BadRequest(prop.PrintHashOrder());
 
-        
+
         var tokenInfoResp = log
             .AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User)
             .GetTokenInfo(db, prop.Header!.Token))
             .OkOr(Option<TokenInfo>.Empty);
-        
+
         if (tokenInfoResp.IsSet() == false)
             return BadRequest("Token Error");
 
@@ -125,7 +129,7 @@ public class Api2Submit : ControllerExtensions {
 
         if (resp == EResult.Err)
             log.AddLogError(resp.Err());
-        
+
         return resp == EResult.Err
             ? BadRequest(resp.Err())
             : Ok(resp.Ok());

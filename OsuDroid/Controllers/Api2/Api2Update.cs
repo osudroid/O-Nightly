@@ -1,17 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
+using OsuDroid.Lib;
 
 namespace OsuDroid.Controllers.Api2;
 
 public class Api2Update : ControllerExtensions {
     [HttpGet("/api2/update/{lang}")]
+    [PrivilegeRoute(route: "/api2/update/{lang}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiUpdateInfoV2))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult GetUpdateInfoV2([FromRoute(Name = "lang")] string lang = "en") {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         var dirNameNumber = Directory.GetDirectories(Env.UpdatePath).Select(long.Parse).MaxBy(x => x);
         if (dirNameNumber == 0) return GetInternalServerError();
 

@@ -259,44 +259,19 @@ CREATE TABLE IF NOT EXISTS
                  id uuid DEFAULT gen_random_uuid() NOT NULL,
                  name text UNIQUE NOT NULL,
                  description text NOT NULL,
-                 PRIMARY KEY (id)
+                 PRIMARY KEY (id)          
 );
 
 CREATE TABLE IF NOT EXISTS
     group_privilege_privilege (
                                   group_privilege_id uuid NOT NULL REFERENCES group_privilege(id) ON DELETE CASCADE,
                                   mode_allow bool NOT NULL,
-                                  privilege_id uuid NOT NULL,
+                                  privilege_id uuid NOT NULL REFERENCES privilege(id) ON DELETE CASCADE,
                                   primary key (group_privilege_id, privilege_id)
 );
 
 
-INSERT INTO privilege 
-    (name, description) 
-VALUES 
-    ('admin_pannel_login', 'you can login to admin pannel'),
-    ('admin_pannel_change_user_settings', 'you can change other settings from other user'),
-    ('admin_pannel_user_delete', 'delete user'),
-    ('admin_pannel_user_delete_plays', 'delte userplays'),
-    ('admin_pannel_privilege_rwd', 'read, write, delete privilege'),
-    ('admin_pannel_group_priviege_rwd', 'read, write, delete group_privilege'),
-    ('admin_pannel_user_group_privilege_rwd', 'read, write, delete user_group_privilege')
-ON CONFLICT DO NOTHING 
-;
 
-INSERT INTO group_privilege 
-    (name, description) 
-VALUES
-    ('admin', 'can do all'),
-    ('player', 'none')
-ON CONFLICT DO NOTHING
-;
-
-INSERT INTO group_privilege_privilege
-    (group_privilege_id, mode_allow, privilege_id)
-SELECT gp.id, true, privilege.id FROM privilege 
-    join group_privilege gp on gp.name = 'admin'
-ON CONFLICT DO NOTHING ;
 
 
 -- SELECT * 
@@ -315,3 +290,235 @@ ON CONFLICT DO NOTHING ;
 --          join group_privilege_privilege gpp on p.id = gpp.privilege_id
 --          join group_privilege gp on gpp.group_privilege_id = gp.id
 -- WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user_group_privilege WHERE user_id = 22578);
+
+
+
+
+CREATE TABLE IF NOT EXISTS need_privilege (
+    need_privilege_id uuid NOT NULL default gen_random_uuid(),
+    name TEXT UNIQUE NOT NULL,
+    PRIMARY KEY (need_privilege_id)
+);
+
+CREATE TABLE IF NOT EXISTS need_privilege_privilege (
+    need_privilege_id uuid NOT NULL REFERENCES need_privilege(need_privilege_id) ON DELETE CASCADE,
+    privilege_id uuid NOT NULL REFERENCES privilege(id) ON DELETE CASCADE,
+    PRIMARY KEY (need_privilege_id, privilege_id)
+);
+
+
+CREATE TABLE IF NOT EXISTS setting (
+    name TEXT not null,
+    value TEXT not null,
+    PRIMARY KEY (name)
+);
+
+CREATE TABLE IF NOT EXISTS router_setting (
+    path TEXT NOT NULL,
+    need_privilege uuid NOT NULL REFERENCES need_privilege(need_privilege_id) ON DELETE RESTRICT,
+    need_cookie boolean NOT NULL,
+    need_cookie_handler text,
+    PRIMARY KEY (path)
+);
+
+
+
+CREATE OR REPLACE function user_check_need_privilege_by_name (userId BIGINT, need_privilege_name text)
+    RETURNS RECORD
+AS $$
+DECLARE
+    ret RECORD;
+BEGIN
+
+    SELECT
+        DISTINCT ON (npp.privilege_id)
+        us.pri_name,
+        npp.privilege_id as need_privilege_id,
+        (case when us.user_mode_allow = true THEN true ELSE false END) as user_has_privilege
+    FROM need_privilege need
+             join need_privilege_privilege npp on need.need_privilege_id = npp.need_privilege_id
+             FULL JOIN
+         (
+             SELECT p.id as user_privilege_id, gpp.mode_allow as user_mode_allow, p.name as pri_name
+             FROM privilege p
+                      JOIN group_privilege_privilege gpp on p.id = gpp.privilege_id
+                      JOIN group_privilege gp on gpp.group_privilege_id = gp.id
+                      JOIN
+                  (
+                      SELECT need.*, npp.*
+                      FROM need_privilege need join need_privilege_privilege npp on need.need_privilege_id = npp.need_privilege_id
+                      WHERE need.name = need_privilege_name
+                  ) need_pri on p.id = need_pri.privilege_id
+             WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user_group_privilege WHERE user_id = userId)
+         ) us on us.user_privilege_id = npp.privilege_id
+    WHERE need.name = need_privilege_name
+    ORDER BY npp.privilege_id, user_has_privilege ASC INTO ret;
+
+    RETURN ret;
+END $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE function user_check_need_privilege_by_id (userId BIGINT, need_privilege_key_id uuid)
+    RETURNS RECORD
+AS $$
+DECLARE
+    ret RECORD;
+BEGIN
+
+    SELECT
+        DISTINCT ON (npp.privilege_id)
+        us.pri_name,
+        npp.privilege_id as need_privilege_id,
+        (case when us.user_mode_allow = true THEN true ELSE false END) as user_has_privilege
+    FROM need_privilege need
+             join need_privilege_privilege npp on need.need_privilege_id = npp.need_privilege_id
+             FULL JOIN
+         (
+             SELECT p.id as user_privilege_id, gpp.mode_allow as user_mode_allow, p.name as pri_name
+             FROM privilege p
+                      JOIN group_privilege_privilege gpp on p.id = gpp.privilege_id
+                      JOIN group_privilege gp on gpp.group_privilege_id = gp.id
+                      JOIN
+                  (
+                      SELECT need.*, npp.*
+                      FROM need_privilege need join need_privilege_privilege npp on need.need_privilege_id = npp.need_privilege_id
+                      WHERE need.need_privilege_id = need_privilege_key_id
+                  ) need_pri on p.id = need_pri.privilege_id
+             WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user_group_privilege WHERE user_id = userId)
+         ) us on us.user_privilege_id = npp.privilege_id
+    WHERE need.need_privilege_id = need_privilege_key_id
+    ORDER BY npp.privilege_id, user_has_privilege ASC INTO ret;
+
+    RETURN ret;
+END $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE function router_settings_with_privilege (path TEXT, need_cookie bool, cookie_handler TEXT)
+RETURNS TEXT
+    AS $$
+DECLARE
+    id uuid;
+    name TEXT;
+BEGIN
+    id := gen_random_uuid();
+    name := concat('route:', path);
+    
+    INSERT INTO need_privilege (name, need_privilege_id) VALUES (name, id);
+    
+    INSERT INTO router_setting 
+        (path, need_privilege, need_cookie, need_cookie_handler) 
+    VALUES 
+        (path, id, need_cookie, cookie_handler);
+
+    RETURN name;
+END
+$$ LANGUAGE plpgsql;
+
+
+SELECT ;
+INSERT INTO privilege
+(name, description)
+VALUES
+    ('admin_pannel_login', 'you can login to admin pannel'),
+    ('admin_pannel_change_user_settings', 'you can change other settings from other user'),
+    ('admin_pannel_user_delete', 'delete user'),
+    ('admin_pannel_user_delete_plays', 'delte userplays'),
+    ('admin_pannel_privilege_rwd', 'read, write, delete privilege'),
+    ('admin_pannel_group_priviege_rwd', 'read, write, delete group_privilege'),
+    ('admin_pannel_user_group_privilege_rwd', 'read, write, delete user_group_privilege'),
+    ('widget_database_stats', 'can see stats from database')
+ON CONFLICT DO NOTHING
+;
+
+INSERT INTO group_privilege
+(name, description)
+VALUES
+    ('admin', 'can do all'),
+    ('player', 'none'),
+    ('group_widget_database_stats', 'group to can use widget_database_stats')
+ON CONFLICT DO NOTHING
+;
+
+INSERT INTO group_privilege_privilege
+(group_privilege_id, mode_allow, privilege_id)
+SELECT gp.id, true, privilege.id FROM privilege
+                                          join group_privilege gp on gp.name = 'admin'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO group_privilege_privilege
+(group_privilege_id, mode_allow, privilege_id)
+SELECT gp.id, false, privilege.id FROM privilege
+                                          join group_privilege gp on gp.name = 'player'
+ON CONFLICT DO NOTHING;
+
+
+
+
+
+
+
+
+
+
+
+
+-- widget_database_stats
+INSERT INTO need_privilege (name) VALUES ('widget_database_stats');
+
+INSERT INTO 
+    need_privilege_privilege 
+    (need_privilege_id, privilege_id) 
+SELECT need.need_privilege_id, np.id 
+FROM need_privilege need
+JOIN privilege np on np.name = 'widget_database_stats';
+
+SELECT router_settings_with_privilege('/api/user-info-by-cookie', false, null);
+SELECT router_settings_with_privilege('/api/weblogin', false, null);
+SELECT router_settings_with_privilege('/api/webloginwithusername', false, null);
+SELECT router_settings_with_privilege('/api/webregister', false, null);
+SELECT router_settings_with_privilege('/api/weblogintoken', false, null);
+SELECT router_settings_with_privilege('/api/webupdateCookie', true, null);
+SELECT router_settings_with_privilege('/api/webresetpasswdandsendemail', false, null);
+SELECT router_settings_with_privilege('/api/token/newpasswdwithtoken', false, null);
+SELECT router_settings_with_privilege('/api/signin/patreon', false, null);
+SELECT router_settings_with_privilege('/api/signout/patreon', true, null);
+SELECT router_settings_with_privilege('/api/weblogout', true, 'BASE');
+SELECT router_settings_with_privilege('/api/profile/stats/{id:long}', false, null);
+SELECT router_settings_with_privilege('/api/profile/stats/timeline/{id:long}', false, null);
+SELECT router_settings_with_privilege('/api/profile/topplays/{id:long}', false, null);
+SELECT router_settings_with_privilege('/api/profile/topplays/{id:long}/page/{page:int}', false, null);
+SELECT router_settings_with_privilege('/api/profile/recentplays/{id:long}', false, null);
+SELECT router_settings_with_privilege('/api/profile/update/email', true, 'BASE');
+SELECT router_settings_with_privilege('/api/profile/update/passwd', true, 'BASE');
+SELECT router_settings_with_privilege('/api/profile/update/username', true, 'BASE');
+SELECT router_settings_with_privilege('/api/profile/update/avatar', true, 'BASE');
+SELECT router_settings_with_privilege('/api/profile/update/patreonemail', true, 'BASE');
+SELECT router_settings_with_privilege('/api/profile/accept/patreonemail/token/{token:guid}', true, 'BASE');
+SELECT router_settings_with_privilege('/api/profile/drop-account/sendMail}', true, 'BASE');
+SELECT router_settings_with_privilege('/api/profile/drop-account/token/{token:guid}', true, 'BASE');
+SELECT router_settings_with_privilege('/api/profile/top-play-by-marks-length/user-id/{userId:long}', false, null);
+SELECT router_settings_with_privilege('/api/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}', false, null);
+SELECT router_settings_with_privilege('/api/update.php', false, null);
+SELECT router_settings_with_privilege('/api2/apk/version/{dirNameNumber:long}.apk', false, null);
+SELECT router_settings_with_privilege('/api2/avatar/hash', false, null);
+SELECT router_settings_with_privilege('/api2/avatar/hash/{size:long}/{id:long}', false, null);
+SELECT router_settings_with_privilege('/api2/avatar/{size:long}/{id:long}', false, null);
+SELECT router_settings_with_privilege('/api2/jar/version/{version}.jar', false, null);
+SELECT router_settings_with_privilege('/api2/leaderboard', false, null);
+SELECT router_settings_with_privilege('/api2/leaderboard/user', false, null);
+SELECT router_settings_with_privilege('/api2/leaderboard/search-user', false, null);
+SELECT router_settings_with_privilege('/api2/token-create', false, null);
+SELECT router_settings_with_privilege('/api2/token-refresh', true, 'BASE');
+SELECT router_settings_with_privilege('/api2/token-remove', true, 'BASE');
+SELECT router_settings_with_privilege('/api2/token-user-id', true, 'BASE');
+SELECT router_settings_with_privilege('/api2/odr/{replayId}.odr', false, null);
+SELECT router_settings_with_privilege('/api2/odr/{replayId:long}.zip', false, null);
+SELECT router_settings_with_privilege('/api2/odr/fullname/{replayId:long}/{fullname}.zip', false, null);
+SELECT router_settings_with_privilege('/api2/odr/redirect/{replayId:long}.zip', false, null);
+SELECT router_settings_with_privilege('/api2/play/by-id', false, null);
+SELECT router_settings_with_privilege('/api2/play/recent', false, null);
+SELECT router_settings_with_privilege('/api2/rank/map-file', false, null);
+SELECT router_settings_with_privilege('/api2/statistic/active-user', false, null);
+SELECT router_settings_with_privilege('/api2/statistic/all-patreon', false, null);
+SELECT router_settings_with_privilege('/api2/submit/play-start', true, 'BASE');
+SELECT router_settings_with_privilege('/api2/submit/play-end', true, 'BASE');
+SELECT router_settings_with_privilege('/api2/submit/replay-file', true, 'BASE');
+SELECT router_settings_with_privilege('/api2/update/{lang}', false, null);

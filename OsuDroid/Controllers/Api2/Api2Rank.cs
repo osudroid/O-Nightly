@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
+using OsuDroid.Lib;
 using OsuDroid.Model;
 using OsuDroid.Utils;
 using OsuDroidLib;
@@ -8,6 +9,7 @@ namespace OsuDroid.Controllers.Api2;
 
 public class Api2Rank : ControllerExtensions {
     [HttpPost("/api2/rank/map-file")]
+    [PrivilegeRoute(route: "/api2/rank/map-file")]
     [ProducesResponseType(StatusCodes.Status200OK,
         Type = typeof(ApiTypes.ExistOrFoundInfo<IReadOnlyList<MapTopPlays>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
@@ -16,7 +18,7 @@ public class Api2Rank : ControllerExtensions {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         if (prop.ValuesAreGood() == false)
             return BadRequest("Values Are Bad");
 
@@ -24,18 +26,18 @@ public class Api2Rank : ControllerExtensions {
         if (prop.HashValidate() == false) {
             return BadRequest(prop.PrintHashOrder());
         }
-            
-        
-        
+
+
+
         var resultRep = log.AddResultAndTransform(Rank.MapTopPlaysByFilenameAndHash(
             prop.Body!.Filename!,
             prop.Body!.FileHash!,
             50
         ));
-        
+
         if (resultRep == EResult.Err)
             return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<MapTopPlays>> { Value = null, ExistOrFound = false });
-        
+
         var rep = resultRep.OkOr(Array.Empty<MapTopPlays>());
         return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<MapTopPlays>> { Value = rep, ExistOrFound = true });
     }

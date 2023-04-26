@@ -1,17 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
+using OsuDroid.Lib;
 
 namespace OsuDroid.Controllers.Api2;
 
 public class Api2JarHasher : ControllerExtensions {
     [HttpGet("/api2/jar/version/{version}.jar")]
+    [PrivilegeRoute(route: "/api2/jar/version/{version}.jar")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(byte[]))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult Jar([FromRoute(Name = "version")] string version, [FromQuery(Name = "q")] string keyToken) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         if (Env.Keyword != keyToken)
             return BadRequest();
         try {

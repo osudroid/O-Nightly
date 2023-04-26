@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
+using OsuDroid.Lib;
 using OsuDroid.Model;
 using OsuDroid.Utils;
 using OsuDroidLib;
@@ -9,16 +10,17 @@ namespace OsuDroid.Controllers.Api2;
 
 public class Api2Leaderboard : ControllerExtensions {
     [HttpPost("/api2/leaderboard")]
+    [PrivilegeRoute(route: "/api2/leaderboard")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult GetLeaderBoard([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardProp> prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         if (prop.ValuesAreGood() == false)
             return BadRequest();
-        
+
         var allRegion = prop.Body!.IsRegionAll();
         Result<List<LeaderBoardUser>, string> rep;
         switch (allRegion) {
@@ -31,51 +33,53 @@ public class Api2Leaderboard : ControllerExtensions {
                     log.AddLogDebug("RegionAsCountry Not Found");
                     return BadRequest();
                 }
-                    
+
                 rep = LeaderBoard.FilterRegion(prop.Body.Limit, countyRep.Unwrap());
                 break;
             }
         }
-        
+
         return Ok(rep == EResult.Err
             ? ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.NotExist()
             : ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.Exist(rep.Ok()));
     }
 
     [HttpPost("/api2/leaderboard/user")]
+    [PrivilegeRoute(route: "/api2/leaderboard/user")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<LeaderBoardUser>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardUserProp> prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         if (prop.ValuesAreGood() == false)
             return BadRequest();
-        
+
         var rep = log.AddResultAndTransform(
             LeaderBoard.User(prop.Body!.UserId)).OkOr(Option<LeaderBoardUser>.Empty);
-        
+
         return Ok(rep.IsSet() == false
             ? ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.NotExist()
             : ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.Exist(rep.Unwrap()));
     }
 
     [HttpPost("/api2/leaderboard/search-user")]
+    [PrivilegeRoute(route: "/api2/leaderboard/search-user")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardSearchUserProp> prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         if (prop.ValuesAreGood() == false)
             return BadRequest();
-        
+
         ((ILogRequestJsonPrint)prop.Body!).LogRequestJsonPrint();
-        
-        
-        
+
+
+
         ResultOk<List<LeaderBoardUser>> rep = prop.Body!.IsRegionAll() switch {
             true => log.AddResultAndTransform(LeaderBoard.SearchUser(prop.Body!.Limit, prop.Body!.Query!)),
             _ => log.AddResultAndTransform(LeaderBoard.SearchUserWithRegion(prop.Body!.Limit, prop.Body!.Query!,
@@ -187,6 +191,6 @@ public class Api2Leaderboard : ControllerExtensions {
             return Region == "all";
         }
 
-        
+
     }
 }

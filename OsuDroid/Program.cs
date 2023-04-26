@@ -11,11 +11,8 @@ public sealed class Program {
     public static async Task Main(string[] args) {
         DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
         Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
-        
-        
-        // FullReloadRankingTimeline();
-        
-        
+        PrivilegeManager.Update();
+
         if (args.Length == 0) {
             Security.GetSecurity();
             RunWebsite();
@@ -115,7 +112,7 @@ public sealed class Program {
         services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
         services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
         services.AddInMemoryRateLimiting();
-
+        
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.
@@ -126,7 +123,10 @@ public sealed class Program {
 
         app.UseIpRateLimiting();
         app.UseHttpsRedirection();
-        app.UseAuthorization();
+        app.UsePrivilege(new List<ICookieHandler>() {
+            new CookieHandlerBasic()
+        });
+        // app.UseAuthorization();
         app.MapControllers();
         app.Run();
     }

@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using LamLogger;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
+using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
@@ -10,6 +11,7 @@ namespace OsuDroid.Controllers.Api;
 
 public sealed class CookieInfo : ControllerExtensions {
     [HttpGet("/api/user-info-by-cookie")]
+    [PrivilegeRoute(route: "/api/user-info-by-cookie")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<UserInfo>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ExistOrFoundInfo<UserInfo>))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
+using OsuDroid.Lib;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 using SixLabors.ImageSharp;
@@ -9,6 +10,7 @@ namespace OsuDroid.Controllers.Api2;
 
 public class Api2Avatar : ControllerExtensions {
     [HttpGet("/api2/avatar/{size:long}/{id:long}")]
+    [PrivilegeRoute(route: "/api2/avatar/{size:long}/{id:long}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(byte[]))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -16,7 +18,7 @@ public class Api2Avatar : ControllerExtensions {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         var filePath = $"{Env.AvatarPath}/" + id;
 
         var bytes = System.IO.File.Exists(filePath) switch {
@@ -38,17 +40,18 @@ public class Api2Avatar : ControllerExtensions {
     }
 
     [HttpGet("/api2/avatar/hash/{size:long}/{id:long}")]
+    [PrivilegeRoute(route: "/api2/avatar/hash/{size:long}/{id:long}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AvatarHashes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult AvatarHashByUserId([FromRoute(Name = "size")] int size, [FromRoute(Name = "id")] long id) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         if (size > 1000 || size < 1 || id < 1) return BadRequest();
 
         var resp = log.AddResultAndTransform(db.Fetch<BblAvatarHash>(@$"
-SELECT user_id, hash 
+SELECT user_id, hash
 FROM bbl_avatar_hash
 WHERE size = {size}
 AND user_id = {id}
@@ -60,18 +63,19 @@ AND user_id = {id}
     }
 
     [HttpPost("/api2/avatar/hash")]
+    [PrivilegeRoute(route: "/api2/avatar/hash")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AvatarHashes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public IActionResult AvatarHashesByUserIds([FromBody] ApiTypes.Api2GroundNoHeader<AvatarHashesByUserIdsProp> prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         if (prop.ValuesAreGood() == false)
             return BadRequest();
-        
+
         var resp = log.AddResultAndTransform(db.Fetch<BblAvatarHash>(@$"
-SELECT user_id, hash 
+SELECT user_id, hash
 FROM bbl_avatar_hash
 WHERE size = {prop.Body!.Size}
 AND user_id in ({string.Join(',', prop.Body.UserIds ?? Array.Empty<long>())})

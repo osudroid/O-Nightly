@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
+using OsuDroid.Lib;
 using OsuDroid.Model;
 using OsuDroid.Utils;
 using OsuDroidLib;
@@ -11,13 +12,14 @@ namespace OsuDroid.Controllers.Api2;
 
 public class Api2Play : ControllerExtensions {
     [HttpPost("/api2/play/by-id")]
+    [PrivilegeRoute(route: "/api2/play/by-id")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PlayInfoById))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(string))]
     public IActionResult GetPlayById([FromBody] ApiTypes.Api2GroundWithHash<Api2PlayById> prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
-        
+
         if (prop.ValuesAreGood() == false) {
             log.AddLogDebug("Values Are Bad");
             return BadRequest();
@@ -28,7 +30,7 @@ public class Api2Play : ControllerExtensions {
             log.AddLogDebug("Hash Not Valid");
             return BadRequest(prop.PrintHashOrder());
         }
-            
+
 
         log.AddLogDebug("PlayId: " + prop.Body!.PlayId);
         var optionRep = log.AddResultAndTransform(ScorePack.GetByPlayId(db, prop.Body!.PlayId))
@@ -40,7 +42,7 @@ public class Api2Play : ControllerExtensions {
         else {
             log.AddLogDebug("PlayId Not Found");
         }
-        
+
         return optionRep.IsSet() == false
             ? BadRequest("Not Found")
             : Ok(new PlayInfoById {
@@ -51,13 +53,14 @@ public class Api2Play : ControllerExtensions {
     }
 
     [HttpPost("/api2/play/recent")]
+    [PrivilegeRoute(route: "/api2/play/recent")]
     [ProducesResponseType(StatusCodes.Status200OK,
         Type = typeof(ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.BblScoreWithUsername>>))]
     public async Task<IActionResult> GetRecentPlay([FromBody] ApiTypes.Api2GroundNoHeader<RecentPlays> prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         await log.AddLogDebugStartAsync();
-        
+
         if (prop.ValuesAreGood() == false)
             return BadRequest();
         try {
