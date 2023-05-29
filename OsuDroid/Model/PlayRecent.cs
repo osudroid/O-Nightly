@@ -12,7 +12,7 @@ public static class PlayRecent {
     /// <param name="startAt"></param>
     /// <returns></returns>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
-    public static async Task<IReadOnlyList<BblScoreWithUsername>> FilterByAsync(
+    public static async Task<IReadOnlyList<PlayScoreWithUsername>> FilterByAsync(
         string filterPlays,
         string orderBy,
         int limit,
@@ -64,10 +64,8 @@ OFFSET {startAt}
 
         using var db = DbBuilder.BuildPostSqlAndOpenNormalPoco();
         db.CommandTimeout = 3;
-        return await db.FetchAsync<BblScoreWithUsername>(sql) ?? new List<BblScoreWithUsername>();
+        return await db.FetchAsync<PlayScoreWithUsername>(sql) ?? new List<PlayScoreWithUsername>();
     }
 
-    public sealed class BblScoreWithUsername : BblScore {
-        [Column("username")] public string? Username { get; set; }
-    }
+
 }

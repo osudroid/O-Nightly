@@ -4,23 +4,26 @@ using System.Runtime.CompilerServices;
 using Npgsql;
 using OsuDroid.Database.OldEntities;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Extension;
+using System.Collections.Generic;
+using System.Runtime.InteropServices.JavaScript;
 using Dapper;
+using Dapper.Contrib.Extensions;
+
 namespace OsuDroid.Utils;
 
 public class ConvertAndMoveToNewTable {
     public async Task OpiRun() {
-        BblUser[] allUserFromOldDb;
+        UserInfo[] allUserFromOldDb;
         
-        using (var db = DbBuilder.BuildNpgsqlConnection()) {
+        await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
             WriteLine($"Start Remove New Tables");
-            RemoveAllRowsFromNewTables(db);
+            await RemoveAllRowsFromNewTables(db);
             WriteLine($"Fetch Old Users");
             WriteLine("Insert Users");
             allUserFromOldDb = await GetBblUser();
-            InsertAllUsers(db, allUserFromOldDb);
-            var com = db.CreateCommand();
-            com.CommandText = "DELETE FROM public.bbl_user_stats;";
-            com.ExecuteNonQuery();
+            await InsertAllUsers(db, allUserFromOldDb);
+            await db.QueryAsync("DELETE FROM public.UserStats;");
         }
 
         await ParallelTransfer();
@@ -28,14 +31,15 @@ public class ConvertAndMoveToNewTable {
 
     public async Task ParallelTransfer() {
         try {
-            ConcurrentDictionary<long, ConcurrentBag<BblScore>> bblScores = new();
+            ConcurrentDictionary<long, ConcurrentBag<PlayScore>> bblScores = new();
             
-            using (var db = DbBuilder.BuildPostSqlAndOpen()) {
-                foreach (var bblUser in db.Fetch<BblUser>("SELECT id FROM public.bbl_user").Ok()) {
-                    bblScores[bblUser.Id] = new();
+            await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
+                foreach (var bblUser in await db.QueryAsync<UserInfo>("SELECT UserId FROM public.UserInfo")) {
+                    bblScores[bblUser.UserId] = new();
                 }
+                
                 WriteLine($"User Count: {bblScores.Count}");
-                List<bbl_score> oldScore = db.Fetch<bbl_score>("SELECT * FROM old_osu.bbl_score").Ok();
+                List<bbl_score> oldScore = (await db.QueryAsync<bbl_score>("SELECT * FROM old_osu.bbl_score")).ToList();
                 WriteLine($"oldScore Count: {oldScore}");
                 
                 WriteLine("Bind Score To User Step 1");
@@ -46,27 +50,24 @@ public class ConvertAndMoveToNewTable {
                 );
                 
                 void MergeUserWithScore(bbl_score score) {
-                    score.Mode ??= "|";
+                    score.mode ??= "|";
                     
-                    if (score.Mode.IndexOf("x", StringComparison.Ordinal) != -1
-                        || score.Mode.IndexOf("AR", StringComparison.Ordinal) != -1
-                        || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.Mark)
-                        || score.Score <= 0
-                        || score.Accuracy <= 0
-                        || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.Hash)
-                        || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.Filename))
+                    if (score.mode.IndexOf("AR", StringComparison.Ordinal) != -1
+                        || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.mark)
+                        || score.score <= 0
+                        || score.accuracy <= 0
+                        || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.hash)
+                        || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.filename))
                         return;
                     
-                    if (score.Mode is null)
-                        score.Mode = "|";
-                    if (score.Mode.Length == 0)
-                        score.Mode = "|";
-                    if (score.Mode.IndexOf("-", StringComparison.Ordinal) != -1)
-                        score.Mode = "|";
-                    if (score.Mode[^1] != '|')
-                        score.Mode = "|";
+                    if (score.mode is null)
+                        score.mode = "|";
+                    if (score.mode.Length == 0)
+                        score.mode = "|";
+                    if (score.mode.IndexOf("-", StringComparison.Ordinal) != -1)
+                        score.mode = "|";
 
-                    var bblScore = new BblScore {
+                    var bblScore = new PlayScore {
                         Id = score.Id,
                         Uid = score.Uid,
                         Filename = score.Filename,
@@ -96,11 +97,10 @@ public class ConvertAndMoveToNewTable {
             
             
             GC.Collect();
-
             {
                 WriteLine("Pre Insert Scores");
-                var bblScoresList = new List<BblScore>(10_000_000);
-                foreach (KeyValuePair<long,ConcurrentBag<BblScore>> keyValuePair in bblScores) {
+                var bblScoresList = new List<PlayScore>(10_000_000);
+                foreach (KeyValuePair<long,ConcurrentBag<PlayScore>> keyValuePair in bblScores) {
                     foreach (var bblScore in keyValuePair.Value) {
                         bblScoresList.Add(bblScore);
                     }
@@ -109,26 +109,27 @@ public class ConvertAndMoveToNewTable {
                 WriteLine($"Pre Insert Scores Count: {bblScoresList.Count}");
                 WriteLine("Insert All Scores");
                 
-                using (var buildPostSqlAndOpen = DbBuilder.BuildPostSqlAndOpen()) {
+                await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
                     long posi = 0;
-                    var list = new List<BblScore>(10_000);
+                    var list = new List<PlayScore>(10_000);
                     foreach (var i in bblScoresList) {
                         if (list.Count == 10_000) {
                             WriteLine($"{bblScoresList.Count}: {posi}");
-                            buildPostSqlAndOpen.InsertBulk(list);
+                            await db.InsertAsync(list);
                             posi += 10_000;
                             list.Clear();
                         }
                         list.Add(i);
                     }
-                    buildPostSqlAndOpen.InsertBulk(list);
+
+                    await db.InsertAsync(list);
                     WriteLine($"Insert End");
                 }
             }
 
-            ConcurrentBag<BblUserStats> stats = new ConcurrentBag<BblUserStats>();
+            ConcurrentBag<UserStats> stats = new ConcurrentBag<UserStats>();
             
-            using (var db = DbBuilder.BuildPostSqlAndOpen()) {
+            await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
                 WriteLine("Calc Stats");
                 Parallel.ForEach(
                     bblScores, 
@@ -142,7 +143,8 @@ public class ConvertAndMoveToNewTable {
                     }
                 );
 
-                db.InsertBulk(stats.ToArray());
+                UserStats[] statsArray = stats.ToArray();
+                await db.InsertAsync(statsArray);
             }
             
             WriteLine($"Finish");
@@ -156,17 +158,17 @@ public class ConvertAndMoveToNewTable {
     }
 
 
-    public void RunRecalcStats() {
-        ConcurrentDictionary<long, ConcurrentBag<BblScore>> bblScores = new();
-        ConcurrentBag<BblUserStats> stats = new ConcurrentBag<BblUserStats>();
+    public async Task RunRecalcStats() {
+        ConcurrentDictionary<long, ConcurrentBag<PlayScore>> bblScores = new();
+        ConcurrentBag<UserStats> stats = new ConcurrentBag<UserStats>();
         
-        using (var db = DbBuilder.BuildPostSqlAndOpen()) {
-            foreach (var bblUser in db.Fetch<BblUser>("SELECT id FROM public.bbl_user").Ok()) {
-                bblScores[bblUser.Id] = new();
+        await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
+            foreach (var bblUser in await db.QueryAsync<UserInfo>("SELECT UserId FROM public.UserInfo")) {
+                bblScores[bblUser.UserId] = new();
             }
             
             WriteLine($"User Count: {bblScores.Count}");
-            List<BblScore> scores = db.Fetch<BblScore>("SELECT * FROM bbl_score").Ok();
+            List<PlayScore> scores = (await db.QueryAsync<PlayScore>("SELECT * FROM PlayScore")).ToList();
             WriteLine($"Score Count: {scores.Count}");
                 
             WriteLine("Bind Score To User");
@@ -174,7 +176,7 @@ public class ConvertAndMoveToNewTable {
                 scores,
                 new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                 score => {
-                    bblScores[score.Uid].Add(score);
+                    bblScores[score.UserId].Add(score);
                 }
             );
 
@@ -188,82 +190,81 @@ public class ConvertAndMoveToNewTable {
             pair => {
                 var userId = pair.Key;
                 var scores = pair.Value.ToArray();
-                BblUserStats userStats = CreateUserStats(userId, scores);
+                UserStats userStats = CreateUserStats(userId, scores);
                 WriteLine($"Calc Stats UserId: {userId}, Score: {userStats.OverallScore}, ScoresRows: {scores.Length}");
                 stats.Add(userStats);
             }
         );
 
-        BblUserStats[] statsArray = stats.ToArray();
+        UserStats[] statsArray = stats.ToArray();
         WriteLine($"Stats Insert Count: {statsArray.Length}");
-        using (var db = DbBuilder.BuildNpgsqlConnection()) {
+        await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
             WriteLine($"Delete Old Stats");
-            db.Execute("DELETE FROM bbl_user_stats");
+            await db.QueryAsync("DELETE FROM public.UserStats");
             WriteLine($"Insert");
-            db.Execute(@"
+            var sql = @"
 INSERT 
-INTO bbl_user_stats (
-uid,
-overall_playcount,
-overall_score,
-overall_accuracy,
-overall_combo,
-overall_xss,
-overall_ss,
-overall_xs,
-overall_s,
-overall_a,
-overall_b,
-overall_c,
-overall_d,
-overall_hits,
-overall_300,
-overall_100,
-overall_50,
-overall_geki,
-overall_katu,
-overall_miss
-) VALUES (
-   @Uid,
-   @OverallPlaycount,
-   @OverallScore,
-   @OverallAccuracy,
-   @OverallCombo,
-   @OverallXss,
-   @OverallSs,
-   @OverallXs,
-   @OverallS,
-   @OverallA,
-   @OverallB,
-   @OverallC,
-   @OverallD,
-   @OverallHits,
-   @Overall300,
-   @Overall100,
-   @Overall50,
-   @OverallGeki,
-   @OverallKatu,
-   @OverallMiss
+INTO UserStats (
+                UserId,
+                OverallPlaycount,
+                OverallScore,
+                OverallAccuracy,
+                OverallCombo,
+                OverallXss,
+                OverallSs,
+                OverallXs,
+                OverallS,
+                OverallA,
+                OverallB,
+                OverallC,
+                OverallD,
+                OverallHits,
+                Overall300,
+                Overall100,
+                Overall50,
+                OverallGeki,
+                OverallKatu,
+                OverallMiss
+                ) VALUES (
+                          @Uid,
+                          @OverallPlaycount,
+                          @OverallScore,
+                          @OverallAccuracy,
+                          @OverallCombo,
+                          @OverallXss,
+                          @OverallSs,
+                          @OverallXs,
+                          @OverallS,
+                          @OverallA,
+                          @OverallB,
+                          @OverallC,
+                          @OverallD,
+                          @OverallHits,
+                          @Overall300,
+                          @Overall100,
+                          @Overall50,
+                          @OverallGeki,
+                          @OverallKatu,
+                          @OverallMiss
 )      
-", statsArray);
+";
+            await db.QueryAsync(sql, statsArray);
         }
         
         WriteLine($"Finish");
     }
     
     public async Task Run() {
-        BblUser[] allUserFromOldDb;
+        UserInfo[] allUserFromOldDb;
         
-        using (var db = DbBuilder.BuildNpgsqlConnection()) {
+        await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
             WriteLine($"Start Remove New Tables");
-            RemoveAllRowsFromNewTables(db);
+            await RemoveAllRowsFromNewTables(db);
             WriteLine($"Fetch Old Users");
             WriteLine("Insert Users");
             allUserFromOldDb = await GetBblUser();
-            InsertAllUsers(db, allUserFromOldDb);
-            var com = db.CreateCommand();
-            com.CommandText = "DELETE FROM public.bbl_user_stats;";
-            com.ExecuteNonQuery();
+            await InsertAllUsers(db, allUserFromOldDb);
+            await db.QueryAsync("DELETE FROM public.UserStats");
         }
 
 
@@ -277,10 +278,10 @@ overall_miss
     }
 
     private async Task RunFixUserStats() {
-        BblUser[] allUserFromOldDb;
-        using (var db = DbBuilder.BuildPostSqlAndOpen()) {
-            allUserFromOldDb = db.Fetch<BblUser>("SELECT id FROM public.bbl_user").OkOr(new(0)).ToArray();
-            db.Execute("DELETE FROM public.bbl_user_stats");
+        UserInfo[] allUserFromOldDb;
+        await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
+            allUserFromOldDb = (await db.QueryAsync<UserInfo>("SELECT UserId FROM public.UserInfo")).ToArray();
+            await db.QueryAsync("DELETE FROM public.UserStats");
         }
         
         await Parallel.ForEachAsync(
@@ -289,43 +290,38 @@ overall_miss
             SingleFixStat
         );
         
-        static async ValueTask SingleFixStat(BblUser user, CancellationToken token) {
-            BblScore[] scores;
-            var dbs = DbBuilder.BuildNpgsqlSavePoco();
-            using var db = dbs.SavePoco;
-            using var npsql = dbs.Npgsql;
+        static async ValueTask SingleFixStat(UserInfo user, CancellationToken token) {
+            PlayScore[] scores;
+            await using var db = await DbBuilder.BuildNpgsqlConnection();
+            scores = (await db.QueryAsync<PlayScore>($"SELECT * FROM public.PlayScore WHERE UserId = {user.UserId}")).ToArray();
+            var userStats = CreateUserStats(user.UserId, scores);
+            WriteLine($"SET Stats UserId: {user.UserId}, Score: {userStats.OverallScore}, ScoresRows: {scores.Length}");
             
-            scores = db.Fetch<BblScore>($"SELECT * FROM public.bbl_score WHERE uid = {user.Id}").OkOr(new(0)).ToArray();
-            var userStats = CreateUserStats(user.Id, scores);
-            WriteLine($"SET Stats UserId: {user.Id}, Score: {userStats.OverallScore}, ScoresRows: {scores.Length}");
-            
-            
-            var com = npsql.CreateCommand();
-            com.CommandText = $@"
+            var sql = $@"
 INSERT 
-INTO public.bbl_user_stats (
-                              uid, 
-                              overall_playcount, 
-                              overall_score, 
-                              overall_accuracy, 
-                              overall_combo, 
-                              overall_xs, 
-                              overall_ss, 
-                              overall_s, 
-                              overall_a, 
-                              overall_b, 
-                              overall_c, 
-                              overall_d, 
-                              overall_hits, 
-                              overall_300, 
-                              overall_100, 
-                              overall_50, 
-                              overall_geki, 
-                              overall_katu, 
-                              overall_miss, 
-                              overall_xss) 
+INTO public.UserStats (
+                              UserId, 
+                              OverallPlaycount, 
+                              OverallScore, 
+                              OverallAccuracy, 
+                              OverallCombo, 
+                              OverallXs, 
+                              OverallSs, 
+                              OverallS, 
+                              OverallA, 
+                              OverallB, 
+                              OverallC, 
+                              OverallD, 
+                              OverallHits, 
+                              Overall300, 
+                              Overall100, 
+                              Overall50, 
+                              OverallGeki, 
+                              OverallKatu, 
+                              OverallMiss, 
+                              OverallXss) 
 VALUES (
-    {userStats.Uid},
+    {userStats.UserId},
     {userStats.OverallPlaycount},
     {userStats.OverallScore},
     {userStats.OverallAccuracy},
@@ -346,23 +342,20 @@ VALUES (
     {userStats.OverallMiss},
     {userStats.OverallXss}      
 )";
-            await com.ExecuteNonQueryAsync(token);
+            await db.QueryAsync(sql);
         }
     }
 
-    private static void InsertAllUsers(NpgsqlConnection db, BblUser[] users) {
-        var batch = db.CreateBatch();
-        foreach (var user in users) {
-            batch.BatchCommands.Add(new NpgsqlBatchCommand {
-                CommandText = @"
-Insert Into public.bbl_user (id, username, password, email, deviceid, regist_time, last_login_time, latest_ip, region, active, banned, restrict_mode, username_last_change, patron_email, patron_email_accept) 
+    private static async Task InsertAllUsers(NpgsqlConnection db, UserInfo[] users) {
+        await db.SafeQueryAsync(@"
+Insert Into public.UserInfo (UserId, Username, Password, Email, DeviceId, RegisterTime, LastLoginTime, LatestIp, region, active, banned, RestrictMode, UsernameLastChange, PatronEmail, PatronEmailAccept)
 VALUES (
-        @Id, 
+        @UserId, 
         @Username, 
         @Password, 
         @Email, 
-        @Deviceid, 
-        @RegistTime, 
+        @DeviceId, 
+        @RegisterTime, 
         @LastLoginTime, 
         @LatestIp, 
         @Region, 
@@ -372,55 +365,26 @@ VALUES (
         @UsernameLastChange, 
         @PatronEmail, 
         @PatronEmailAccept)
-",
-                Parameters = {
-                    new NpgsqlParameter { Value = user.Id, DbType = DbType.Int64, ParameterName = "Id" },
-                    new NpgsqlParameter { Value = user.Username, DbType = DbType.String, ParameterName = "Username" },
-                    new NpgsqlParameter { Value = user.Password, DbType = DbType.String, ParameterName = "Password" },
-                    new NpgsqlParameter { Value = user.Email, DbType = DbType.String, ParameterName = "Email" },
-                    new NpgsqlParameter { Value = user.Deviceid, DbType = DbType.String, ParameterName = "Deviceid" },
-                    new NpgsqlParameter
-                        { Value = user.RegistTime, DbType = DbType.DateTime, ParameterName = "RegistTime" },
-                    new NpgsqlParameter
-                        { Value = user.LastLoginTime, DbType = DbType.DateTime, ParameterName = "LastLoginTime" },
-                    new NpgsqlParameter { Value = user.LatestIp, DbType = DbType.String, ParameterName = "LatestIp" },
-                    new NpgsqlParameter { Value = user.Region, DbType = DbType.String, ParameterName = "Region" },
-                    new NpgsqlParameter { Value = user.Active, DbType = DbType.Boolean, ParameterName = "Active" },
-                    new NpgsqlParameter { Value = user.Banned, DbType = DbType.Boolean, ParameterName = "Banned" },
-                    new NpgsqlParameter
-                        { Value = user.RestrictMode, DbType = DbType.Boolean, ParameterName = "RestrictMode" },
-                    new NpgsqlParameter {
-                        Value = user.UsernameLastChange, DbType = DbType.DateTime, ParameterName = "UsernameLastChange"
-                    },
-                    new NpgsqlParameter {
-                        Value = DBNull.Value, DbType = DbType.String, ParameterName = "PatronEmail", IsNullable = true
-                    },
-                    new NpgsqlParameter
-                        { Value = user.PatronEmailAccept, DbType = DbType.Boolean, ParameterName = "PatronEmailAccept" }
-                }
-            });
-        }
-
-        batch.ExecuteNonQuery();
+", users);
     }
     
-    private static async ValueTask SingleTransfer(BblUser user, CancellationToken token) {
+    private static async ValueTask SingleTransfer(UserInfo userInfo, CancellationToken token) {
         try {
-            var box = new StrongBox<BblScore[]?>(default);
-            box.Value = await GetOldScoresByUserId(user.Id);
+            var box = new StrongBox<PlayScore[]?>(default);
+            box.Value = await GetOldScoresByUserId(userInfo.UserId);
             
             if (box.Value is null || box.Value.Length <= 0) {
-                WriteLine($"User id: {user.Id} Finish");
+                WriteLine($"User id: {userInfo.UserId} Finish");
                 return;
             }
         
-            using var db = DbBuilder.BuildPostSqlAndOpen();
+            await using var db = await DbBuilder.BuildNpgsqlConnection();
             
             var resultErr = await InsertScores(box.Value);
             if (resultErr == EResult.Err)
                 throw new Exception(resultErr.Err() + "\n\n");
             
-            WriteLine($"User id: {user.Id} Finish");
+            WriteLine($"User id: {userInfo.UserId} Finish");
         }
         catch (Exception e) {
             WriteLine(e);
@@ -430,97 +394,58 @@ VALUES (
         }
     }
 
-    private static async Task<ResultErr<string>> InsertScores(BblScore[] scores) {
-        await using var db = DbBuilder.BuildNpgsqlConnection();
+    private static async Task<ResultErr<string>> InsertScores(PlayScore[] scores) {
+        await using var db = await DbBuilder.BuildNpgsqlConnection();
 
-        await using var batchScore = db.CreateBatch();
-        foreach (var score in scores) { 
-            var ins = new NpgsqlBatchCommand { 
-                CommandText = @"
-Insert Into public.bbl_score (id, uid, filename, hash, mode, score, combo, mark, geki, perfect, katu, good, bad, miss, date, accuracy) 
+        return await db.SafeQueryAsync(@"
+Insert Into public.PlayScore (PlayScoreId, UserId, Filename, Hash, Mode, Score, Combo, Mark, Geki, Perfect, Katu, Good, Bad, Miss, Date, Accuracy) 
 VALUES (
-        @id, 
-        @uid, 
-        @filename, 
-        @hash,
-        @mode,
-        @score,
-        @combo,
-        @mark,
-        @geki,
-        @perfect,
-        @katu,
-        @good,
-        @bad,
-        @miss,
-        @date,
-        @accuracy)
-",
-                Parameters = {
-                    new NpgsqlParameter { Value = score.Id, DbType = DbType.Int64, ParameterName = "id" },
-                    new NpgsqlParameter { Value = score.Uid, DbType = DbType.Int64, ParameterName = "uid" },
-                    new NpgsqlParameter
-                        { Value = score.Filename, DbType = DbType.String, ParameterName = "filename" },
-                    new NpgsqlParameter { Value = score.Hash, DbType = DbType.String, ParameterName = "hash" },
-                    new NpgsqlParameter { Value = score.Mode, DbType = DbType.String, ParameterName = "mode" },
-                    new NpgsqlParameter { Value = score.Score, DbType = DbType.Int64, ParameterName = "score" },
-                    new NpgsqlParameter { Value = score.Combo, DbType = DbType.Int64, ParameterName = "combo" },
-                    new NpgsqlParameter { Value = score.Mark, DbType = DbType.String, ParameterName = "mark" },
-                    new NpgsqlParameter { Value = score.Geki, DbType = DbType.Int64, ParameterName = "geki" },
-                    new NpgsqlParameter
-                        { Value = score.Perfect, DbType = DbType.Int64, ParameterName = "perfect" },
-                    new NpgsqlParameter { Value = score.Katu, DbType = DbType.Int64, ParameterName = "katu" },
-                    new NpgsqlParameter { Value = score.Good, DbType = DbType.Int64, ParameterName = "good" },
-                    new NpgsqlParameter { Value = score.Bad, DbType = DbType.Int64, ParameterName = "bad" },
-                    new NpgsqlParameter { Value = score.Miss, DbType = DbType.Int64, ParameterName = "miss" },
-                    new NpgsqlParameter
-                        { Value = score.Date, DbType = DbType.DateTime, ParameterName = "date" },
-                    new NpgsqlParameter
-                        { Value = score.Accuracy, DbType = DbType.Int64, ParameterName = "accuracy" }
-                   }
-            };
-            batchScore.BatchCommands.Add(ins);
-        }
-        
-        try {
-            await batchScore.ExecuteNonQueryAsync(); 
-            return ResultErr<string>.Ok();
-        }
-        
-        catch (Exception e) {
-            return ResultErr<string>.Err(e.ToString());
-        }
+        @PlayScoreId, 
+        @UserId, 
+        @Filename, 
+        @Hash,
+        @Mode,
+        @Score,
+        @Combo,
+        @Mark,
+        @Geki,
+        @Perfect,
+        @Katu,
+        @Good,
+        @Bad,
+        @Miss,
+        @Date,
+        @Accuracy)
+", scores);
     }
 
     private static bool IsNullOrEmptyOrNULLOrNullOrWhitespace(string? value)
         => value is null || value.Trim() is "" or " " or "NULL" or "null";
     
-    private async Task<BblUser[]> GetBblUser() {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        var bblUsersOld = (await db.FetchAsync<bbl_user>($"SELECT * FROM {Env.OldDatabase}.bbl_user")).OkOr(new());
-
-         
+    private async Task<UserInfo[]> GetBblUser() {
+        await using var db = await DbBuilder.BuildNpgsqlConnection();
+        var bblUsersOld = (await db.QueryAsync<bbl_user>($"SELECT * FROM {Env.OldDatabase}.bbl_user")).ToList();
+                
         
         for (var i = bblUsersOld.Count - 1; i >= 0; i--) {
             var singleUser = bblUsersOld[i];
 
-            if (IsNullOrEmptyOrNULLOrNullOrWhitespace(singleUser.Email) 
-                || IsNullOrEmptyOrNULLOrNullOrWhitespace(singleUser.Password)
-                || IsNullOrEmptyOrNULLOrNullOrWhitespace(singleUser.Username)
-                || singleUser.Id < 0) {
+            if (IsNullOrEmptyOrNULLOrNullOrWhitespace(singleUser.email) 
+                || IsNullOrEmptyOrNULLOrNullOrWhitespace(singleUser.password)
+                || IsNullOrEmptyOrNULLOrNullOrWhitespace(singleUser.username)
+                || singleUser.id < 0) {
                 bblUsersOld.RemoveAt(i);
                 continue;
             }
 
-            singleUser.Password = singleUser.Password!.Trim();
-            singleUser.Username = singleUser.Username!.Trim();
-            singleUser.Email = singleUser.Email!.Trim();
+            singleUser.password = singleUser.password!.Trim();
+            singleUser.username = singleUser.username!.Trim();
+            singleUser.email = singleUser.email!.Trim();
         }
 
-        IEnumerable<BblUser> RemoveAllEqEmails(IEnumerable<BblUser> enumerable) {
-            
-            var dictionary = new Dictionary<string, BblUser>(128000);
-            foreach (var bblUser in enumerable.OrderBy(x => x.Id)) {
+        IEnumerable<UserInfo> RemoveAllEqEmails(System.Collections.Generic.IEnumerable<UserInfo> enumerable) {
+            var dictionary = new Dictionary<string, UserInfo>(128000);
+            foreach (var bblUser in enumerable.OrderBy(x => x.UserId)) {
                 if (dictionary.ContainsKey(bblUser.Email!))
                     continue;
                 dictionary[bblUser.Email!] = bblUser;
@@ -529,9 +454,9 @@ VALUES (
             return dictionary.Select(x => x.Value);
         }
         
-        IEnumerable<BblUser> RemoveAllEqUsername(IEnumerable<BblUser> enumerable) {
-            var dictionary = new Dictionary<string, BblUser>(128000);
-            foreach (var bblUser in enumerable.OrderBy(x => x.Id)) {
+        IEnumerable<UserInfo> RemoveAllEqUsername(System.Collections.Generic.IEnumerable<UserInfo> enumerable) {
+            var dictionary = new Dictionary<string, UserInfo>(128000);
+            foreach (var bblUser in enumerable.OrderBy(x => x.UserId)) {
                 if (dictionary.ContainsKey(bblUser.Username!))
                     continue;
                 dictionary[bblUser.Email!] = bblUser;
@@ -540,42 +465,42 @@ VALUES (
             return dictionary.Select(x => x.Value);
         }
         
-        var bblUsers = bblUsersOld.Select(bblUser => new BblUser {
-            Active = bblUser.Active == 1,
-            Banned = bblUser.Banned == 1,
-            Deviceid = "",
-            Email = bblUser.Email,
-            Id = bblUser.Id,
-            Password = bblUser.Password,
-            Region = (bblUser.Region ?? "").ToUpper(),
-            Username = bblUser.Username,
+        var bblUsers = bblUsersOld.Select(bblUser => new UserInfo {
+            Active = bblUser.active == 1,
+            Banned = bblUser.banned == 1,
+            DeviceId = "",
+            Email = bblUser.email,
+            UserId = bblUser.id,
+            Password = bblUser.password,
+            Region = (bblUser.region ?? "").ToUpper(),
+            Username = bblUser.username,
             PatronEmail = null,
-            LatestIp = bblUser.RegistIp ?? "",
-            RegistTime = DateTime.SpecifyKind(bblUser.RegistTime, DateTimeKind.Utc),
+            LatestIp = bblUser.regist_ip ?? "",
+            RegisterTime = DateTime.SpecifyKind(bblUser.regist_time, DateTimeKind.Utc),
             RestrictMode = false,
-            LastLoginTime = DateTime.SpecifyKind(bblUser.LastLoginTime, DateTimeKind.Utc),
+            LastLoginTime = DateTime.SpecifyKind(bblUser.last_login_time, DateTimeKind.Utc),
             PatronEmailAccept = false,
-            UsernameLastChange = DateTime.SpecifyKind(bblUser.RegistTime, DateTimeKind.Utc)
+            UsernameLastChange = DateTime.SpecifyKind(bblUser.regist_time, DateTimeKind.Utc)
         });
         
         return RemoveAllEqUsername(RemoveAllEqEmails(bblUsers)).ToArray();
     }
 
-    private static async Task<BblScore[]?> GetOldScoresByUserId(long id) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
+    private static async Task<PlayScore[]?> GetOldScoresByUserId(long id) {
+        await using var db = await DbBuilder.BuildNpgsqlConnection();
         List<bbl_score> scores =
-            (await db.FetchAsync<bbl_score>($"SELECT * FROM {Env.OldDatabase}.bbl_score WHERE uid = {id}")).OkOr(new());
+            (await db.QueryAsync<bbl_score>($"SELECT * FROM {Env.OldDatabase}.bbl_score WHERE uid = {id}")).ToList();
 
         for (var i = scores.Count - 1; i >= 0; i--) {
             var score = scores[i];
-            if (score.Mode is null
-                || score.Mode.IndexOf("x", StringComparison.Ordinal) != -1
-                || score.Mode.IndexOf("AR", StringComparison.Ordinal) != -1
-                || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.Mark)
-                || score.Score <= 0
-                || score.Accuracy <= 0
-                || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.Hash)
-                || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.Filename)
+            if (score.mode is null
+                || score.mode.IndexOf("x", StringComparison.Ordinal) != -1 // TODO AR X
+                || score.mode.IndexOf("AR", StringComparison.Ordinal) != -1 // TODO AR X
+                || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.mark)
+                || score.score <= 0
+                || score.accuracy <= 0
+                || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.hash)
+                || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.filename)
                ) {
 
                 scores.RemoveAt(i);
@@ -583,75 +508,80 @@ VALUES (
         }
 
         foreach (var bblScore in scores) {
-            if (bblScore.Mode is null)
-                bblScore.Mode = "|";
-            if (bblScore.Mode.Length == 0)
-                bblScore.Mode = "|";
-            if (bblScore.Mode.IndexOf("-", StringComparison.Ordinal) != -1)
-                bblScore.Mode = "|";
-            if (bblScore.Mode[^1] != '|')
-                bblScore.Mode = "|";
+            if (bblScore.mode is null)
+                bblScore.mode = "|";
+            if (bblScore.mode.Length == 0)
+                bblScore.mode = "|";
+            if (bblScore.mode.IndexOf("-", StringComparison.Ordinal) != -1)
+                bblScore.mode = "|";
         }
 
-        var res = new BblScore[scores.Count];
+        var res = new PlayScore[scores.Count];
         for (var i = 0; i < scores.Count; i++) {
             var bblScore = scores[i];
 
-            res[i] = new BblScore {
-                Id = bblScore.Id,
-                Uid = bblScore.Uid,
-                Filename = bblScore.Filename,
-                Hash = bblScore.Hash,
-                Mode = bblScore.Mode,
-                Score = bblScore.Score,
-                Combo = bblScore.Combo,
-                Mark = bblScore.Mark,
-                Geki = bblScore.Geki,
-                Perfect = bblScore.Perfect,
-                Katu = bblScore.Katu,
-                Good = bblScore.Good,
-                Bad = bblScore.Bad,
-                Miss = bblScore.Miss,
-                Date = DateTime.SpecifyKind(bblScore.Date, DateTimeKind.Utc),
-                Accuracy = bblScore.Accuracy
+            static string[] ModeToArray(ReadOnlySpan<Char> mode) {
+                var res = new List<string>(4);
+
+                bool hasPipe = false;
+                int posi = 0;
+                for (int i = 0; i < mode.Length; i++) {
+                    char c = mode[i];
+                    if (c == '|') {
+                        hasPipe = true;
+                        posi = i + 1;
+                        break;
+                    }
+                    
+                    res.Add(c.ToString());
+                }
+
+                if (hasPipe && mode.Length >= posi) {
+                    var slice = mode.Slice(posi);
+                    if (slice[0] != 'x')
+                        throw new Exception("Must be start with 'x'");
+                    res.Add(new string(slice));
+                }
+                
+                return res.ToArray();
+            }
+            
+            res[i] = new PlayScore {
+                PlayScoreId = bblScore.id,
+                UserId = bblScore.uid,
+                Filename = bblScore.filename,
+                Hash = bblScore.hash,
+                Mode = ModeToArray(bblScore.mode),
+                Score = bblScore.score,
+                Combo = bblScore.combo,
+                Mark = bblScore.mark,
+                Geki = bblScore.geki,
+                Perfect = bblScore.perfect,
+                Katu = bblScore.katu,
+                Good = bblScore.good,
+                Bad = bblScore.bad,
+                Miss = bblScore.miss,
+                Date = DateTime.SpecifyKind(bblScore.date, DateTimeKind.Utc),
+                Accuracy = bblScore.accuracy
             };
         }
         
         return res;
     }
     
-    private static void RemoveAllRowsFromNewTables(NpgsqlConnection db) {
-        using var batch = db.CreateBatch();
-        NpgsqlCommand s;
-        // s = db.CreateCommand();
-        // s.CommandText = "DELETE FROM public.bbl_global_ranking_timeline";
-        // s.ExecuteNonQuery();
-        s = db.CreateCommand();
-        s.CommandText = "DELETE FROM public.bbl_patron";
-        s.ExecuteNonQuery();
-        s = db.CreateCommand();
-        s.CommandText = "DELETE FROM public.bbl_score";
-        s.ExecuteNonQuery();
-        s = db.CreateCommand();
-        s.CommandText = "DELETE FROM public.bbl_score_banned";
-        s.ExecuteNonQuery();
-        s = db.CreateCommand();
-        s.CommandText = "DELETE FROM public.bbl_score_pre_submit";
-        s.ExecuteNonQuery();
-        s = db.CreateCommand();
-        s.CommandText = "DELETE FROM public.bbl_user_stats";
-        s.ExecuteNonQuery();
-        s = db.CreateCommand();
-        s.CommandText = "DELETE FROM public.bbl_user";
-        s.CommandTimeout = 1024;
-        s.ExecuteNonQuery();
-        
-        batch.ExecuteNonQuery();
+    private static async Task RemoveAllRowsFromNewTables(NpgsqlConnection db) {
+        await db.QueryAsync("DELETE FROM public.Patron");
+        await db.QueryAsync("DELETE FROM public.PlayScore");
+        await db.QueryAsync("DELETE FROM public.PlayscoreBanned");
+        await db.QueryAsync("DELETE FROM public.PlayScorePreSubmit");
+        await db.QueryAsync("DELETE FROM public.UserStats");
+        await db.QueryAsync("DELETE FROM public.UserInfo");
+        await db.QueryAsync("DELETE FROM public.GlobalRankingTimeLine");
     }
 
-    private static BblUserStats CreateUserStats(long userId, BblScore[] listBblScores) {
-        var bblUserStats = new BblUserStats() {
-                Uid = userId,
+    private static UserStats CreateUserStats(long userId, PlayScore[] listBblScores) {
+        var bblUserStats = new UserStats() {
+                UserId = userId,
                 OverallPlaycount = 0,
                 OverallScore = 0,
                 OverallAccuracy = 0,
@@ -679,7 +609,7 @@ VALUES (
         }
             
                 
-        var dictionary = new Dictionary<string, BblScore>((listBblScores.Length + 1) / 2);
+        var dictionary = new Dictionary<string, PlayScore>((listBblScores.Length + 1) / 2);
                 
         foreach (var bblScore in listBblScores) {
             if (bblScore.Hash is null) continue;
@@ -699,18 +629,18 @@ VALUES (
             bblUserStats.OverallScore += bblScore.Score;
             bblUserStats.OverallAccuracy += bblScore.Accuracy;
             bblUserStats.OverallCombo += bblScore.Combo;
-            bblUserStats.OverallXss += bblScore.EqAsInt(BblScore.EMark.XSS);
-            bblUserStats.OverallSs += bblScore.EqAsInt(BblScore.EMark.SS);
-            bblUserStats.OverallXs += bblScore.EqAsInt(BblScore.EMark.XS);
-            bblUserStats.OverallS += bblScore.EqAsInt(BblScore.EMark.S);
-            bblUserStats.OverallA += bblScore.EqAsInt(BblScore.EMark.A);
-            bblUserStats.OverallB += bblScore.EqAsInt(BblScore.EMark.B);
-            bblUserStats.OverallC += bblScore.EqAsInt(BblScore.EMark.C);
-            bblUserStats.OverallD += bblScore.EqAsInt(BblScore.EMark.D);
-            bblUserStats.OverallHits += bblScore.GetValue(BblScore.EBblScore.Hits);
-            bblUserStats.Overall300 += bblScore.GetValue(BblScore.EBblScore.N300);
-            bblUserStats.Overall100 += bblScore.GetValue(BblScore.EBblScore.N100);
-            bblUserStats.Overall50 += bblScore.GetValue(BblScore.EBblScore.N50);
+            bblUserStats.OverallXss += bblScore.EqAsInt(PlayScore.EMark.XSS);
+            bblUserStats.OverallSs += bblScore.EqAsInt(PlayScore.EMark.SS);
+            bblUserStats.OverallXs += bblScore.EqAsInt(PlayScore.EMark.XS);
+            bblUserStats.OverallS += bblScore.EqAsInt(PlayScore.EMark.S);
+            bblUserStats.OverallA += bblScore.EqAsInt(PlayScore.EMark.A);
+            bblUserStats.OverallB += bblScore.EqAsInt(PlayScore.EMark.B);
+            bblUserStats.OverallC += bblScore.EqAsInt(PlayScore.EMark.C);
+            bblUserStats.OverallD += bblScore.EqAsInt(PlayScore.EMark.D);
+            bblUserStats.OverallHits += bblScore.GetValue(PlayScore.EBblScore.Hits);
+            bblUserStats.Overall300 += bblScore.GetValue(PlayScore.EBblScore.N300);
+            bblUserStats.Overall100 += bblScore.GetValue(PlayScore.EBblScore.N100);
+            bblUserStats.Overall50 += bblScore.GetValue(PlayScore.EBblScore.N50);
             bblUserStats.OverallGeki += bblScore.Geki;
             bblUserStats.OverallKatu += bblScore.Katu;
             bblUserStats.OverallMiss += bblScore.Miss;

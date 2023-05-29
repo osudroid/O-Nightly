@@ -9,8 +9,8 @@ public static class FullRecalcUserRankingTimeline {
     public static void Run(DateTime startDate) {
         var iter = startDate;
         var dates = new List<DateTime>();
-        var scoreMapKeyUser = new Dictionary<long, List<BblScore>>();
-        BblUser[] userList;
+        var scoreMapKeyUser = new Dictionary<long, List<PlayScore>>();
+        UserInfo[] userList;
         
         using (var mainDb = DbBuilder.BuildPostSqlAndOpen()) {
             WriteLine("Start FullRecalcUserRankingTimeline");
@@ -23,21 +23,21 @@ WHERE date >= '{dateStr}'
 
             WriteLine("Get ALl User");
             userList = CollectionsMarshal.AsSpan(
-                mainDb.Fetch<BblUser>(
+                mainDb.Fetch<UserInfo>(
                         "SELECT id, regist_time FROM public.bbl_user ORDER BY regist_time ASC")
                     .OkOrDefault() ??
-                new List<BblUser>(0)).ToArray();
+                new List<UserInfo>(0)).ToArray();
 
             
 
-            foreach (var bblUser in userList) scoreMapKeyUser.Add(bblUser.Id, new List<BblScore>(128));
+            foreach (var bblUser in userList) scoreMapKeyUser.Add(bblUser.UserId, new List<PlayScore>(128));
 
             WriteLine("Get ALl Score");
             foreach (var bblScore in CollectionsMarshal.AsSpan(
-                         mainDb.Fetch<BblScore>(
+                         mainDb.Fetch<PlayScore>(
                                  "SELECT id, hash, uid, score, date FROM public.bbl_score")
                              .OkOrDefault() ??
-                         new List<BblScore>(0))) {
+                         new List<PlayScore>(0))) {
                 if (!scoreMapKeyUser.TryGetValue(bblScore.Uid, out var list)) continue;
                 list.Add(bblScore);
             }
@@ -78,9 +78,9 @@ WHERE date >= '{dateStr}'
         Parallel.For(0, dates.Count, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount + 2 }, MultiIter);
     }
 
-    private static BblGlobalRankingTimeline[] GetFullRecalcUserRankingTimelineForThisDay(
-        Dictionary<long, List<BblScore>> anyScoresKeyUserId, Span<BblUser> users, DateTime end) {
-        static (long UserId, long Score) CalcScore(long userId, List<BblScore> bblScores, DateTime end) {
+    private static GlobalRankingTimeline[] GetFullRecalcUserRankingTimelineForThisDay(
+        Dictionary<long, List<PlayScore>> anyScoresKeyUserId, Span<UserInfo> users, DateTime end) {
+        static (long UserId, long Score) CalcScore(long userId, List<PlayScore> bblScores, DateTime end) {
             var scoreMapUser = new Dictionary<string, long>(32);
 
             foreach (var bblScore in bblScores) {
@@ -107,11 +107,11 @@ WHERE date >= '{dateStr}'
         var userAndScoreSumsList = new List<UserIdAndScoreSum>(users.Length);
 
         foreach (var bblUser in users) {
-            if (bblUser.RegistTime > end) continue;
+            if (bblUser.RegisterTime > end) continue;
 
-            if (anyScoresKeyUserId.TryGetValue(bblUser.Id, out var bblScores) == false) continue;
+            if (anyScoresKeyUserId.TryGetValue(bblUser.UserId, out var bblScores) == false) continue;
 
-            var (userId, score) = CalcScore(bblUser.Id, bblScores, end);
+            var (userId, score) = CalcScore(bblUser.UserId, bblScores, end);
             userAndScoreSumsList.Add(new UserIdAndScoreSum(userId, score));
         }
 
@@ -120,11 +120,11 @@ WHERE date >= '{dateStr}'
         Array.Sort(userAndScoreSumsArr,
             delegate(UserIdAndScoreSum x, UserIdAndScoreSum y) { return x.Score.CompareTo(y.Score); });
 
-        var res = new BblGlobalRankingTimeline[userAndScoreSumsArr.Length];
+        var res = new GlobalRankingTimeline[userAndScoreSumsArr.Length];
 
         for (var i = 0; i < res.Length; i++) {
             var v = userAndScoreSumsArr[i];
-            res[i] = new BblGlobalRankingTimeline {
+            res[i] = new GlobalRankingTimeline {
                 UserId = v.UserId,
                 Date = DateTime.SpecifyKind(end, DateTimeKind.Utc),
                 Score = v.Score,

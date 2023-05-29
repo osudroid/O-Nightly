@@ -1,0 +1,43 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  o_nightly-main:
+    build: ./
+    ports:
+      - "5001:5001"
+    volumes:
+      - "/etc/osu-droid:/etc/osu-droid"
+    depends_on:
+      - o_nightly_db_postgres
+    networks:
+      o_nightly_net:
+  o_nightly_service_cleaner:
+    build: ./OsuDroidServiceCleaner
+    depends_on:
+      - o_nightly_db_postgres
+
+  o_nightly_service_patreon:
+    build: ./OsuiDroidServicePatreon
+    depends_on:
+      - o_nightly_db_postgres
+
+  o_nightly_service_timeline:
+    build: ./OsuDroidServiceRankingTimeline
+    depends_on:
+      - o_nightly_db_postgres
+
+  o_nightly_db_postgres:
+    image: postgres:15.1-alpine
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - store_db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    networks:
+      o_nightly_net:
+        
+networks:
+  o_nightly_net:
+    driver: bridge

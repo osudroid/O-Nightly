@@ -1,4 +1,5 @@
-using NPoco;
+using Dapper;
+using OsuDroidLib.Extension;
 
 namespace OsuDroidServiceCleaner;
 
@@ -9,12 +10,15 @@ public static class Service {
 
     public static Result<ServiceState, string> RunClean(ServiceState state) {
         WriteLine("Start Clean");
-        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var dbTask = DbBuilder.BuildNpgsqlConnection();
+        dbTask.Wait();
+        var db = dbTask.Result;
+        
         try {
-            return db.Execute(new Sql(@"
-DELETE FROM bbl_score_pre_submit 
-       WHERE date < @0 
-", DateTime.UtcNow - TimeSpan.FromDays(1))).Map(x => state);
+            var sql = @"DELETE FROM PlayScorePreSubmit WHERE date < @Time";
+            var task = db.SafeQueryAsync(sql, new {Time = DateTime.UtcNow - TimeSpan.FromDays(1)});
+            task.Wait();
+            return task.Result.Map(x => state);
         }
         finally {
             WriteLine("Finish Clean");

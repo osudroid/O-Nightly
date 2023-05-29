@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
+using OsuDroidLib.Extension;
 
 namespace OsuDroid.Lib;
 
@@ -17,71 +17,80 @@ public interface ICookieHandler {
 }
 
 public class PrivilegeMiddleware {
-    public record RouteInfo(Guid NeedPrilegeId, string NeedPrilegeName, bool NeedCookie, Option<ICookieHandler> CookieHandler);
+    public record RouteInfo(Guid NeedPrilegeId, string NeedPrivileName, bool NeedCookie, Option<ICookieHandler> CookieHandler);
     
     private static IReadOnlyDictionary<string, ICookieHandler> CookieHandlers = new Dictionary<string, ICookieHandler>(1);
     private static IReadOnlyDictionary<string, RouteInfo> NeedPrivilegeDic = new Dictionary<string, RouteInfo>(1);
     
     private readonly RequestDelegate _next;
     
-    public static void Load(IReadOnlyList<ICookieHandler> cookieHandlerList) {
+    public static async Task Load(IReadOnlyList<ICookieHandler> cookieHandlerList) {
         var cookieHandlers = new Dictionary<string, ICookieHandler>(cookieHandlerList.Count * 2);
         foreach (var cookieHandler in cookieHandlerList) {
             cookieHandlers[cookieHandler.Name] = cookieHandler;
         }
-
+    
         CookieHandlers = cookieHandlers;
         
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-
-        var result = db.Fetch<Entities.RouterSetting>("SELECT * FROM router_setting");
+        await using var db = await DbBuilder.BuildNpgsqlConnection();
+    
+        var result = await db.SafeQueryAsync<Entities.RouterSetting>("SELECT * FROM RouterSetting");
         if (result == EResult.Err)
             throw new Exception(result.Err());
-        var routerSettings = result.Ok();
-
+        var routerSettings = result.Ok().ToList();
+    
         var newMap = new Dictionary<string, RouteInfo>(routerSettings.Count * 2);
         foreach (var routerSetting in routerSettings) {
-            var fetchResult = db.SingleOrDefault<Entities.NeedPrivilege>("SELECT * FROM need_privilege WHERE need_privilege_id = @0", routerSetting.NeedPrivilege);
+            var fetchResult = await db.SafeQueryFirstOrDefaultAsync<Entities.NeedPrivilege>(
+                "SELECT * FROM NeedPrivilege WHERE NeedPrivilegeId = @NeedPrivilegeId", 
+                new { NeedPrivilegeId = routerSetting.NeedPrivilege }
+                );
+            
             if (newMap.ContainsKey(routerSetting.Path ?? ""))
                 throw new Exception("Key Exist In NeedPrivilegeMap");
-            if (fetchResult == EResult.Err || fetchResult.Ok() == null)
+            if (fetchResult == EResult.Err || fetchResult.Ok().IsNotSet())
                 throw new Exception("NeedPrivilege Not Found");
-
-            var needPrivilege = fetchResult.Ok();
-            Option<ICookieHandler> cookieHandler = default;
-            if (cookieHandlers.ContainsKey(routerSetting.NeedCookieManager ?? ""))
-                cookieHandler = new Option<ICookieHandler>(cookieHandlers[routerSetting.NeedCookieManager??""]);
+    
+            var needPrivilege = fetchResult.Ok().Unwrap();
+            Option<ICookieHandler> cookieHandler = Option<ICookieHandler>.Empty;
+            
+            if (cookieHandlers.ContainsKey(routerSetting.NeedCookieHandler ?? ""))
+                cookieHandler = new Option<ICookieHandler>(cookieHandlers[routerSetting.NeedCookieHandler??""]);
             
             newMap[routerSetting.Path!] = new(needPrivilege.NeedPrivilegeId, needPrivilege.Name??"", routerSetting.NeedCookie, cookieHandler);
         }
-
+    
         NeedPrivilegeDic = newMap;
     }
     
-    public PrivilegeMiddleware(RequestDelegate next)
-    {
-        _next = next;
-    }
+    public PrivilegeMiddleware(RequestDelegate next) => _next = next;
 
     public async Task InvokeAsync(HttpContext context) {
-        var endpoint = context.Features.Get<IEndpointFeature>()?.Endpoint;
-        var attribute = endpoint?.Metadata.GetMetadata<PrivilegeRouteAttribute>();
-        
-        if (NeedPrivilegeDic.TryGetValue(attribute.Route, out var routeInfo) == false) {
+        Endpoint? endpoint = context.Features.Get<IEndpointFeature>()?.Endpoint;
+        PrivilegeRouteAttribute? attribute = endpoint?.Metadata.GetMetadata<PrivilegeRouteAttribute>();
+
+        if (attribute is null) throw new NullReferenceException(nameof(attribute));
+
+        var checkResult = CheckIfNeedCookie(attribute);
+        if (checkResult.routeInfo.IsSet() == false) {
             context.Response.StatusCode = 404;
             return;
         }
-
-        if (routeInfo!.NeedCookie == false) {
+        
+        if (checkResult.needCookie == false) {
             await _next.Invoke(context);
             return;
         }
 
-
+        RouteInfo routeInfo = checkResult.routeInfo.Unwrap();
+        
         if (routeInfo.CookieHandler.IsSet())
             throw new NullReferenceException("CookieHandler Not Set");
 
-        await _next.Invoke(context);
+        await InvokeAsyncWithCookie(context, routeInfo);
+    }
+
+    private async Task InvokeAsyncWithCookie(HttpContext context, RouteInfo routeInfo) {
         var result = routeInfo.CookieHandler.Unwrap().HandleCookie(
             context.Request.Cookies,
             context.Response.Cookies);
@@ -94,7 +103,7 @@ public class PrivilegeMiddleware {
             return;
         }
 
-        await using var db = DbBuilder.BuildNpgsqlConnection();
+        await using var db = await DbBuilder.BuildNpgsqlConnection();
         var resultPrivilegeOk = OsuDroid.Lib.PrivilegeManager.UserCanUseById(db, routeInfo.NeedPrilegeId, result.Ok().UserId);
 
         if (resultPrivilegeOk == EResult.Err)
@@ -109,13 +118,19 @@ public class PrivilegeMiddleware {
         }
         
         await _next(context);
-    } 
+    }
+    
+    private static (bool needCookie, Option<RouteInfo> routeInfo) CheckIfNeedCookie(PrivilegeRouteAttribute attribute) {
+        return NeedPrivilegeDic.TryGetValue(attribute.Route, out RouteInfo? routeInfo) == false 
+            ? (false, Option<RouteInfo>.Empty) 
+            : (true, Option<RouteInfo>.With(routeInfo));
+    }
 }
 
 public static class PrivilegeMiddlewareExtensions
 {
     public static IApplicationBuilder UsePrivilege(this IApplicationBuilder builder, IReadOnlyList<ICookieHandler> cookieHandler) {
-        PrivilegeMiddleware.Load(cookieHandler);
+        PrivilegeMiddleware.Load(cookieHandler).Wait();
         return builder.UseMiddleware<PrivilegeMiddleware>();
     }
 }

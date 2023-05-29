@@ -1,11 +1,13 @@
+using Dapper;
 using LamLogger;
-using NPoco;
+using Npgsql;
+using OsuDroidLib.Extension;
 
 namespace OsuDroidLib; 
 
 public static class Log {
     private static bool _settingsSet = false;
-    public static LamLogger.LamLog GetLog(SavePoco savePoco) {
+    public static LamLogger.LamLog GetLog(NpgsqlConnection savePoco) {
         if (_settingsSet == false) {
             LamLogger.LamLog.Settings = new LamLogSettings() {
                 DbTable = Env.LogInDbName,
@@ -26,18 +28,19 @@ public static class Log {
 
             foreach (var log in tables) {
                 try {
-                    var sql = new Sql(@$"
+                    var sql = @$"
 INSERT INTO {Env.LogInDbName} 
-    (id, date_time, message, status, stack, trigger)
-VALUES ('{log.DateUuid.ToString()}', @0, @1, @2, @3, @4)
-",
-                        DateTime.SpecifyKind(log.DateTime, DateTimeKind.Utc), 
-                        log.Message??"", 
-                        log.Status.ToString(), 
-                        log.Stack.Or(""), 
-                        log.Trigger??"");
-
-                    await db.ExecuteAsync(sql);
+    (Id, DateTime, Message, Status, Stack, Trigger)
+VALUES ('{log.DateUuid.ToString()}', @DateTime, @Message, @Status, @Stack, @Trigger)
+";
+                    
+                    await db.QueryAsync(sql, new {
+                        DateTime = DateTime.SpecifyKind(log.DateTime, DateTimeKind.Utc),
+                        Message = log.Message ?? "",
+                        Status = log.Status.ToString(),
+                        Stack = log.Stack.Or(""),
+                        Trigger = log.Trigger ?? ""
+                    });
                 }
                 catch (Exception e) {
                     WriteLine(e);

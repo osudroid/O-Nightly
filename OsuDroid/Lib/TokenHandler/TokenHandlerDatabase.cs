@@ -18,7 +18,7 @@ public class TokenHandlerDatabase : ITokenHandlerDb {
     public TimeSpan LifeSpanToken { get; set; }
 
     public Result<List<TokenInfoWithGuid>, string> GetAll(SavePoco db) {
-        return db.Fetch<BblTokenUser>("SELECT * FROM bbl_token_user")
+        return db.Fetch<TokenUser>("SELECT * FROM bbl_token_user")
             .Map(x => x.Select(f => (TokenInfoWithGuid)f).ToList());
     }
 
@@ -65,7 +65,7 @@ FROM bbl_token_user
 WHERE token_id = @0
 ", token);
 
-        return db.FirstOrDefault<BblTokenUser>(sql)
+        return db.FirstOrDefault<TokenUser>(sql)
             .AndThen(user => {
                 if (user is null)
                     return Result<bool, string>.Ok(false);
@@ -75,7 +75,7 @@ WHERE token_id = @0
 
     public Result<Guid, string> Insert(SavePoco db, long userId) {
         var guid = Guid.NewGuid();
-        var result = db.Insert(new BblTokenUser {
+        var result = db.Insert(new TokenUser {
             UserId = userId,
             CreateDate = DateTime.UtcNow,
             TokenId = guid
@@ -99,7 +99,7 @@ WHERE token_id = @0
 
     public Result<Option<TokenInfo>, string> GetTokenInfo(SavePoco db, Guid token) {
         var sql = new Sql("SELECT * FROM bbl_token_user WHERE token_id = @0", token);
-        return db.Fetch<BblTokenUser>(sql).Map(x => {
+        return db.Fetch<TokenUser>(sql).Map(x => {
             if (x.Count == 0)
                 return Option<TokenInfo>.Empty;
             var s = ReturnOrDeleteIfDead(db, x[0]).Map(x => x.tokenInfo);
@@ -129,18 +129,18 @@ WHERE create_date <= '{Time.ToScyllaString(time)}'
         RemoveDeadTokenIfNextCleanDate(db);
     }
 
-    private bool IsDead(BblTokenUser bblTokenUser) {
-        return bblTokenUser.CreateDate.Add(LifeSpanToken) < DateTime.UtcNow;
+    private bool IsDead(TokenUser tokenUser) {
+        return tokenUser.CreateDate.Add(LifeSpanToken) < DateTime.UtcNow;
     }
 
-    private Result<(bool Delete, TokenInfo tokenInfo), string> ReturnOrDeleteIfDead(SavePoco db, BblTokenUser bblTokenUser) {
-        if (IsDead(bblTokenUser)) {
+    private Result<(bool Delete, TokenInfo tokenInfo), string> ReturnOrDeleteIfDead(SavePoco db, TokenUser tokenUser) {
+        if (IsDead(tokenUser)) {
             return db.Execute(@"
 DELETE FROM bbl_token_user
 WHERE token_id = @0
-", bblTokenUser.TokenId).Map(x => (true, (TokenInfo)bblTokenUser));
+", tokenUser.TokenId).Map(x => (true, (TokenInfo)tokenUser));
         }
 
-        return Result<(bool Delete, TokenInfo tokenInfo), string>.Ok((false, (TokenInfo)bblTokenUser));
+        return Result<(bool Delete, TokenInfo tokenInfo), string>.Ok((false, (TokenInfo)tokenUser));
     }
 }

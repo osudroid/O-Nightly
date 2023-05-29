@@ -3,22 +3,22 @@ using OsuDroidLib.Database.Entities;
 namespace OsuDroid.Model;
 
 public static class Submit {
-    public static Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string> InsertFinishPlayAndUpdateUserScore(
+    public static Result<Option<(UserStats userStats, long BestPlayScoreId)>, string> InsertFinishPlayAndUpdateUserScore(
         long userId, ScoreProp prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
 
-        var resultHistory = BblScorePreSubmit.GetById(db, prop.Id);
+        var resultHistory = PlayScorePreSubmit.GetById(db, prop.Id);
         if (resultHistory == EResult.Err)
-            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err(resultHistory.Err());
+            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultHistory.Err());
 
         var optionHistory = resultHistory.Ok();
         if (optionHistory.IsSet() == false)
-            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>
-                .Ok(Option<(BblUserStats userStats, long BestPlayScoreId)>.Empty);
+            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
+                .Ok(Option<(UserStats userStats, long BestPlayScoreId)>.Empty);
 
         var history = optionHistory.Unwrap();
         
-        var newScoreInsert = new BblScore {
+        var newScoreInsert = new PlayScore {
             Id = history.Id,
             Uid = history.Uid,
             Filename = history.Filename,
@@ -37,59 +37,59 @@ public static class Submit {
             Accuracy = prop.Accuracy
         };
 
-        Result<BblUserStats, string> resultUserStats = SqlFunc.GetBblUserStatsByUserId(db, userId);
+        Result<UserStats, string> resultUserStats = SqlFunc.GetBblUserStatsByUserId(db, userId);
         if (resultUserStats == EResult.Err)
-            Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err(resultUserStats.Err());
+            Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultUserStats.Err());
         
         var userStats = resultUserStats.Ok();
         
         if (newScoreInsert.Mode == "AR")
-            Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err("FAIL");
+            Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err("FAIL");
 
         var resultErrInsert = SqlFunc.InsertBblScore(db, newScoreInsert);
         if (resultErrInsert == EResult.Err)
-            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err(resultErrInsert.Err());
+            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultErrInsert.Err());
 
-        var resultErrDb = db.Delete<BblScorePreSubmit>(newScoreInsert.Id);
+        var resultErrDb = db.Delete<PlayScorePreSubmit>(newScoreInsert.Id);
         if (resultErrDb == EResult.Err)
-            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err(resultErrDb.Err());
+            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultErrDb.Err());
 
-        var resultUserTopScore = BblScore.GetUserTopScore(db, history.Uid, history.Filename!, history.Hash!);
+        var resultUserTopScore = PlayScore.GetUserTopScore(db, history.Uid, history.Filename!, history.Hash!);
 
         if (resultUserTopScore == EResult.Err)
-            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>.Err(resultUserTopScore.Err());
+            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultUserTopScore.Err());
 
         var optionUserTopScore = resultUserTopScore.Ok();
         
         if (optionUserTopScore.IsSet() == false)
-            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>
-                .Ok(Option<(BblUserStats userStats, long BestPlayScoreId)>.Empty);
+            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
+                .Ok(Option<(UserStats userStats, long BestPlayScoreId)>.Empty);
         
         if (optionUserTopScore.IsSet()) {
             var userTopScore = optionUserTopScore.Unwrap();
             
             if (userTopScore.Score > newScoreInsert.Score)
-                return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>
-                    .Ok(Option<(BblUserStats userStats, long BestPlayScoreId)>
+                return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
+                    .Ok(Option<(UserStats userStats, long BestPlayScoreId)>
                         .With((
                             userStats,
                             userTopScore.Id
                         )));
 
-            BblUserStats.UpdateStatsFromScore(db, newScoreInsert.Uid, newScoreInsert, userTopScore);
+            UserStats.UpdateStatsFromScore(db, newScoreInsert.Uid, newScoreInsert, userTopScore);
 
-            return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>
-                .Ok(Option<(BblUserStats userStats, long BestPlayScoreId)>
+            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
+                .Ok(Option<(UserStats userStats, long BestPlayScoreId)>
                     .With((
                         SqlFunc.GetBblUserStatsByUserId(db, userId).Ok(),
                         newScoreInsert.Id
                     )));
         }
 
-        BblUserStats.UpdateStatsFromScore(db, newScoreInsert.Uid, newScoreInsert);
+        UserStats.UpdateStatsFromScore(db, newScoreInsert.Uid, newScoreInsert);
 
-        return Result<Option<(BblUserStats userStats, long BestPlayScoreId)>, string>
-            .Ok(Option<(BblUserStats userStats, long BestPlayScoreId)>
+        return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
+            .Ok(Option<(UserStats userStats, long BestPlayScoreId)>
                 .With((
                     SqlFunc.GetBblUserStatsByUserId(db, userId).Ok(),
                     newScoreInsert.Id
@@ -99,7 +99,7 @@ public static class Submit {
     public static Result<long, string> InsertPreBuildPlay(long userId, string filename, string fileHash) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
 
-        var idBblScorePreSubmit = BblScorePreSubmit
+        var idBblScorePreSubmit = PlayScorePreSubmit
             .PreAddScore(
                 db,
                 userId,

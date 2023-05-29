@@ -1,16 +1,14 @@
-using NPoco;
-
 namespace OsuDroidLib.Database.Entities;
 
 public class LeaderBoardUser {
-    [Column("rank_number")] public long Rank { get; set; }
-    [Column("id")] public long Id { get; set; }
-    [Column("username")] public string? Username { get; set; }
-    [Column("region")] public string? Region { get; set; }
-    [Column("overall_score")] public long OverallScore { get; set; }
-    [Column("overall_playcount")] public long OverallPlaycount { get; set; }
-    [Column("overall_ss")] public long OverallSs { get; set; }
-    [Column("overall_s")] public long OverallS { get; set; }
-    [Column("overall_a")] public long OverallA { get; set; }
-    [Column("overall_accuracy")] public long OverallAccuracy { get; set; }
+    public long RankNumber { get; set; }
+    public long UserId { get; set; }
+    public string? Username { get; set; }
+    public string? Region { get; set; }
+    public long OverallScore { get; set; }
+    public long OverallPlaycount { get; set; }
+    public long OverallSs { get; set; }
+    public long OverallS { get; set; }
+    public long OverallA { get; set; }
+    public long OverallAccuracy { get; set; }
 }

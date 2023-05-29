@@ -50,7 +50,7 @@ public class Api2Avatar : ControllerExtensions {
 
         if (size > 1000 || size < 1 || id < 1) return BadRequest();
 
-        var resp = log.AddResultAndTransform(db.Fetch<BblAvatarHash>(@$"
+        var resp = log.AddResultAndTransform(db.Fetch<Entities.UserAvatar>(@$"
 SELECT user_id, hash
 FROM bbl_avatar_hash
 WHERE size = {size}
@@ -74,7 +74,7 @@ AND user_id = {id}
         if (prop.ValuesAreGood() == false)
             return BadRequest();
 
-        var resp = log.AddResultAndTransform(db.Fetch<BblAvatarHash>(@$"
+        var resp = log.AddResultAndTransform(db.Fetch<Entities.UserAvatar>(@$"
 SELECT user_id, hash
 FROM bbl_avatar_hash
 WHERE size = {prop.Body!.Size}

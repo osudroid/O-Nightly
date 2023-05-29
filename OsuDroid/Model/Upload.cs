@@ -11,7 +11,7 @@ public static class Upload {
     ) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
 
-        var resultMap = SqlFunc.GetBblScoreByIdAndUserId(db, replayId, userId).Map(x => Option<BblScore>.NullSplit(x));
+        var resultMap = SqlFunc.GetBblScoreByIdAndUserId(db, replayId, userId).Map(x => Option<PlayScore>.NullSplit(x));
 
         if (resultMap == EResult.Err)
             return Result<ApiTypes.Work, string>.Err(resultMap.Err());
@@ -25,7 +25,7 @@ public static class Upload {
         
         var resultOldesMap = SqlFunc
             .GetBblScoreOldesByUserIdAndHash(db, userId, mapHash)
-            .Map(x => Option<BblScore>.NullSplit(x));
+            .Map(x => Option<PlayScore>.NullSplit(x));
 
         if (resultOldesMap == EResult.Err)
             return Result<ApiTypes.Work, string>.Err(resultOldesMap.Err());

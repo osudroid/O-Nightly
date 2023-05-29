@@ -6,25 +6,25 @@ public class OdrEntry {
     public int Version { get; set; }
     public OdrReplay? Replay { get; set; }
 
-    public static OdrEntry Factory(BblScore bblScore, string username) {
+    public static OdrEntry Factory(PlayScore playScore, string username) {
         return new OdrEntry {
             Version = 1,
             Replay = new OdrReplay {
-                Filename = bblScore.Filename,
+                Filename = playScore.Filename,
                 Playername = username,
-                Replayfile = $"{bblScore.Id}.odr",
-                Mod = bblScore.Mode,
-                Score = bblScore.Score,
-                Combo = bblScore.Combo,
-                Mark = bblScore.Mark,
-                H300k = bblScore.Geki,
-                H300 = bblScore.Perfect,
-                H100k = bblScore.Katu,
-                H100 = bblScore.Good,
-                H50 = bblScore.Bad,
-                Misses = bblScore.Miss,
-                Accuracy = bblScore.Accuracy,
-                Time = bblScore.Date.Ticks,
+                Replayfile = $"{playScore.Id}.odr",
+                Mod = playScore.Mode,
+                Score = playScore.Score,
+                Combo = playScore.Combo,
+                Mark = playScore.Mark,
+                H300k = playScore.Geki,
+                H300 = playScore.Perfect,
+                H100k = playScore.Katu,
+                H100 = playScore.Good,
+                H50 = playScore.Bad,
+                Misses = playScore.Miss,
+                Accuracy = playScore.Accuracy,
+                Time = playScore.Date.Ticks,
                 Perfect = 0
             }
         };

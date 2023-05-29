@@ -34,7 +34,7 @@ public class Api2Play : ControllerExtensions {
 
         log.AddLogDebug("PlayId: " + prop.Body!.PlayId);
         var optionRep = log.AddResultAndTransform(ScorePack.GetByPlayId(db, prop.Body!.PlayId))
-            .OkOr(Option<(BblScore Score, string Username, string Region)>.Empty);
+            .OkOr(Option<(PlayScore Score, string Username, string Region)>.Empty);
 
         if (optionRep.IsSet()) {
             log.AddLogDebug("PlayId Found");
@@ -55,7 +55,7 @@ public class Api2Play : ControllerExtensions {
     [HttpPost("/api2/play/recent")]
     [PrivilegeRoute(route: "/api2/play/recent")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.BblScoreWithUsername>>))]
+        Type = typeof(ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.PlayScoreWithUsername>>))]
     public async Task<IActionResult> GetRecentPlay([FromBody] ApiTypes.Api2GroundNoHeader<RecentPlays> prop) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
@@ -73,19 +73,19 @@ public class Api2Play : ControllerExtensions {
 
             if (await Task.WhenAny(repTask, Task.Delay(3000)) != repTask)
                 // timeout logic
-                return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.BblScoreWithUsername>> {
-                    Value = ArraySegment<PlayRecent.BblScoreWithUsername>.Empty,
+                return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.PlayScoreWithUsername>> {
+                    Value = ArraySegment<PlayRecent.PlayScoreWithUsername>.Empty,
                     ExistOrFound = false
                 });
             // task completed within timeout
-            return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.BblScoreWithUsername>> {
+            return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.PlayScoreWithUsername>> {
                 Value = repTask.Result,
                 ExistOrFound = true
             });
         }
         catch (Exception) {
-            return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.BblScoreWithUsername>> {
-                Value = ArraySegment<PlayRecent.BblScoreWithUsername>.Empty,
+            return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.PlayScoreWithUsername>> {
+                Value = ArraySegment<PlayRecent.PlayScoreWithUsername>.Empty,
                 ExistOrFound = false
             });
         }
@@ -177,7 +177,7 @@ public class Api2Play : ControllerExtensions {
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class PlayInfoById {
-        public BblScore? Score { get; set; }
+        public PlayScore? Score { get; set; }
         public string? Username { get; set; }
         public string? Region { get; set; }
     }

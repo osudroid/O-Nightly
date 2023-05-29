@@ -1,8 +1,10 @@
-using NPoco;
+using Dapper.Contrib.Extensions;
 
 namespace OsuDroidLib.Database.Entities;
+[Table("Privilege")]
 public class Privilege {
-    [Column("id")] public Guid Id { get; set; }
-    [Column("name")] public string? Name { get; set; }
-    [Column("description")] public string? Description { get; set; }
+    [ExplicitKey]
+    public Guid PrivilegeId { get; set; }
+    public string? Name { get; set; }
+    public string? Description { get; set; }
 }

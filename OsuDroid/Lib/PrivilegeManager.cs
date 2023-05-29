@@ -1,81 +1,18 @@
 using Dapper;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Npgsql;
 using OsuDroidLib.Dto;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Extension;
 
 namespace OsuDroid.Lib; 
 
 public static class PrivilegeManager {
-    public static Result<BblUserGroupPrivilegeDto, string> GetGroupPrivileges(NpgsqlConnection db, long userId) {
-        try {
-            var s = db.Query(@$"
-SELECT p.*, gpp.*, gp.* 
-FROM privilege p
-         join group_privilege_privilege gpp on p.id = gpp.privilege_id
-         join group_privilege gp on gpp.group_privilege_id = gp.id
-WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user_group_privilege WHERE user_id = {userId});
-").ToArray();
-        
-            BblUserGroupPrivilegeDto userDto = new BblUserGroupPrivilegeDto() {
-                UserId = 22578,
-                GroupPrivileges = new (2)
-            };
-            
-            foreach (var rowD in s) {
-                var row = ((IDictionary<string, Object>)rowD).Values.ToList();
-                var privilege = new Privilege() {
-                    Id = (Guid)row[0],
-                    Name = (string)row[1],
-                    Description = (string)row[2]
-                };
-            
-                var groupPrivilegePrivilege = new GroupPrivilegePrivilege() {
-                    GroupPrivilegeId = (Guid)row[3],
-                    ModeAllow = (bool)row[4],
-                    PrivilegeId = (Guid)row[5],
-                };
-                
-                var groupPrivilege = new GroupPrivilege() {
-                    Id = (Guid)row[6],
-                    Name = (string)row[7], 
-                    Description = (string)row[8] 
-                };
-            
-                GroupPrivilegeDto? groupPrivilegesDto;
-                if (userDto.GroupPrivileges.TryGetValue(groupPrivilege.Id, out groupPrivilegesDto) == false) {
-                    groupPrivilegesDto = new GroupPrivilegeDto() {
-                        Id = groupPrivilege.Id,
-                        Description = groupPrivilege.Description,
-                        Name = groupPrivilege.Name,
-                        Privileges = new(2)
-                    };
-            
-                    userDto.GroupPrivileges[groupPrivilege.Id] = groupPrivilegesDto;
-                }
-            
-                (bool ModeAllow, PrivilegeDto Privilege) privilegeDto = default;
-                if (groupPrivilegesDto.Privileges.TryGetValue(privilege.Id, out privilegeDto) == false) {
-                    privilegeDto = (groupPrivilegePrivilege.ModeAllow, new PrivilegeDto() {
-                        Id = privilege.Id,
-                        Description = privilege.Description,
-                        Name = privilege.Name
-                    });
-                    groupPrivilegesDto.Privileges[privilege.Id] = privilegeDto;
-                }
-            }
-            
-            return Result<BblUserGroupPrivilegeDto, string>.Ok(userDto);
-        }
-        catch (Exception e) {
-            return Result<BblUserGroupPrivilegeDto, string>.Err(e.ToString());
-        }
-    }
-
-    public static IReadOnlyDictionary<Guid, PrivilegeDto> GetAllAllowedPrivilegeFromGroupPrivilegeDto(BblUserGroupPrivilegeDto bblUserGroupPrivilegeDto) {
+    public static IReadOnlyDictionary<Guid, PrivilegeDto> GetAllAllowedPrivilegeFromGroupPrivilegeDto(UserGroupPrivilegeDto userGroupPrivilegeDto) {
         var mapAllow = new Dictionary<Guid, PrivilegeDto>(8);
         var mapDisallow = new Dictionary<Guid, PrivilegeDto>(8);
 
-        foreach (var (key, value) in bblUserGroupPrivilegeDto.GroupPrivileges) {
+        foreach (var (key, value) in userGroupPrivilegeDto.GroupPrivileges) {
             foreach (var (guid, (allow, privilegeDto)) in value.Privileges) {
                 if (allow) {
                     mapAllow[guid] = privilegeDto.CloneType();
@@ -107,13 +44,13 @@ WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user
     private static DateTime LastUpdate = DateTime.UtcNow;
     private static bool First = true;
     
-    public static Option<PrivilegeDto> UserHasPrivilegeByName(BblUserGroupPrivilegeDto privilegeDto, string name) {
+    public static Option<PrivilegeDto> UserHasPrivilegeByName(UserGroupPrivilegeDto privilegeDto, string name) {
         UpdateIfNeeded();
         AllPrivilegeByName.TryGetValue(name, out var res);
         return Option<PrivilegeDto>.NullSplit(res);
     }
     
-    public static Option<PrivilegeDto> UserHasPrivilegeById(BblUserGroupPrivilegeDto privilegeDto, Guid id) {
+    public static Option<PrivilegeDto> UserHasPrivilegeById(UserGroupPrivilegeDto privilegeDto, Guid id) {
         UpdateIfNeeded();
         AllPrivilegeById.TryGetValue(id, out var res);
         return Option<PrivilegeDto>.NullSplit(res);
@@ -130,23 +67,34 @@ WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user
             return;
         }
     }
-    public static void Update() {
-        if (Monitor.IsEntered(_lock)) return;
+    public static async Task<ResultErr<string>> Update() {
+        if (Monitor.IsEntered(_lock)) return ResultErr<string>.Ok();
         
         bool lockTaken = false;
         Monitor.Enter(_lock, ref lockTaken);
         if (lockTaken)
-            return;
+            return ResultErr<string>.Ok();
 
-        using (var db = DbBuilder.BuildPostSqlAndOpen()) {
-            var res = db.Fetch<Privilege>("SELECT * FROM privilege")
-                .OkOr(new())
-                .Select(x => new PrivilegeDto { Id = x.Id, Name = x.Name, Description = x.Description}).ToList();
+        await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
+            var result = (await db.SafeQueryAsync<Privilege>("SELECT * FROM privilege"))
+                    .Map(x => 
+                        x.Select(x => new PrivilegeDto {
+                                  Id = x.PrivilegeId, 
+                                  Name = x.Name, 
+                                  Description = x.Description
+                              }).ToList());
+
+            if (result == EResult.Err)
+                return result;
+
+            var res = result.Ok();
+            
             AllPrivilegeByName = res.ToDictionary(x => x.Name??"");
             AllPrivilegeById = res.ToDictionary(x => x.Id);
         }
         
         Monitor.Exit(lockTaken);
+        return ResultErr<string>.Ok();
     }
 
     public static Result<List<(string Name, Guid id, bool Has)>, string> UserCanUse(NpgsqlConnection db, string needPrivilege, long userId) {

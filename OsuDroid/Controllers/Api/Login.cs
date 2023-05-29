@@ -50,14 +50,14 @@ public sealed class Login : ControllerExtensions {
         if (prop.Math != tokenValue.MathValue1 + tokenValue.MathValue2)
             return Ok(new WebLoginRes { Work = false });
 
-        BblUser? fetchResult = log.AddResultAndTransform(db.SingleOrDefault<Entities.BblUser>(
+        UserInfo? fetchResult = log.AddResultAndTransform(db.SingleOrDefault<Entities.UserInfo>(
             "SELECT id, email, password FROM bbl_user WHERE email = @0 AND banned = false AND password = @1 LIMIT 1",
             prop.Email ?? "", this.ToPasswdHash(prop.Passwd ?? string.Empty))).OkOrDefault();
 
         if (fetchResult is null)
             return Ok(new WebLoginRes { Work = false });
 
-        var optionGuid = Option<Guid>.Trim(log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).Insert(db, fetchResult.Id)));
+        var optionGuid = Option<Guid>.Trim(log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).Insert(db, fetchResult.UserId)));
         if (optionGuid.IsSet() == false)
             return GetInternalServerError();
         AppendCookie(ECookie.LoginCookie, optionGuid.Unwrap().ToString());
@@ -98,14 +98,14 @@ public sealed class Login : ControllerExtensions {
 
 
         var passwdHash = this.ToPasswdHash(prop.Passwd ?? string.Empty);
-        var fetchResult = log.AddResultAndTransform(db.SingleOrDefault<Entities.BblUser>(
+        var fetchResult = log.AddResultAndTransform(db.SingleOrDefault<Entities.UserInfo>(
             "SELECT id, email, password FROM bbl_user WHERE lower(username) = @0 AND banned = false AND password = @1 LIMIT 1",
             (prop.Username ?? "").ToLower(), passwdHash)).OkOrDefault();
 
         if (fetchResult is null)
             return Ok(new WebLoginRes { Work = false });
 
-        var resultGuid = log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).Insert(db, fetchResult.Id));
+        var resultGuid = log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).Insert(db, fetchResult.UserId));
         if (resultGuid == EResult.Err)
             return GetInternalServerError();
         AppendCookie(ECookie.LoginCookie, resultGuid.Ok().ToString());
@@ -155,7 +155,7 @@ WHERE email = @0
 or lower(username) = @1
 ", value.Username.ToLower(), value.Email);
 
-        var userExist = log.AddResultAndTransform(db.SingleOrDefault<Entities.BblUser>(sql)).OkOrDefault();
+        var userExist = log.AddResultAndTransform(db.SingleOrDefault<Entities.UserInfo>(sql)).OkOrDefault();
         if (userExist is not null) {
             if (userExist.Username == value.Username)
                 return Ok(new WebLoginRes { UsernameExist = true });
@@ -170,22 +170,22 @@ or lower(username) = @1
 
 
         var optionCountry = CountryInfo.FindByName((IpInfo.Country(ip)?.Country.Name) ?? "");
-        var newUser = new Entities.BblUser {
+        var newUser = new Entities.UserInfo {
             Active = true,
             Banned = false,
-            Deviceid = "",
+            DeviceId = "",
             Email = value.Email,
             Password = this.ToPasswdHash(value.Passwd ?? string.Empty),
             Username = value.Username,
             Region = optionCountry.IsSet() ? optionCountry.Unwrap().NameShort: "",
             LatestIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
-            RegistTime = DateTime.UtcNow,
+            RegisterTime = DateTime.UtcNow,
             RestrictMode = false,
             LastLoginTime = DateTime.UtcNow,
             UsernameLastChange = DateTime.UtcNow
         };
         db.Insert(newUser);
-        newUser.Id = log.AddResultAndTransform(
+        newUser.UserId = log.AddResultAndTransform(
                 db.SingleOrDefault<long>("SELECT id FROM bbl_user WHERE username = @0", newUser.Username)).OkOrDefault();
         db.Execute("INSERT INTO bbl_user_stats (uid) VALUES ((SELECT id FROM bbl_user WHERE username = @0))",
             newUser.Username);
@@ -228,7 +228,7 @@ or lower(username) = @1
             return BadRequest();
         this.AppendCookie(ECookie.LoginCookie, f.Unwrap().ToString());
 
-        var dbResp = log.AddResultAndTransform(db.Single<Entities.BblUser>(@$"
+        var dbResp = log.AddResultAndTransform(db.Single<Entities.UserInfo>(@$"
 SELECT email, username FROM bbl_user
 WHERE id = {response.Unwrap().UserId}
 "));
@@ -299,14 +299,14 @@ WHERE username = @0
 LIMIT 1", prop.Username)
         };
 
-        var dbRes = log.AddResultAndTransform(db.SingleOrDefault<Entities.BblUser>(sql)).OkOrDefault();
+        var dbRes = log.AddResultAndTransform(db.SingleOrDefault<Entities.UserInfo>(sql)).OkOrDefault();
         if (dbRes is null)
             return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
 
         var token = RandomText.NextAZ09(16);
-        ResetPasswdTime[token] = (DateTime.UtcNow, dbRes.Id);
+        ResetPasswdTime[token] = (DateTime.UtcNow, dbRes.UserId);
 
-        SendEmail.MainSendResetEmail(dbRes.Id, dbRes.Username ?? "", dbRes.Email!, token);
+        SendEmail.MainSendResetEmail(dbRes.UserId, dbRes.Username ?? "", dbRes.Email!, token);
 
         return Ok(new ResetPasswdAndSendEmailRes { Work = true, TimeOut = false });
     }

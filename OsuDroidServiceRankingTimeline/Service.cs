@@ -1,4 +1,6 @@
+using Npgsql;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Extension;
 
 namespace OsuDroidServiceRankingTimeline;
 
@@ -9,33 +11,49 @@ public static class Service {
 
     public static Result<ServiceState, string> RunRankingTimeline(ServiceState state) {
         WriteLine("Start Calc New Ranking Timeline");
-        var db = DbBuilder.BuildPostSqlAndOpen();
+        var db = DbBuilder.BuildNpgsqlConnection();
         if (db is null)
             throw new NullReferenceException(nameof(db));
         WriteLine("Finish Calc New Ranking Timeline");
-        var resultErr = Run(db);
+        var task = Run(db);
+        task.Wait();
+        var resultErr = task.Result;
         return resultErr == EResult.Err 
             ? Result<ServiceState, string>.Err(resultErr.Err()) 
             : Result<ServiceState, string>.Ok(state);
     }
 
-    private static List<DateTime> GetCalcDays(SavePoco db) {
-        var lastTimeV = db.FirstOrDefault<BblGlobalRankingTimeline>(
-            "SELECT * FROM bbl_global_ranking_timeline ORDER BY date DESC LIMIT 1").OkOrDefault();
-        var firstScore = db.FirstOrDefault<BblScore>(
-            "SELECT * FROM bbl_score ORDER BY date ASC LIMIT 1").OkOrDefault();
+    private static async Task<List<DateTime>> GetCalcDays(NpgsqlConnection db) {
+        
+        var lastTimeVResult = await db.SafeQueryFirstOrDefaultAsync<GlobalRankingTimeline>(
+            "SELECT * FROM GlobalRankingTimeline ORDER BY date DESC LIMIT 1");
+        var firstScoreResult = await db.SafeQueryFirstOrDefaultAsync<PlayScore>(
+            "SELECT * FROM PlayScore ORDER BY date ASC LIMIT 1");
 
-        if (lastTimeV is null && firstScore is null) return new List<DateTime>(0);
+        if (lastTimeVResult == EResult.Err) {
+            WriteLine(lastTimeVResult.Err());
+            return new List<DateTime>(0);
+        }
+        
+        if (firstScoreResult == EResult.Err) {
+            WriteLine(lastTimeVResult.Err());
+            return new List<DateTime>(0);
+        }
 
+        var lastTimeVOption = lastTimeVResult.Ok();
+        var firstScoreOption = firstScoreResult.Ok();
+        
+        if (lastTimeVOption.IsNotSet() && firstScoreOption.IsNotSet()) return new List<DateTime>(0);
+        
         DateTime startDate;
 
-        if (lastTimeV is null) {
-            var scoreDate = firstScore!.Date;
+        if (lastTimeVOption.IsNotSet()) {
+            var scoreDate = firstScoreOption.Unwrap().Date;
             startDate = new DateTime(scoreDate.Year, scoreDate.Month, scoreDate.Day);
         }
 
         else {
-            var lastCalc = lastTimeV!.Date;
+            var lastCalc = lastTimeVOption.Unwrap().Date;
             startDate = new DateTime(lastCalc.Year, lastCalc.Month, lastCalc.Day + 1);
         }
 
@@ -54,10 +72,10 @@ public static class Service {
         return res;
     }
 
-    private static ResultErr<string> Run(SavePoco db) {
-        foreach (var dateTime in GetCalcDays(db)) {
+    private static async Task<ResultErr<string>> Run(NpgsqlConnection db) {
+        foreach (var dateTime in await GetCalcDays(db)) {
             WriteLine("( Start ) ADD New GlobalTimeLine For: " + Time.ToScyllaString(dateTime));
-            var response = CalcTableGlobalForThisDay(dateTime);
+            var response = await CalcTableGlobalForThisDay(dateTime);
             WriteLine("( END   ) ADD New GlobalTimeLine For: " + Time.ToScyllaString(dateTime));
             WriteLine($"Response Ok: {response == EResult.Err}");
             if (response == EResult.Err) {
@@ -69,33 +87,33 @@ public static class Service {
         return ResultErr<string>.Ok();
     }
 
-    private static ResultErr<string> CalcTableGlobalForThisDay(DateTime dateTime) {
+    private static async Task<ResultErr<string>> CalcTableGlobalForThisDay(DateTime dateTime) {
         try {
             var date = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
             using var db = DbBuilder.BuildNpgsqlConnection();
 
             var com = db.CreateCommand();
-
+            
             com.CommandText = @$"
-INSERT INTO bbl_global_ranking_timeline (user_id, date, global_ranking, score)
+INSERT INTO GlobalRankingTimeline (UserId, Date, GlobalRanking, Score)
 SELECT
-    uid as user_id,
-    '{Time.ToScyllaString(dateTime)}' As date,
-    rank() OVER (ORDER BY score_builder.score DESC, uid DESC) as global_ranking,
-    score_builder.score as score
+    UserId as UserId,
+    '{Time.ToScyllaString(dateTime)}' As Date,
+    rank() OVER (ORDER BY ScoreBuilder.Score DESC, UserId DESC) as global_ranking,
+    ScoreBuilder.score as score
 FROM (
-         SELECT sum(scores.score) as score, uid
+         SELECT sum(scores.score) as Score, UserId
          FROM (
-                  SELECT max(score) as score, uid
-                  FROM bbl_score
-                  WHERE date <= '{Time.ToScyllaString(dateTime)}'
-                  GROUP BY hash, uid
-              ) as scores
-         GROUP BY uid
-     ) score_builder
+                  SELECT max(score) as Score, UserId
+                  FROM PlayScore
+                  WHERE date <= '{Time.ToScyllaString(date)}'
+                  GROUP BY hash, UserId
+              ) as Scores
+         GROUP BY UserId
+     ) ScoreBuilder
 ORDER BY global_ranking;
 ";
-            com.ExecuteNonQuery();
+            await com.ExecuteNonQueryAsync();
         }
         catch (Exception e) {
             return ResultErr<string>.Err(e.ToString());

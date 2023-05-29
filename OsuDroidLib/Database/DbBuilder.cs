@@ -1,55 +1,13 @@
 using Npgsql;
-using NPoco;
 
 namespace OsuDroidLib.Database;
 
 public static class DbBuilder {
     public static string? NpgsqlConnectionString;
-
-    private static DatabaseFactory? DatabaseFactory;
-
-    private static void DatabaseFactoryBuild() {
-        DatabaseFactory = DatabaseFactory.Config(config => {
-            config.UsingDatabase(() => {
-                try {
-                    var db = new NPoco.Database(new NpgsqlConnection(NpgsqlConnectionString), DatabaseType.PostgreSQL);
-                    db.EnableAutoSelect = false;
-                    db.KeepConnectionAlive = false;
-                    db.Connection!.Open();
-                    return db;
-                }
-                catch (Exception e) {
-                    WriteLine(NpgsqlConnectionString);
-                    WriteLine(e);
-                    throw;
-                }
-            });
-        });
-    }
-
-    public static SavePoco BuildPostSqlAndOpen() {
-        return new(BuildPostSqlAndOpenNormalPoco());
-    }
     
-    public static NPoco.Database BuildPostSqlAndOpenNormalPoco() {
-        if (DatabaseFactory is null) DatabaseFactoryBuild();
-
-        var database = DatabaseFactory!.GetDatabase();
-        if (database.Connection is null)
-            throw new NullReferenceException(nameof(database.Connection));
-        return database;
-    }
-
-    public static NpgsqlConnection BuildNpgsqlConnection() {
+    public static async Task<NpgsqlConnection> BuildNpgsqlConnection() {
         var con = new NpgsqlConnection(NpgsqlConnectionString);
-        con.Open();
+        await con.OpenAsync();
         return con;
-    }
-
-    public static (NpgsqlConnection Npgsql, SavePoco SavePoco) BuildNpgsqlSavePoco() {
-        var npgsql = BuildNpgsqlConnection();
-        var savePoco = new SavePoco(DatabaseFactory!.GetDatabase());
-
-        return (npgsql, savePoco);
     }
 }

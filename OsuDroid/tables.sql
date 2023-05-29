@@ -1,45 +1,56 @@
-CREATE TABLE IF NOT EXISTS bbl_patron
+CREATE TABLE IF NOT EXISTS Patron
 (
-    patron_email     text    NOT NULL,
-    active_supporter boolean NOT NULL DEFAULT false,
-    PRIMARY KEY (patron_email)
+    PatronEmail     text    NOT NULL,
+    ActiveSupporter boolean NOT NULL DEFAULT false,
+    PRIMARY KEY (PatronEmail)
 );
 
 CREATE SEQUENCE IF NOT EXISTS bbl_user_id_seq AS bigint START WITH 1 INCREMENT BY 1 CACHE 1;
 
-CREATE TABLE IF NOT EXISTS bbl_user
+CREATE TABLE IF NOT EXISTS UserInfo
 (
-    id                   bigint    NOT NULL DEFAULT nextval('bbl_user_id_seq'),
-    username             text      NOT NULL UNIQUE,
-    password             text      NOT NULL DEFAULT '',
-    email                text      NOT NULL UNIQUE,
-    deviceid             text      NOT NULL DEFAULT '',
-    regist_time          timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    last_login_time      timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    region               text      NOT NULL DEFAULT '',
-    active               boolean   NOT NULL DEFAULT true,
-    banned               boolean   NOT NULL DEFAULT false,
-    restrict_mode        boolean   NOT NULL DEFAULT false,
-    username_last_change timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    latest_ip            text      NOT NULL DEFAULT '',
-    patron_email         text               DEFAULT null,
-    patron_email_accept  boolean   NOT NULL DEFAULT false,
-    FOREIGN KEY (patron_email) REFERENCES bbl_patron (patron_email),
-    PRIMARY KEY (id)
+    UserId               bigint    NOT NULL DEFAULT nextval('bbl_user_id_seq'),
+    Username             text      NOT NULL UNIQUE,
+    Password             text      NOT NULL DEFAULT '',
+    Email                text      NOT NULL UNIQUE,
+    DeviceId             text      NOT NULL DEFAULT '',
+    RegisterTime         timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    LastLoginTime        timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Region               text      NOT NULL DEFAULT '',
+    Active               boolean   NOT NULL DEFAULT true,
+    Banned               boolean   NOT NULL DEFAULT false,
+    RestrictMode         boolean   NOT NULL DEFAULT false,
+    UsernameLastChange   timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    LatestIp             text      NOT NULL DEFAULT '',
+    PatronEmail          text               DEFAULT null,
+    PatronEmailAccept    boolean   NOT NULL DEFAULT false,
+    FOREIGN KEY (PatronEmail) REFERENCES Patron (PatronEmail),
+    PRIMARY KEY (UserId)
 );
 
+ALTER SEQUENCE bbl_user_id_seq OWNED BY UserInfo.UserId;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bbl_user_patron_email ON UserInfo USING btree (PatronEmail);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bbl_user_username ON UserInfo USING btree (lower(username));
 
 
 
-CREATE TABLE IF NOT EXISTS bbl_token_user
+
+
+
+
+
+CREATE TABLE IF NOT EXISTS TokenUser
 (
-    token_id    uuid      NOT NULL,
-    user_id     bigint    NOT NULL REFERENCES bbl_user(id) ON DELETE CASCADE,
-    create_date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (token_id)
+    TokenId    uuid      NOT NULL,
+    UserId     bigint    NOT NULL REFERENCES UserInfo(UserId) ON DELETE CASCADE,
+    CreateDate timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (TokenId)
 );
 
-CREATE INDEX IF NOT EXISTS idx_bbl_token_user ON bbl_token_user USING brin (create_date);
+CREATE INDEX IF NOT EXISTS idx_TokenUser ON TokenUser USING btree (CreateDate);
+CREATE INDEX IF NOT EXISTS idx_TokenUser_UserId ON TokenUser USING btree (TokenId) INCLUDE (UserId);
 
 
 
@@ -47,227 +58,226 @@ CREATE INDEX IF NOT EXISTS idx_bbl_token_user ON bbl_token_user USING brin (crea
 
 
 
-ALTER SEQUENCE bbl_user_id_seq OWNED BY bbl_user.id;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_bbl_user_patron_email ON bbl_user USING btree (patron_email);
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_bbl_user_username ON bbl_user USING btree (lower(username));
-
-CREATE TABLE IF NOT EXISTS bbl_user_stats
+CREATE TABLE IF NOT EXISTS UserStats
 (
-    uid               bigint NOT NULL REFERENCES bbl_user(id) ON DELETE CASCADE,
-    overall_playcount bigint NOT NULL DEFAULT 0,
-    overall_score     bigint NOT NULL DEFAULT 0,
-    overall_accuracy  bigint NOT NULL DEFAULT 0,
-    overall_combo     bigint NOT NULL DEFAULT 0,
-    overall_xss       bigint NOT NULL DEFAULT 0,
-    overall_xs        bigint NOT NULL DEFAULT 0,
-    overall_ss        bigint NOT NULL DEFAULT 0,
-    overall_s         bigint NOT NULL DEFAULT 0,
-    overall_a         bigint NOT NULL DEFAULT 0,
-    overall_b         bigint NOT NULL DEFAULT 0,
-    overall_c         bigint NOT NULL DEFAULT 0,
-    overall_d         bigint NOT NULL DEFAULT 0,
-    overall_hits      bigint NOT NULL DEFAULT 0,
-    overall_300       bigint NOT NULL DEFAULT 0,
-    overall_100       bigint NOT NULL DEFAULT 0,
-    overall_50        bigint NOT NULL DEFAULT 0,
-    overall_geki      bigint NOT NULL DEFAULT 0,
-    overall_katu      bigint NOT NULL DEFAULT 0,
-    overall_miss      bigint NOT NULL DEFAULT 0,
-    PRIMARY KEY (uid)
+    UserId           bigint NOT NULL REFERENCES UserInfo(UserId) ON DELETE CASCADE,
+    OverallPlaycount bigint NOT NULL DEFAULT 0,
+    OverallScore     bigint NOT NULL DEFAULT 0,
+    OverallAccuracy  bigint NOT NULL DEFAULT 0,
+    OverallCombo     bigint NOT NULL DEFAULT 0,
+    OverallXss       bigint NOT NULL DEFAULT 0,
+    OverallXs        bigint NOT NULL DEFAULT 0,
+    OverallSs        bigint NOT NULL DEFAULT 0,
+    OverallS         bigint NOT NULL DEFAULT 0,
+    OverallA         bigint NOT NULL DEFAULT 0,
+    OverallB         bigint NOT NULL DEFAULT 0,
+    OverallC         bigint NOT NULL DEFAULT 0,
+    OverallD         bigint NOT NULL DEFAULT 0,
+    OverallHits      bigint NOT NULL DEFAULT 0,
+    Overall300       bigint NOT NULL DEFAULT 0,
+    Overall100       bigint NOT NULL DEFAULT 0,
+    Overall50        bigint NOT NULL DEFAULT 0,
+    OverallGeki      bigint NOT NULL DEFAULT 0,
+    OverallKatu      bigint NOT NULL DEFAULT 0,
+    OverallMiss      bigint NOT NULL DEFAULT 0,
+    PRIMARY KEY (UserId)
 );
 
-CREATE INDEX IF NOT EXISTS idx_bbl_user_stats_score_many ON bbl_user_stats(overall_score) INCLUDE (uid);
+CREATE INDEX IF NOT EXISTS idx_bbl_user_stats_score_many ON UserStats(OverallScore) INCLUDE (UserId);
 
 
 
-CREATE SEQUENCE IF NOT EXISTS public.bbl_score_id_seq
+
+CREATE SEQUENCE IF NOT EXISTS public.public_score_id_seq
     AS bigint START WITH 1 INCREMENT BY 1 CACHE 1;
 
-
-
-CREATE TABLE IF NOT EXISTS bbl_score
+CREATE TABLE IF NOT EXISTS PlayScore
 (
-    id       bigint    NOT NULL DEFAULT nextval('bbl_score_id_seq'),
-    uid      bigint    NOT NULL REFERENCES bbl_user(id) ON DELETE CASCADE,
-    filename text      NOT NULL,
-    hash     text      NOT NULL,
-    mode     text      NOT NULL DEFAULT '',
-    score    bigint    NOT NULL DEFAULT 0,
-    combo    bigint    NOT NULL DEFAULT 0,
-    mark     text      NOT NULL DEFAULT '',
-    geki     bigint    NOT NULL DEFAULT 0,
-    perfect  bigint    NOT NULL DEFAULT 0,
-    katu     bigint    NOT NULL DEFAULT 0,
-    good     bigint    NOT NULL DEFAULT 0,
-    bad      bigint    NOT NULL DEFAULT 0,
-    miss     bigint    NOT NULL DEFAULT 0,
-    date     timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    accuracy bigint    NOT NULL DEFAULT 0,
-    PRIMARY KEY (id)
+    PlayScoreId  bigint    NOT NULL DEFAULT nextval('public_score_id_seq'),
+    UserId   bigint    NOT NULL REFERENCES UserInfo(UserId) ON DELETE CASCADE,
+    Filename text      NOT NULL,
+    Hash     text      NOT NULL,
+    Mode     text[]    NOT NULL DEFAULT '{}',
+    Score    bigint    NOT NULL DEFAULT 0,
+    Combo    bigint    NOT NULL DEFAULT 0,
+    Mark     text      NOT NULL DEFAULT '',
+    Geki     bigint    NOT NULL DEFAULT 0,
+    Perfect  bigint    NOT NULL DEFAULT 0,
+    Katu     bigint    NOT NULL DEFAULT 0,
+    Good     bigint    NOT NULL DEFAULT 0,
+    Bad      bigint    NOT NULL DEFAULT 0,
+    Miss     bigint    NOT NULL DEFAULT 0,
+    Date     timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Accuracy bigint    NOT NULL DEFAULT 0,
+    PRIMARY KEY (PlayScoreId)
 );
 
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid ON bbl_score USING brin (uid);
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid_filename ON bbl_score USING brin (uid, filename);
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_filename ON bbl_score USING brin (filename);
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_hash_filename ON bbl_score USING brin (filename, hash);
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_user_id_id ON bbl_score USING btree (uid desc , id desc) INCLUDE (
-    filename,
-    hash,
-    mode,
-    score,
-    combo,
-    mark,
-    geki,
-    perfect,
-    katu,
-    good,
-    bad,
-    miss,
-    date,
-    accuracy);
-
-ALTER SEQUENCE bbl_score_id_seq OWNED BY bbl_score.id;
 
 
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid           ON PlayScore USING btree (UserId);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid_filename  ON PlayScore USING btree (UserId, Filename);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_filename      ON PlayScore USING btree (Filename);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_hash_filename ON PlayScore USING btree (Filename, Hash);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_user_id_id    ON PlayScore USING btree (UserId desc , PlayScoreId desc) INCLUDE (
+    Filename,
+    Hash,
+    Mode,
+    Score,
+    Combo,
+    Mark,
+    Geki,
+    Perfect,
+    Katu,
+    Good,
+    Bad,
+    Miss,
+    Date,
+    Accuracy);
 
-CREATE TABLE IF NOT EXISTS bbl_score_pre_submit
+ALTER SEQUENCE public_score_id_seq OWNED BY PlayScore.PlayScoreId;
+
+
+
+CREATE TABLE IF NOT EXISTS PlayScorePreSubmit
 (
-    id       bigint    NOT NULL DEFAULT nextval('bbl_score_id_seq'),
-    uid      bigint    NOT NULL REFERENCES bbl_user(id) ON DELETE CASCADE,
-    filename text      NOT NULL,
-    hash     text      NOT NULL,
-    mode     text      NOT NULL DEFAULT '',
-    score    bigint    NOT NULL DEFAULT 0,
-    combo    bigint    NOT NULL DEFAULT 0,
-    mark     text      NOT NULL DEFAULT '',
-    geki     bigint    NOT NULL DEFAULT 0,
-    perfect  bigint    NOT NULL DEFAULT 0,
-    katu     bigint    NOT NULL DEFAULT 0,
-    good     bigint    NOT NULL DEFAULT 0,
-    bad      bigint    NOT NULL DEFAULT 0,
-    miss     bigint    NOT NULL DEFAULT 0,
-    date     timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    accuracy bigint    NOT NULL DEFAULT 0,
-    PRIMARY KEY (id)
+    ScorePreSubmitId bigint    NOT NULL DEFAULT nextval('public_score_id_seq'),
+    UserID           bigint    NOT NULL REFERENCES UserInfo(UserId) ON DELETE CASCADE,
+    Filename         text      NOT NULL,
+    Hash             text      NOT NULL,
+    Mode             text[]    NOT NULL DEFAULT '{}',
+    Score            bigint    NOT NULL DEFAULT 0,
+    Combo            bigint    NOT NULL DEFAULT 0,
+    Mark             text      NOT NULL DEFAULT '',
+    Geki             bigint    NOT NULL DEFAULT 0,
+    Perfect          bigint    NOT NULL DEFAULT 0,
+    Katu             bigint    NOT NULL DEFAULT 0,
+    Good             bigint    NOT NULL DEFAULT 0,
+    Bad              bigint    NOT NULL DEFAULT 0,
+    Miss             bigint    NOT NULL DEFAULT 0,
+    Date             timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Accuracy         bigint    NOT NULL DEFAULT 0,
+    PRIMARY KEY (ScorePreSubmitId)
 );
 
-ALTER SEQUENCE bbl_score_id_seq OWNED BY bbl_score_pre_submit.id;
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON bbl_score_pre_submit(uid) INCLUDE (id);
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON bbl_score_pre_submit(id) INCLUDE (uid);
+ALTER SEQUENCE public_score_id_seq OWNED BY PlayScorePreSubmit.ScorePreSubmitId;
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON PlayScorePreSubmit(UserId) INCLUDE (ScorePreSubmitId);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON PlayScorePreSubmit(ScorePreSubmitId) INCLUDE (UserId);
 
 
 CREATE TABLE IF NOT EXISTS
-    bbl_score_banned
+    PlayScoreBanned
 (
-    id       bigint PRIMARY KEY NOT NULL,
-    uid      bigint             NOT NULL,
-    filename text               NOT NULL,
-    hash     text               NOT NULL,
-    mode     text               NOT NULL DEFAULT '',
-    score    bigint             NOT NULL DEFAULT 0,
-    combo    bigint             NOT NULL DEFAULT 0,
-    mark     text               NOT NULL DEFAULT '',
-    geki     bigint             NOT NULL DEFAULT 0,
-    perfect  bigint             NOT NULL DEFAULT 0,
-    katu     bigint             NOT NULL DEFAULT 0,
-    good     bigint             NOT NULL DEFAULT 0,
-    bad      bigint             NOT NULL DEFAULT 0,
-    miss     bigint             NOT NULL DEFAULT 0,
-    date     timestamp          NOT NULL,
-    accuracy bigint             NOT NULL DEFAULT 0
+    ScoreBannedId  bigint PRIMARY KEY NOT NULL,
+    UserId         bigint             NOT NULL,
+    Filename       text               NOT NULL,
+    Hash           text               NOT NULL,
+    Mode           text[]             NOT NULL DEFAULT '{}',
+    Score          bigint             NOT NULL DEFAULT 0,
+    Combo          bigint             NOT NULL DEFAULT 0,
+    Mark           text               NOT NULL DEFAULT '',
+    Geki           bigint             NOT NULL DEFAULT 0,
+    Perfect        bigint             NOT NULL DEFAULT 0,
+    Katu           bigint             NOT NULL DEFAULT 0,
+    Good           bigint             NOT NULL DEFAULT 0,
+    Bad            bigint             NOT NULL DEFAULT 0,
+    Miss           bigint             NOT NULL DEFAULT 0,
+    Date           timestamp          NOT NULL,
+    accuracy       bigint             NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline
+CREATE TABLE IF NOT EXISTS GlobalRankingTimeline
 (
-    user_id        bigint NOT NULL REFERENCES bbl_user(id) ON DELETE CASCADE,
-    date           date   NOT NULL DEFAULT current_date,
-    global_ranking bigint NOT NULL,
-    score          bigint NOT NULL,
-    PRIMARY KEY (user_id, date)
+    UserId        bigint NOT NULL REFERENCES UserInfo(UserId) ON DELETE CASCADE,
+    Date          date   NOT NULL DEFAULT current_date,
+    GlobalRanking bigint NOT NULL,
+    Score         bigint NOT NULL,
+    PRIMARY KEY (UserId, Date)
 ) PARTITION BY RANGE (date);
 
 
 
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2010 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2010-01-01') TO ('2011-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2011 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2011-01-01') TO ('2012-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2012 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2012-01-01') TO ('2013-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2013 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2013-01-01') TO ('2014-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2014 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2014-01-01') TO ('2015-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2015 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2015-01-01') TO ('2016-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2016 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2016-01-01') TO ('2017-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2017 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2017-01-01') TO ('2018-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2018 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2018-01-01') TO ('2019-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2019 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2019-01-01') TO ('2020-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2020 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2020-01-01') TO ('2021-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2021 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2021-01-01') TO ('2022-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2022 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2022-01-01') TO ('2023-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2023 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2024 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2025 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2026 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2027 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2027-01-01') TO ('2028-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2028 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2028-01-01') TO ('2029-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2029 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2029-01-01') TO ('2030-01-01');
-CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2030 PARTITION OF bbl_global_ranking_timeline FOR VALUES FROM ('2030-01-01') TO ('2031-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2010 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2010-01-01') TO ('2011-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2011 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2011-01-01') TO ('2012-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2012 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2012-01-01') TO ('2013-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2013 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2013-01-01') TO ('2014-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2014 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2014-01-01') TO ('2015-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2015 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2015-01-01') TO ('2016-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2016 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2016-01-01') TO ('2017-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2017 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2017-01-01') TO ('2018-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2018 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2018-01-01') TO ('2019-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2019 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2019-01-01') TO ('2020-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2020 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2020-01-01') TO ('2021-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2021 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2021-01-01') TO ('2022-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2022 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2022-01-01') TO ('2023-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2023 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2024 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2025 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2025-01-01') TO ('2026-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2026 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2027 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2027-01-01') TO ('2028-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2028 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2028-01-01') TO ('2029-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2029 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2029-01-01') TO ('2030-01-01');
+CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2030 PARTITION OF GlobalRankingTimeline FOR VALUES FROM ('2030-01-01') TO ('2031-01-01');
 
-CREATE TABLE IF NOT EXISTS bbl_avatar_hash
+CREATE TABLE IF NOT EXISTS UserAvatar
 (
-    user_id BIGINT REFERENCES bbl_user(id) ON DELETE CASCADE,
-    size    int,
-    hash    TEXT,
-    PRIMARY KEY (user_id, size)
+    UserId    BIGINT REFERENCES UserInfo(UserId) ON DELETE CASCADE,
+    TypeExt   TEXT,
+    PixelSize int,
+    Animation bool,
+    Hash    TEXT,
+    PRIMARY KEY (UserId, Hash)
 );
 
 -- Only IN Production (Need Space)
--- CREATE INDEX IF NOT EXISTS idx_bbl_global_ranking_timeline_any
---     on bbl_global_ranking_timeline (user_id, date) INCLUDE (score, global_ranking);
+CREATE INDEX IF NOT EXISTS idx_bbl_global_ranking_timeline_any
+    on GlobalRankingTimeline (UserId, Date) INCLUDE (score, GlobalRanking);
 
 
-CREATE TABLE IF NOT EXISTS log(
-    id uuid NOT NULL ,
-    date_time timestamp NOT NULL,
-    message text NOT NULL,
-    status text NOT NULL,
-    stack text NOT NULL,
-    trigger text NOT NULL,
-    PRIMARY KEY (id, date_time)
+CREATE TABLE IF NOT EXISTS Log(
+    Id uuid NOT NULL ,
+    DateTime timestamp NOT NULL,
+    Message text NOT NULL,
+    Status text NOT NULL,
+    Stack text NOT NULL,
+    Trigger text NOT NULL,
+    PRIMARY KEY (id, DateTime)
 );
 
 
 
 CREATE TABLE IF NOT EXISTS
-    group_privilege (
-                        id uuid NOT NULL DEFAULT gen_random_uuid(),
-                        name text UNIQUE NOT NULL ,
-                        description text NOT NULL ,
-                        PRIMARY KEY (id)
+    GroupPrivilege (
+        GroupPrivilegeId uuid NOT NULL DEFAULT gen_random_uuid(),
+        Name text UNIQUE NOT NULL,
+        Description text NOT NULL,
+        PRIMARY KEY (GroupPrivilegeId)
 );
 
 CREATE TABLE IF NOT EXISTS
-    bbl_user_group_privilege (
-                                 user_id BIGINT          NOT NULL REFERENCES bbl_user(id)        ON DELETE CASCADE,
-                                 group_privilege_id uuid NOT NULL REFERENCES group_privilege(id) ON DELETE CASCADE,
-                                 PRIMARY KEY (user_id, group_privilege_id),
-                                 FOREIGN KEY (user_id) REFERENCES bbl_user (id),
-                                 FOREIGN KEY (group_privilege_id) REFERENCES group_privilege (id)
+    UserGroupPrivilege (
+                                 UserId BIGINT         NOT NULL REFERENCES UserInfo(UserId)        ON DELETE CASCADE,
+                                 GroupPrivilegeId uuid NOT NULL REFERENCES GroupPrivilege(GroupPrivilegeId) ON DELETE CASCADE,
+                                 PRIMARY KEY (UserId, GroupPrivilegeId),
+                                 FOREIGN KEY (UserId) REFERENCES UserInfo (UserId),
+                                 FOREIGN KEY (GroupPrivilegeId) REFERENCES GroupPrivilege (GroupPrivilegeId)
 );
 
 CREATE TABLE IF NOT EXISTS
-    privilege(
-                 id uuid DEFAULT gen_random_uuid() NOT NULL,
-                 name text UNIQUE NOT NULL,
-                 description text NOT NULL,
-                 PRIMARY KEY (id)          
+    Privilege(
+                 PrivilegeId uuid DEFAULT gen_random_uuid() NOT NULL,
+                 Name text UNIQUE NOT NULL,
+                 Description text NOT NULL,
+                 PRIMARY KEY (PrivilegeId)          
 );
 
 CREATE TABLE IF NOT EXISTS
-    group_privilege_privilege (
-                                  group_privilege_id uuid NOT NULL REFERENCES group_privilege(id) ON DELETE CASCADE,
-                                  mode_allow bool NOT NULL,
-                                  privilege_id uuid NOT NULL REFERENCES privilege(id) ON DELETE CASCADE,
-                                  primary key (group_privilege_id, privilege_id)
+    GroupPrivilege_Privilege (
+                                  GroupPrivilegeId uuid NOT NULL REFERENCES GroupPrivilege(GroupPrivilegeId) ON DELETE CASCADE,
+                                  ModeAllow bool NOT NULL,
+                                  PrivilegeId uuid NOT NULL REFERENCES Privilege(PrivilegeId) ON DELETE CASCADE,
+                                  primary key (GroupPrivilegeId, PrivilegeId)
 );
 
 
@@ -294,36 +304,70 @@ CREATE TABLE IF NOT EXISTS
 
 
 
-CREATE TABLE IF NOT EXISTS need_privilege (
-    need_privilege_id uuid NOT NULL default gen_random_uuid(),
-    name TEXT UNIQUE NOT NULL,
-    PRIMARY KEY (need_privilege_id)
+CREATE TABLE IF NOT EXISTS NeedPrivilege (
+    NeedPrivilegeId uuid NOT NULL default gen_random_uuid(),
+    Name TEXT UNIQUE NOT NULL,
+    PRIMARY KEY (NeedPrivilegeId)
 );
 
-CREATE TABLE IF NOT EXISTS need_privilege_privilege (
-    need_privilege_id uuid NOT NULL REFERENCES need_privilege(need_privilege_id) ON DELETE CASCADE,
-    privilege_id uuid NOT NULL REFERENCES privilege(id) ON DELETE CASCADE,
-    PRIMARY KEY (need_privilege_id, privilege_id)
-);
-
-
-CREATE TABLE IF NOT EXISTS setting (
-    name TEXT not null,
-    value TEXT not null,
-    PRIMARY KEY (name)
-);
-
-CREATE TABLE IF NOT EXISTS router_setting (
-    path TEXT NOT NULL,
-    need_privilege uuid NOT NULL REFERENCES need_privilege(need_privilege_id) ON DELETE RESTRICT,
-    need_cookie boolean NOT NULL,
-    need_cookie_handler text,
-    PRIMARY KEY (path)
+CREATE TABLE IF NOT EXISTS NeedPrivilege_Privilege (
+    NeedPrivilegeId uuid NOT NULL REFERENCES NeedPrivilege(NeedPrivilegeId) ON DELETE CASCADE,
+    PrivilegeId uuid NOT NULL REFERENCES Privilege(PrivilegeId) ON DELETE CASCADE,
+    PRIMARY KEY (NeedPrivilegeId, PrivilegeId)
 );
 
 
+CREATE TABLE IF NOT EXISTS Setting (
+    MainKey TEXT not null,
+    SubKey TEXT not null,
+    Value TEXT not null,
+    PRIMARY KEY (MainKey, SubKey)
+);
 
-CREATE OR REPLACE function user_check_need_privilege_by_name (userId BIGINT, need_privilege_name text)
+CREATE TABLE IF NOT EXISTS RouterSetting (
+    Path TEXT NOT NULL,
+    NeedPrivilege uuid NOT NULL REFERENCES NeedPrivilege(NeedPrivilegeId) ON DELETE RESTRICT,
+    NeedCookie boolean NOT NULL,
+    NeedCookieHandler text,
+    PRIMARY KEY (Path)
+);
+
+
+
+CREATE OR REPLACE function user_check_need_privilege_by_name (CheckUserId BIGINT, NeedPrivilegeName text)
+    RETURNS RECORD
+AS $$
+DECLARE
+    ret RECORD;
+BEGIN
+    SELECT
+        DISTINCT ON (npp.PrivilegeId)
+        us.PriName,
+        npp.PrivilegeId as NeedPrivilegeId,
+        (case when us.UserModeAllow = true THEN true ELSE false END) as UserHasPrivilege
+    FROM NeedPrivilege need
+             join NeedPrivilege_Privilege npp on need.NeedPrivilegeId = npp.NeedPrivilegeId
+             FULL JOIN
+         (
+             SELECT p.PrivilegeId as user_privilege_id, gpp.ModeAllow as UserModeAllow, p.Name as PriName
+             FROM Privilege p
+                      JOIN GroupPrivilege_Privilege gpp on p.PrivilegeId = gpp.PrivilegeId
+                      JOIN GroupPrivilege gp on gpp.GroupPrivilegeId = gp.GroupPrivilegeId
+                      JOIN
+                  (
+                      SELECT need.*, npp.*
+                      FROM NeedPrivilege need join NeedPrivilege_Privilege npp on need.NeedPrivilegeId = npp.NeedPrivilegeId
+                      WHERE need.Name = NeedPrivilegeName
+                  ) need_pri on p.PrivilegeId = need_pri.PrivilegeId
+             WHERE gp.GroupPrivilegeId IN (SELECT UserGroupPrivilege.GroupPrivilegeId FROM UserGroupPrivilege WHERE UserGroupPrivilege.UserId = CheckUserId)
+         ) us on us.user_privilege_id = npp.PrivilegeId
+    WHERE need.name = NeedPrivilegeName
+    ORDER BY npp.PrivilegeId, UserHasPrivilege ASC INTO ret;
+
+    RETURN ret;
+END $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE function user_check_need_privilege_by_id (CheckUserId BIGINT, NeedPrivilegeKeyId uuid)
     RETURNS RECORD
 AS $$
 DECLARE
@@ -331,86 +375,70 @@ DECLARE
 BEGIN
 
     SELECT
-        DISTINCT ON (npp.privilege_id)
-        us.pri_name,
-        npp.privilege_id as need_privilege_id,
-        (case when us.user_mode_allow = true THEN true ELSE false END) as user_has_privilege
-    FROM need_privilege need
-             join need_privilege_privilege npp on need.need_privilege_id = npp.need_privilege_id
+        DISTINCT ON (npp.PrivilegeId)
+        us.PriName,
+        npp.PrivilegeId as NeedPrivilegeId,
+        (case when us.UserModeAllow = true THEN true ELSE false END) as UserHasPrivilege
+    FROM NeedPrivilege need
+             join NeedPrivilege_Privilege npp on need.NeedPrivilegeId = npp.NeedPrivilegeId
              FULL JOIN
          (
-             SELECT p.id as user_privilege_id, gpp.mode_allow as user_mode_allow, p.name as pri_name
+             SELECT p.PrivilegeId as UserPrivilegeId, gpp.ModeAllow as UserModeAllow, p.Name as PriName
              FROM privilege p
-                      JOIN group_privilege_privilege gpp on p.id = gpp.privilege_id
-                      JOIN group_privilege gp on gpp.group_privilege_id = gp.id
+                      JOIN GroupPrivilege_Privilege gpp on p.PrivilegeId = gpp.PrivilegeId
+                      JOIN GroupPrivilege gp on gpp.GroupPrivilegeId = gp.GroupPrivilegeId
                       JOIN
                   (
                       SELECT need.*, npp.*
-                      FROM need_privilege need join need_privilege_privilege npp on need.need_privilege_id = npp.need_privilege_id
-                      WHERE need.name = need_privilege_name
-                  ) need_pri on p.id = need_pri.privilege_id
-             WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user_group_privilege WHERE user_id = userId)
-         ) us on us.user_privilege_id = npp.privilege_id
-    WHERE need.name = need_privilege_name
-    ORDER BY npp.privilege_id, user_has_privilege ASC INTO ret;
+                      FROM NeedPrivilege need join NeedPrivilege_Privilege npp on need.NeedPrivilegeId = npp.NeedPrivilegeId
+                      WHERE need.NeedPrivilegeId = NeedPrivilegeKeyId
+                  ) NeedPri on p.PrivilegeId = NeedPri.PrivilegeId
+             WHERE gp.GroupPrivilegeId IN (SELECT UserGroupPrivilege.GroupPrivilegeId FROM UserGroupPrivilege WHERE UserId = CheckUserId)
+         ) us on us.UserPrivilegeId = npp.PrivilegeId
+    WHERE need.NeedPrivilegeId = NeedPrivilegeKeyId
+    ORDER BY npp.PrivilegeId, UserHasPrivilege ASC INTO ret;
 
     RETURN ret;
 END $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE function user_check_need_privilege_by_id (userId BIGINT, need_privilege_key_id uuid)
-    RETURNS RECORD
-AS $$
-DECLARE
-    ret RECORD;
-BEGIN
-
-    SELECT
-        DISTINCT ON (npp.privilege_id)
-        us.pri_name,
-        npp.privilege_id as need_privilege_id,
-        (case when us.user_mode_allow = true THEN true ELSE false END) as user_has_privilege
-    FROM need_privilege need
-             join need_privilege_privilege npp on need.need_privilege_id = npp.need_privilege_id
-             FULL JOIN
-         (
-             SELECT p.id as user_privilege_id, gpp.mode_allow as user_mode_allow, p.name as pri_name
-             FROM privilege p
-                      JOIN group_privilege_privilege gpp on p.id = gpp.privilege_id
-                      JOIN group_privilege gp on gpp.group_privilege_id = gp.id
-                      JOIN
-                  (
-                      SELECT need.*, npp.*
-                      FROM need_privilege need join need_privilege_privilege npp on need.need_privilege_id = npp.need_privilege_id
-                      WHERE need.need_privilege_id = need_privilege_key_id
-                  ) need_pri on p.id = need_pri.privilege_id
-             WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user_group_privilege WHERE user_id = userId)
-         ) us on us.user_privilege_id = npp.privilege_id
-    WHERE need.need_privilege_id = need_privilege_key_id
-    ORDER BY npp.privilege_id, user_has_privilege ASC INTO ret;
-
-    RETURN ret;
-END $$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE function router_settings_with_privilege (path TEXT, need_cookie bool, cookie_handler TEXT)
+CREATE OR REPLACE function router_settings_with_privilege (Path TEXT, NeedCookie bool, CookieHandler TEXT)
 RETURNS TEXT
     AS $$
 DECLARE
-    id uuid;
-    name TEXT;
+    Id uuid;
+    Name TEXT;
 BEGIN
-    id := gen_random_uuid();
-    name := concat('route:', path);
+    Id := gen_random_uuid();
+    Name := concat('route:', path);
     
-    INSERT INTO need_privilege (name, need_privilege_id) VALUES (name, id);
+    INSERT INTO NeedPrivilege (name, NeedPrivilegeId) VALUES (name, id);
     
-    INSERT INTO router_setting 
-        (path, need_privilege, need_cookie, need_cookie_handler) 
+    INSERT INTO RouterSetting 
+        (path, NeedPrivilege, NeedCookie, NeedCookieHandler) 
     VALUES 
-        (path, id, need_cookie, cookie_handler);
+        (path, Id, NeedCookie, CookieHandler);
 
-    RETURN name;
+    RETURN Name;
 END
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE function beatmap_top(file TEXT, fileHash TEXT, limitCount INT) 
+RETURNS RECORD
+AS $$
+DECLARE
+    ret RECORD;
+BEGIN
+    SELECT score.*, UserInfo.Username, md5(UserInfo.Email) as EmailHash
+    FROM PlayScore, UserInfo
+    WHERE PlayScore.Filename = file
+      AND Hash = fileHash
+      AND PlayScore.UserId = UserInfo.UserId
+    ORDER BY PlayScore.Score DESC , PlayScore.Accuracy DESC, PlayScore.Date ASC
+    LIMIT limitCount;
+END;
+$$ LANGUAGE plpgsql;
+
+
 
 
 SELECT ;
@@ -428,7 +456,7 @@ VALUES
 ON CONFLICT DO NOTHING
 ;
 
-INSERT INTO group_privilege
+INSERT INTO GroupPrivilege
 (name, description)
 VALUES
     ('admin', 'can do all'),
@@ -437,16 +465,16 @@ VALUES
 ON CONFLICT DO NOTHING
 ;
 
-INSERT INTO group_privilege_privilege
-(group_privilege_id, mode_allow, privilege_id)
-SELECT gp.id, true, privilege.id FROM privilege
-                                          join group_privilege gp on gp.name = 'admin'
+INSERT INTO GroupPrivilege_Privilege
+(GroupPrivilegeId, ModeAllow, PrivilegeId)
+SELECT gp.GroupPrivilegeId, true, privilege.PrivilegeId FROM privilege
+                                          join GroupPrivilege gp on gp.name = 'admin'
 ON CONFLICT DO NOTHING;
 
-INSERT INTO group_privilege_privilege
-(group_privilege_id, mode_allow, privilege_id)
-SELECT gp.id, false, privilege.id FROM privilege
-                                          join group_privilege gp on gp.name = 'player'
+INSERT INTO GroupPrivilege_Privilege
+(GroupPrivilegeId, ModeAllow, PrivilegeId)
+SELECT gp.GroupPrivilegeId, false, privilege.PrivilegeId FROM Privilege
+                                          join GroupPrivilege gp on gp.name = 'player'
 ON CONFLICT DO NOTHING;
 
 
@@ -461,13 +489,13 @@ ON CONFLICT DO NOTHING;
 
 
 -- widget_database_stats
-INSERT INTO need_privilege (name) VALUES ('widget_database_stats');
+INSERT INTO NeedPrivilege (name) VALUES ('widget_database_stats');
 
 INSERT INTO 
-    need_privilege_privilege 
-    (need_privilege_id, privilege_id) 
-SELECT need.need_privilege_id, np.id 
-FROM need_privilege need
+    NeedPrivilege_Privilege 
+    (NeedPrivilegeId, PrivilegeId) 
+SELECT need.NeedPrivilegeId, np.PrivilegeId 
+FROM NeedPrivilege need
 JOIN privilege np on np.name = 'widget_database_stats';
 
 SELECT router_settings_with_privilege('/api/user-info-by-cookie', false, null);

@@ -33,8 +33,8 @@ public class OdrZip {
 
     public static Result<Option<(FileStream stream, string name)>, string> Factory(SavePoco db, long odrNumber) {
         var resultBblScore = db
-            .SingleOrDefault<BblScore>("SELECT * FROM bbl_score WHERE id = " + odrNumber)
-            .Map(x => Option<BblScore>.NullSplit(x));
+            .SingleOrDefault<PlayScore>("SELECT * FROM bbl_score WHERE id = " + odrNumber)
+            .Map(x => Option<PlayScore>.NullSplit(x));
 
         if (resultBblScore == EResult.Err)
             return Result<Option<(FileStream stream, string name)>, string>.Err(resultBblScore.Err());
@@ -51,8 +51,8 @@ public class OdrZip {
             stream = File.OpenRead(Path.Combine(Env.ReplayZipPath, filename));
         }
         else {
-            var resultBblUser = db.SingleOrDefault<BblUser>(
-                $"SELECT username FROM bbl_user WHERE id = {bblScore.Uid}").Map(x => Option<BblUser>.NullSplit(x));
+            var resultBblUser = db.SingleOrDefault<UserInfo>(
+                $"SELECT username FROM bbl_user WHERE id = {bblScore.Uid}").Map(x => Option<UserInfo>.NullSplit(x));
             
             if (resultBblUser == EResult.Err)
                 return Result<Option<(FileStream stream, string name)>, string>.Err(resultBblScore.Err());

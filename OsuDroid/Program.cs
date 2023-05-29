@@ -1,17 +1,17 @@
 using AspNetCoreRateLimit;
-using Dapper;
-using Microsoft.VisualBasic.CompilerServices;
 using Npgsql;
 using OsuDroid.Lib;
 using OsuDroid.Utils;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Extension;
 
+namespace OsuDroid;
 
-public sealed class Program {
+public static class Program {
     public static async Task Main(string[] args) {
         DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
         Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
-        PrivilegeManager.Update();
+        await PrivilegeManager.Update();
 
         if (args.Length == 0) {
             Security.GetSecurity();
@@ -31,39 +31,45 @@ public sealed class Program {
         }
 
         Environment.Exit(args switch {
-            ["--reload-user-stats" or "-s"] => (int)ReloadUserStats(),
+            ["--reload-user-stats" or "-s"] => (int)(await ReloadUserStats()),
             ["--transfer"] => (int)(await RunTransferDb()),
-            ["--reload-timeline" or "-f"] => (int)FullReloadRankingTimeline(),
+            ["--reload-timeline" or "-f"] => (int)(await FullReloadRankingTimeline()),
             ["--hashpass", var password] => (int)ParseAndPrint(() => Password.Hash(password)),
             _ => (int)ParseAndPrintExistCode(EExitCode.ArgNotExist, "Argument Not Exist")
         });
     }
 
-    private static EExitCode ReloadUserStats() {
-        (new ConvertAndMoveToNewTable()).RunRecalcStats();
+    private static async Task<EExitCode> ReloadUserStats() {
+        await (new ConvertAndMoveToNewTable()).RunRecalcStats();
         return EExitCode.Success;
     }
     
-    private static EExitCode FullReloadRankingTimeline() {
-        BblScore? s = null;
-        using (var db = DbBuilder.BuildPostSqlAndOpen()) {
-            var result = db.First<BblScore>("SELECT * FROM public.bbl_score ORDER BY date LIMIT 1");;
+    private static async Task<EExitCode> FullReloadRankingTimeline() {
+        Option<PlayScore> playScoreOption;
+        
+        await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
+            var result = await db.SafeQueryFirstOrDefaultAsync<PlayScore>(
+                "SELECT * FROM public.PlayScore ORDER BY date LIMIT 1");
+            
             if (result == EResult.Err) {
                 Console.WriteLine(result.Err());
                 return EExitCode.UnknownError;
-            } 
-            s = result.OkOrDefault();
+            }
+
+            playScoreOption = result.Ok();
         }
 
-        if (s is null) {
+        if (playScoreOption.IsNotSet()) {
             WriteLine("No Score Found To Start Full Reload Ranking Timeline");
             return EExitCode.NoBblScoreFound;
         }
 
-        FullRecalcUserRankingTimeline.Run(new DateTime(s.Date.Year, s.Date.Month, s.Date.Day));
+        var playScore = playScoreOption.Unwrap(); 
+        
+        FullRecalcUserRankingTimeline.Run(new DateTime(playScore.Date.Year, playScore.Date.Month, playScore.Date.Day));
         return EExitCode.Success;
     }
-
+    
     private static async Task<EExitCode> RunTransferDb() {
         await (new OsuDroid.Utils.ConvertAndMoveToNewTable()).OpiRun();
         return EExitCode.Success;
@@ -142,14 +148,13 @@ public sealed class Program {
         connStringBuilder.Username = Env.CrDbUsername;
         connStringBuilder.Database = Env.CrDbDatabase;
         connStringBuilder.Pooling = true;
-        connStringBuilder.Multiplexing = false;
+        connStringBuilder.Multiplexing = true;
         connStringBuilder.SocketSendBufferSize = 4_048_576;
         connStringBuilder.ReadBufferSize = 1048576;
         connStringBuilder.WriteBufferSize = 1048576;
         connStringBuilder.MaxPoolSize = 1024;
         connStringBuilder.MinPoolSize = 32;
         connStringBuilder.KeepAlive = 10;
-        connStringBuilder.TcpKeepAlive = true;
 
         return connStringBuilder.ConnectionString;
     }

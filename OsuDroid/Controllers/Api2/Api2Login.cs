@@ -19,7 +19,7 @@ public class Api2Login : ControllerExtensions {
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
 
-        var user = log.AddResultAndTransform(db.SingleOrDefault<BblUser>(
+        var user = log.AddResultAndTransform(db.SingleOrDefault<UserInfo>(
             "SELECT id, username, password FROM bbl_user WHERE lower(username) = lower(@0)", prop.Username ?? ""))
             .OkOrDefault();
 
@@ -43,7 +43,7 @@ public class Api2Login : ControllerExtensions {
 
         var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
         var optionToken = log.AddResultAndTransform(
-                tokenHandler.Insert(db, user.Id)).Map(x => Option<Guid>.NullSplit(x)).OkOr(Option<Guid>.Empty);
+                tokenHandler.Insert(db, user.UserId)).Map(x => Option<Guid>.NullSplit(x)).OkOr(Option<Guid>.Empty);
         if (optionToken.IsSet() == false) {
             return this.GetInternalServerError();
         }

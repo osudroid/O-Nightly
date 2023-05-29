@@ -56,7 +56,7 @@ public class Api2Odr : ControllerExtensions {
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
 
-        var bblScore = db.SingleOrDefault<BblScore>($"SELECT filename, date, uid FROM bbl_score WHERE id = {replayId}")
+        var bblScore = db.SingleOrDefault<PlayScore>($"SELECT filename, date, uid FROM bbl_score WHERE id = {replayId}")
             .OkOrDefault();
 
         if (bblScore is null)

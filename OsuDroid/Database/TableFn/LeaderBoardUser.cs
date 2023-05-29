@@ -130,7 +130,7 @@ WHERE xx.id = @0
             return Result<Option<Entities.LeaderBoardUser>, string>.Ok(Option<Entities.LeaderBoardUser>.Empty);
         var single = leaderBord[0];
 
-        LeaderBoardUserSingleUserBuffer[single.Id] = (DateTime.UtcNow, single);
+        LeaderBoardUserSingleUserBuffer[single.UserId] = (DateTime.UtcNow, single);
 
         return Result<Option<Entities.LeaderBoardUser>, string>.Ok(Option<Entities.LeaderBoardUser>.With(single));
     }

@@ -72,7 +72,7 @@ public class Api2Submit : ControllerExtensions {
 
         var resp = log
             .AddResultAndTransform(Submit.InsertFinishPlayAndUpdateUserScore(tokenInfoResp.Unwrap().UserId, prop.Body!))
-            .OkOr(Option<(BblUserStats userStats, long BestPlayScoreId)>.Empty);
+            .OkOr(Option<(UserStats userStats, long BestPlayScoreId)>.Empty);
 
         return resp.IsSet() == false
             ? GetInternalServerError()
@@ -143,7 +143,7 @@ public class Api2Submit : ControllerExtensions {
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class PushReplayResult200 {
-        public BblUserStats? UserStats { get; set; }
+        public UserStats? UserStats { get; set; }
         public long BestPlayScoreId { get; set; }
     }
 

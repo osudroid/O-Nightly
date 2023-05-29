@@ -1,9 +1,10 @@
-using NPoco;
+using Dapper.Contrib.Extensions;
 
 namespace OsuDroidLib.Database.Entities; 
 
-
+[Table("Setting")]
 public class Setting {
-    [Column("name")] public string? Name { get; set; }
-    [Column("value")] public string? Value { get; set; }
+    [ExplicitKey] public string? MainKey { get; set; }
+    [ExplicitKey] public string? SubKey { get; set; }
+    public string? Value { get; set; }
 }

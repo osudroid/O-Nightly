@@ -1,9 +1,13 @@
-using NPoco;
+
+using Dapper.Contrib.Extensions;
+
 namespace OsuDroidLib.Database.Entities; 
 
+[Table("RouterSetting")]
 public class RouterSetting {
-    [Column("path")] public string? Path { get; set; }
-    [Column("need_privilege")] public Guid NeedPrivilege { get; set; }
-    [Column("need_cookie")] public bool NeedCookie { get; set; }
-    [Column("need_cookie_manager")] public string? NeedCookieManager { get; set; }
+    [ExplicitKey]
+    public string? Path { get; set; }
+    public Guid NeedPrivilege { get; set; }
+    public bool NeedCookie { get; set; }
+    public string? NeedCookieHandler { get; set; }
 }

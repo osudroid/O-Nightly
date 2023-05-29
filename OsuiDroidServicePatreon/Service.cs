@@ -1,6 +1,8 @@
+using Npgsql;
 using OsuDroidLib.AdaPatreon;
 using OsuDroidLib.Database.Entities;
 using Patreon.NET;
+using OsuDroidLib.Query;
 
 namespace OsuDroidServicePatreon;
 
@@ -10,10 +12,10 @@ public static class Service {
     }
 
     public static Result<ServiceState, string> RunClean(ServiceState state) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var db = DbBuilder.BuildNpgsqlConnection();
 
         WriteLine("Start Update Patreon");
-
+        
         var adapterPatreon = AdapterPatreon
             .Adapt(new PatreonClient(Env.PatreonAccessToken!))
             .SetCaching(true)
@@ -31,7 +33,7 @@ public static class Service {
             : Result<ServiceState, string>.Err(resp.Err());
     }
 
-    private static async Task<ResultErr<string>> UpdatePatreonStatusLoop(IAdapterPatreon adapterPatreon, SavePoco db) {
+    private static async Task<ResultErr<string>> UpdatePatreonStatusLoop(IAdapterPatreon adapterPatreon, NpgsqlConnection db) {
         var emailsActivePatronEmails = await adapterPatreon.GetOnlyActivePatronEmails();
 
 #if DEBUG
@@ -46,6 +48,8 @@ public static class Service {
 
 #endif
 
-        return BblPatron.SyncPatronMembersByEmails(db, emailsActivePatronEmails.Ok());
+        var task = QueryPatron.SyncPatronMembersByEmails(db, emailsActivePatronEmails.Ok());
+        task.Wait();
+        return task.Result;
     }
 }

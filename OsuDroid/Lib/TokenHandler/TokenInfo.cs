@@ -6,10 +6,10 @@ public struct TokenInfo {
     public required long UserId { get; init; }
     public required DateTime CreateDay { get; set; }
 
-    public static explicit operator TokenInfo(BblTokenUser bblTokenUser) {
+    public static explicit operator TokenInfo(TokenUser tokenUser) {
         return new TokenInfo {
-            CreateDay = bblTokenUser.CreateDate,
-            UserId = bblTokenUser.UserId
+            CreateDay = tokenUser.CreateDate,
+            UserId = tokenUser.UserId
         };
     }
 }

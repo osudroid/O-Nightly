@@ -34,9 +34,9 @@ public sealed class CookieInfo : ControllerExtensions {
 
         var token = optionToken.Unwrap();
 
-        var optionUser = log.AddResultAndTransform(db.SingleOrDefaultById<BblUser>(token.UserId))
-            .Map(x => Option<BblUser>.NullSplit(x))
-            .OkOr(Option<BblUser>.Empty);
+        var optionUser = log.AddResultAndTransform(db.SingleOrDefaultById<Entities.UserInfo>(token.UserId))
+            .Map(x => Option<Entities.UserInfo>.NullSplit(x))
+            .OkOr(Option<Entities.UserInfo>.Empty);
         if (optionUser.IsSet() == false)
             return Ok(new ApiTypes.ExistOrFoundInfo<UserInfo> { ExistOrFound = false, Value = null });
 
@@ -47,10 +47,10 @@ public sealed class CookieInfo : ControllerExtensions {
                 Active = user.Active,
                 Banned = user.Banned,
                 Email = user.Email,
-                Id = user.Id,
+                Id = user.UserId,
                 Region = user.Region,
                 Username = user.Username,
-                RegistTime = user.RegistTime,
+                RegistTime = user.RegisterTime,
                 RestrictMode = user.RestrictMode
             }
         });
