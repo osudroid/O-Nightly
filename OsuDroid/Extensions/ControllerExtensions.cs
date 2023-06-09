@@ -1,5 +1,8 @@
 using System.Net;
+using LamLogger;
 using Microsoft.AspNetCore.Mvc;
+using Npgsql;
+using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Utils;
 
@@ -16,31 +19,14 @@ public abstract class ControllerExtensions : ControllerBase {
         return username.Trim();
     }
 
-    public Result<Option<TokenInfo>, string> LoginTokenInfo(SavePoco db) {
-        try {
-            var cookies = GetCookies();
-            if (cookies.TryGetValue(ECookie.LoginCookie, out var cookie) == false)
-                return Result<Option<TokenInfo>, string>.Ok(Option<TokenInfo>.Empty);
+    public Result<Option<UserIdAndToken>, string> LoginTokenInfo(NpgsqlConnection db) {
+        if (!HttpContext.Items.TryGetValue(PrivilegeMiddleware.ItemName, out var data)) 
+            return Result<Option<UserIdAndToken>, string>.Ok(Option<UserIdAndToken>.Empty);
             
-            if (Guid.TryParse(cookie, out var guid) == false) 
-                return Result<Option<TokenInfo>, string>.Err("cookie Is Not Valid Guid");
+        if (data is not UserIdAndToken @userIdAndToken) 
+            return Result<Option<UserIdAndToken>, string>.Err(TraceMsg.WithMessage("data is not UserIdAndToken"));
             
-            var resp = TokenHandlerManger
-                .GetOrCreateCacheDatabase(ETokenHander.User)
-                .GetTokenInfo(db, guid);
-
-            return resp.Map<Option<TokenInfo>>(x => {
-                if (x.IsSet() == false) {
-                    RemoveCookieByEName(ECookie.LoginCookie);
-                    return Option<TokenInfo>.Empty;
-                }
-
-                return Option<TokenInfo>.With(x.Unwrap());
-            });
-        }
-        catch (Exception e) {
-            return Result<Option<TokenInfo>, string>.Err(e.ToString());
-        }
+        return Result<Option<UserIdAndToken>, string>.Ok(Option<UserIdAndToken>.With(userIdAndToken));
     }
 
     public Result<Option<Guid>, string> GetCookieToken() {
@@ -53,28 +39,28 @@ public abstract class ControllerExtensions : ControllerBase {
 
         return Result<Option<Guid>, string>.Ok(Option<Guid>.With(guid));
     }
-
-    public ResultErr<string> LoginTokenRefreshTime(SavePoco db) {
-        try {
-            var cookies = GetCookies();
-            if (cookies.TryGetValue(ECookie.LoginCookie, out var cookie) == false)
-                return ResultErr<string>.Err("LoginToken In Cookies Not Found");
-            if (Guid.TryParse(cookie, out var guid) == false)
-                return ResultErr<string>.Err("cookie Is Not Valid Guid");
-            var resp = TokenHandlerManger
-                .GetOrCreateCacheDatabase(ETokenHander.User)
-                .Refresh(db, guid);
-            
-            if (resp == EResult.Err) {
-                RemoveCookieByEName(ECookie.LoginCookie);
-            }
-            
-            return ResultErr<string>.Ok();
-        }
-        catch (Exception e) {
-            return ResultErr<string>.Err(e.ToString());
-        }
-    }
+    //
+    // public ResultErr<string> LoginTokenRefreshTime(SavePoco db) {
+    //     try {
+    //         var cookies = GetCookies();
+    //         if (cookies.TryGetValue(ECookie.LoginCookie, out var cookie) == false)
+    //             return ResultErr<string>.Err("LoginToken In Cookies Not Found");
+    //         if (Guid.TryParse(cookie, out var guid) == false)
+    //             return ResultErr<string>.Err("cookie Is Not Valid Guid");
+    //         var resp = TokenHandlerManger
+    //             .GetOrCreateCacheDatabase(ETokenHander.User)
+    //             .RefreshAsync(db, guid);
+    //         
+    //         if (resp == EResult.Err) {
+    //             RemoveCookieByEName(ECookie.LoginCookie);
+    //         }
+    //         
+    //         return ResultErr<string>.Ok();
+    //     }
+    //     catch (Exception e) {
+    //         return ResultErr<string>.Err(e.ToString());
+    //     }
+    // }
 
     public string ToPasswdHash(string passwd) {
         return Password.Hash(passwd).OkOr("");
@@ -162,5 +148,24 @@ public abstract class ControllerExtensions : ControllerBase {
     /// <summary> StatusCodes.Status500InternalServerError </summary>
     public StatusCodeResult GetInternalServerError() {
         return new StatusCodeResult(500);
+    }
+
+    public async Task<ConStart> GetStartAsync() {
+        var con = await DbBuilder.BuildNpgsqlConnection();
+        return new ConStart(con, await con.BeginTransactionAsync(), Log.GetLog(con));
+    }
+}
+
+public record ConStart(NpgsqlConnection DbNormal, NpgsqlTransaction DbTransaction, LamLog LamLog): IAsyncDisposable, IDisposable {
+    public async ValueTask DisposeAsync() {
+        LamLog.Dispose();
+        await DbTransaction.DisposeAsync();
+        await DbNormal.DisposeAsync();
+    }
+
+    public (NpgsqlTransaction dbT, NpgsqlConnection db, LamLog Log) Unpack() => (DbTransaction, DbTransaction.Connection!, LamLog);
+    
+    public void Dispose() {
+        DisposeAsync().AsTask().Wait();
     }
 }

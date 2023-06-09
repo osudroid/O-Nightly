@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices.JavaScript;
 using Dapper;
 using Dapper.Contrib.Extensions;
+using OsuDroidLib.Dto;
 
 namespace OsuDroid.Utils;
 
@@ -68,25 +69,25 @@ public class ConvertAndMoveToNewTable {
                         score.mode = "|";
 
                     var bblScore = new PlayScore {
-                        Id = score.Id,
-                        Uid = score.Uid,
-                        Filename = score.Filename,
-                        Hash = score.Hash,
-                        Mode = score.Mode,
-                        Score = score.Score,
-                        Combo = score.Combo,
-                        Mark = score.Mark,
-                        Geki = score.Geki,
-                        Perfect = score.Perfect,
-                        Katu = score.Katu,
-                        Good = score.Good,
-                        Bad = score.Bad,
-                        Miss = score.Miss,
-                        Date = DateTime.SpecifyKind(score.Date, DateTimeKind.Utc),
-                        Accuracy = score.Accuracy
+                        PlayScoreId = score.id,
+                        UserId = score.id,
+                        Filename = score.filename,
+                        Hash = score.hash,
+                        Mode = Utils.Mode.ModeAsSingleStringToModeArray(score.mode),
+                        Score = score.score,
+                        Combo = score.combo,
+                        Mark = score.mark,
+                        Geki = score.geki,
+                        Perfect = score.perfect,
+                        Katu = score.katu,
+                        Good = score.good,
+                        Bad = score.bad,
+                        Miss = score.miss,
+                        Date = DateTime.SpecifyKind(score.date, DateTimeKind.Utc),
+                        Accuracy = score.accuracy
                     };
 
-                    if (bblScores.TryGetValue(bblScore.Uid, out var concurrentBag) == false) {
+                    if (bblScores.TryGetValue(bblScore.UserId, out var concurrentBag) == false) {
                         return;
                     }
                     concurrentBag.Add(bblScore);
@@ -579,6 +580,7 @@ VALUES (
         await db.QueryAsync("DELETE FROM public.GlobalRankingTimeLine");
     }
 
+    
     private static UserStats CreateUserStats(long userId, PlayScore[] listBblScores) {
         var bblUserStats = new UserStats() {
                 UserId = userId,
@@ -626,21 +628,23 @@ VALUES (
         }
             
         foreach (var (key, bblScore) in dictionary) {
+            var dto = PlayScoreDto.ToPlayScoreDto(bblScore).Unwrap();
+            
             bblUserStats.OverallScore += bblScore.Score;
             bblUserStats.OverallAccuracy += bblScore.Accuracy;
             bblUserStats.OverallCombo += bblScore.Combo;
-            bblUserStats.OverallXss += bblScore.EqAsInt(PlayScore.EMark.XSS);
-            bblUserStats.OverallSs += bblScore.EqAsInt(PlayScore.EMark.SS);
-            bblUserStats.OverallXs += bblScore.EqAsInt(PlayScore.EMark.XS);
-            bblUserStats.OverallS += bblScore.EqAsInt(PlayScore.EMark.S);
-            bblUserStats.OverallA += bblScore.EqAsInt(PlayScore.EMark.A);
-            bblUserStats.OverallB += bblScore.EqAsInt(PlayScore.EMark.B);
-            bblUserStats.OverallC += bblScore.EqAsInt(PlayScore.EMark.C);
-            bblUserStats.OverallD += bblScore.EqAsInt(PlayScore.EMark.D);
-            bblUserStats.OverallHits += bblScore.GetValue(PlayScore.EBblScore.Hits);
-            bblUserStats.Overall300 += bblScore.GetValue(PlayScore.EBblScore.N300);
-            bblUserStats.Overall100 += bblScore.GetValue(PlayScore.EBblScore.N100);
-            bblUserStats.Overall50 += bblScore.GetValue(PlayScore.EBblScore.N50);
+            bblUserStats.OverallXss += dto.EqAsInt(PlayScoreDto.EPlayScoreMark.XSS);
+            bblUserStats.OverallSs += dto.EqAsInt(PlayScoreDto.EPlayScoreMark.SS);
+            bblUserStats.OverallXs += dto.EqAsInt(PlayScoreDto.EPlayScoreMark.XS);
+            bblUserStats.OverallS += dto.EqAsInt(PlayScoreDto.EPlayScoreMark.S);
+            bblUserStats.OverallA += dto.EqAsInt(PlayScoreDto.EPlayScoreMark.A);
+            bblUserStats.OverallB += dto.EqAsInt(PlayScoreDto.EPlayScoreMark.B);
+            bblUserStats.OverallC += dto.EqAsInt(PlayScoreDto.EPlayScoreMark.C);
+            bblUserStats.OverallD += dto.EqAsInt(PlayScoreDto.EPlayScoreMark.D);
+            bblUserStats.OverallHits += dto.GetValue(PlayScoreDto.EPlayScore.Hits);
+            bblUserStats.Overall300 += dto.GetValue(PlayScoreDto.EPlayScore.N300);
+            bblUserStats.Overall100 += dto.GetValue(PlayScoreDto.EPlayScore.N100);
+            bblUserStats.Overall50 += dto.GetValue(PlayScoreDto.EPlayScore.N50);
             bblUserStats.OverallGeki += bblScore.Geki;
             bblUserStats.OverallKatu += bblScore.Katu;
             bblUserStats.OverallMiss += bblScore.Miss;
@@ -649,6 +653,8 @@ VALUES (
 
         return bblUserStats;
     }
+
+
     
     //----old
 

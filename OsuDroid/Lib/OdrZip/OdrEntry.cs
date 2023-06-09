@@ -7,13 +7,14 @@ public class OdrEntry {
     public OdrReplay? Replay { get; set; }
 
     public static OdrEntry Factory(PlayScore playScore, string username) {
+        
         return new OdrEntry {
             Version = 1,
             Replay = new OdrReplay {
                 Filename = playScore.Filename,
                 Playername = username,
-                Replayfile = $"{playScore.Id}.odr",
-                Mod = playScore.Mode,
+                Replayfile = $"{playScore.PlayScoreId}.odr",
+                Mod = Utils.Mode.ModeArrayToModeAsSingleString(playScore.Mode).Or("|"),
                 Score = playScore.Score,
                 Combo = playScore.Combo,
                 Mark = playScore.Mark,

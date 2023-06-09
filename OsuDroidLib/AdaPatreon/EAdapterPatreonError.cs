@@ -1,3 +1,5 @@
+using NetEscapades.EnumGenerators;
+
 namespace OsuDroidLib.AdaPatreon;
 
 public enum EAdapterPatreonError {

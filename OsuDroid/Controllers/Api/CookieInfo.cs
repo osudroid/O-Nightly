@@ -1,11 +1,7 @@
-using System.Diagnostics.CodeAnalysis;
-using LamLogger;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
-using OsuDroidLib;
-using OsuDroidLib.Database.Entities;
 
 namespace OsuDroid.Controllers.Api;
 
@@ -15,45 +11,48 @@ public sealed class CookieInfo : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<UserInfo>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ExistOrFoundInfo<UserInfo>))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult GetUserInfoByCookie() {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
-
-        log.AddLogOk("Start");
-        Option<TokenInfo> optionToken;
+    public async Task<IActionResult> GetUserInfoByCookie() {
+        await using var start = await GetStartAsync();
+        var (db, log) = start.Unpack();
+        
+        await log.AddLogDebugStartAsync();
+        await log.AddLogOkAsync("Start");
         try {
-             optionToken = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
+            var optionToken = log.AddResultAndTransform(LoginTokenInfo(db.Connection!)).OkOr(Option<TokenInfo>.Empty);
+         
+            if (optionToken.IsSet() == false) 
+                return Ok(ApiTypes.ExistOrFoundInfo<UserInfo>.NotExist());
+
+            var token = optionToken.Unwrap();
+            
+            var optionUser = log.AddResultAndTransform(db.SingleOrDefaultById<Entities.UserInfo>(token.UserId))
+                                .Map(x => Option<Entities.UserInfo>.NullSplit(x))
+                                .OkOr(Option<Entities.UserInfo>.Empty);
+            if (optionUser.IsSet() == false)
+                return Ok(new ApiTypes.ExistOrFoundInfo<UserInfo> { ExistOrFound = false, Value = null });
+
+            var user = optionUser.Unwrap();
+            return Ok(new ApiTypes.ExistOrFoundInfo<UserInfo> {
+                ExistOrFound = true,
+                Value = new UserInfo {
+                    Active = user.Active,
+                    Banned = user.Banned,
+                    Email = user.Email,
+                    Id = user.UserId,
+                    Region = user.Region,
+                    Username = user.Username,
+                    RegistTime = user.RegisterTime,
+                    RestrictMode = user.RestrictMode
+                }
+            });
+            
+            await db.CommitAsync();
         }
         catch (Exception e) {
             WriteLine(e);
-            throw;
+            await log.AddLogErrorAsync("Exception", Option<string>.With(e.ToString()));
+            await db.RollbackAsync();
         }
-        if (optionToken.IsSet() == false) 
-            return Ok(ApiTypes.ExistOrFoundInfo<UserInfo>.NotExist());
-
-        var token = optionToken.Unwrap();
-
-        var optionUser = log.AddResultAndTransform(db.SingleOrDefaultById<Entities.UserInfo>(token.UserId))
-            .Map(x => Option<Entities.UserInfo>.NullSplit(x))
-            .OkOr(Option<Entities.UserInfo>.Empty);
-        if (optionUser.IsSet() == false)
-            return Ok(new ApiTypes.ExistOrFoundInfo<UserInfo> { ExistOrFound = false, Value = null });
-
-        var user = optionUser.Unwrap();
-        return Ok(new ApiTypes.ExistOrFoundInfo<UserInfo> {
-            ExistOrFound = true,
-            Value = new UserInfo {
-                Active = user.Active,
-                Banned = user.Banned,
-                Email = user.Email,
-                Id = user.UserId,
-                Region = user.Region,
-                Username = user.Username,
-                RegistTime = user.RegisterTime,
-                RestrictMode = user.RestrictMode
-            }
-        });
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
@@ -67,5 +66,10 @@ public sealed class CookieInfo : ControllerExtensions {
         public bool Supporter { get; set; }
         public bool Banned { get; set; }
         public bool RestrictMode { get; set; }
+    }
+}
+public class A: IAsyncDisposable {
+    public async ValueTask DisposeAsync() {
+        throw new NotImplementedException();
     }
 }

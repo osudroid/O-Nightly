@@ -21,7 +21,7 @@ WHERE UserId = {userId};
     }
     
     
-    public static async Task<ResultErr<string>> UpdateStatsFromScore(
+    public static async Task<ResultErr<string>> UpdateStatsFromScoreAsync(
         NpgsqlConnection db, long userId, PlayScoreDto now, PlayScoreDto? old = null) {
         var dif = old is null ? now : now - old;
         var playcount = old is null ? 1 : 0;
@@ -54,7 +54,7 @@ WHERE USERID = {userId}
     
     
     
-    public static async Task<Result<Option<UserStats>, string>> GetBblUserStatsByUserId(
+    public static async Task<Result<Option<UserStats>, string>> GetBblUserStatsByUserIdAsync(
         NpgsqlConnection db, long userId) {
         return await db.SafeQueryFirstOrDefaultAsync<UserStats>(@$"
 SELECT * FROM UserStats

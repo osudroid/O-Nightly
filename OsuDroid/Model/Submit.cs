@@ -1,15 +1,17 @@
+using Npgsql;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Lib;
+using OsuDroidLib.Query;
 
 namespace OsuDroid.Model;
 
 public static class Submit {
-    public static Result<Option<(UserStats userStats, long BestPlayScoreId)>, string> InsertFinishPlayAndUpdateUserScore(
-        long userId, ScoreProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
+    public static async Task<Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>> 
+        InsertFinishPlayAndUpdateUserScoreAsync(NpgsqlConnection db, long userId, ScoreProp prop) {
 
-        var resultHistory = PlayScorePreSubmit.GetById(db, prop.Id);
+        var resultHistory = await PlayScorePreSubmitHandler.GetByIdAsync(db, prop.PlayScoreId);
         if (resultHistory == EResult.Err)
-            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultHistory.Err());
+            return resultHistory.ChangeOkType<Option<(UserStats userStats, long BestPlayScoreId)>>();
 
         var optionHistory = resultHistory.Ok();
         if (optionHistory.IsSet() == false)
@@ -18,9 +20,9 @@ public static class Submit {
 
         var history = optionHistory.Unwrap();
         
-        var newScoreInsert = new PlayScore {
-            Id = history.Id,
-            Uid = history.Uid,
+        PlayScore newScoreInsert = new PlayScore {
+            PlayScoreId = history.PlayScoreId,
+            UserId = history.UserId,
             Filename = history.Filename,
             Hash = history.Hash,
             Mode = prop.Mode,
@@ -37,24 +39,28 @@ public static class Submit {
             Accuracy = prop.Accuracy
         };
 
-        Result<UserStats, string> resultUserStats = SqlFunc.GetBblUserStatsByUserId(db, userId);
+        var resultUserStats = await QueryUserStats.GetBblUserStatsByUserIdAsync(db, userId);
         if (resultUserStats == EResult.Err)
             Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultUserStats.Err());
         
         var userStats = resultUserStats.Ok();
         
-        if (newScoreInsert.Mode == "AR")
-            Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err("FAIL");
+        
+        if ((newScoreInsert.Mode??Array.Empty<string>()).Contains("AR"))
+            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
+                .Err(TraceMsg.WithMessage("FAIL AR In Mode"));
 
-        var resultErrInsert = SqlFunc.InsertBblScore(db, newScoreInsert);
+        
+        var resultErrInsert = await QueryPlayScore.InsertBblScoreAsync(db, newScoreInsert);
         if (resultErrInsert == EResult.Err)
             return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultErrInsert.Err());
 
-        var resultErrDb = db.Delete<PlayScorePreSubmit>(newScoreInsert.Id);
+        var resultErrDb = await QueryPlayScorePreSubmit.DeleteByIdAsync(db, newScoreInsert.PlayScoreId);
         if (resultErrDb == EResult.Err)
             return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultErrDb.Err());
 
-        var resultUserTopScore = PlayScore.GetUserTopScore(db, history.Uid, history.Filename!, history.Hash!);
+        var resultUserTopScore = await QueryPlayScore.GetUserTopScoreAsync(
+            db, history.UserId, history.Filename!, history.Hash!);
 
         if (resultUserTopScore == EResult.Err)
             return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultUserTopScore.Err());
@@ -65,6 +71,8 @@ public static class Submit {
             return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
                 .Ok(Option<(UserStats userStats, long BestPlayScoreId)>.Empty);
         
+        var newScoreInsertDto = OsuDroidLib.Dto.PlayScoreDto.ToPlayScoreDto(newScoreInsert).Unwrap();
+        
         if (optionUserTopScore.IsSet()) {
             var userTopScore = optionUserTopScore.Unwrap();
             
@@ -72,58 +80,75 @@ public static class Submit {
                 return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
                     .Ok(Option<(UserStats userStats, long BestPlayScoreId)>
                         .With((
-                            userStats,
-                            userTopScore.Id
+                            userStats.Unwrap(),
+                            userTopScore.UserId
                         )));
 
-            UserStats.UpdateStatsFromScore(db, newScoreInsert.Uid, newScoreInsert, userTopScore);
 
+            var result = await QueryUserStats.UpdateStatsFromScoreAsync(
+                db, 
+                newScoreInsert.UserId, 
+                newScoreInsertDto, 
+                OsuDroidLib.Dto.PlayScoreDto.ToPlayScoreDto(userTopScore).Unwrap()
+                );
+            
+            if (result == EResult.Err)
+                return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
+                    .Err(result.Err());
+            
             return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
                 .Ok(Option<(UserStats userStats, long BestPlayScoreId)>
                     .With((
-                        SqlFunc.GetBblUserStatsByUserId(db, userId).Ok(),
-                        newScoreInsert.Id
+                        (await QueryUserStats.GetBblUserStatsByUserIdAsync(db, userId)).Ok().Unwrap(),
+                        newScoreInsert.PlayScoreId
                     )));
         }
 
-        UserStats.UpdateStatsFromScore(db, newScoreInsert.Uid, newScoreInsert);
+        var resultErr = await QueryUserStats.UpdateStatsFromScoreAsync(db, newScoreInsert.UserId, newScoreInsertDto);
 
+        if (resultErr == EResult.Err)
+            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
+                .Err(resultErr.Err());
+        
         return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
             .Ok(Option<(UserStats userStats, long BestPlayScoreId)>
                 .With((
-                    SqlFunc.GetBblUserStatsByUserId(db, userId).Ok(),
-                    newScoreInsert.Id
+                    (await QueryUserStats.GetBblUserStatsByUserIdAsync(db, userId)).Ok().Unwrap(),
+                    newScoreInsert.UserId
                 )));
     }
 
-    public static Result<long, string> InsertPreBuildPlay(long userId, string filename, string fileHash) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-
-        var idBblScorePreSubmit = PlayScorePreSubmit
-            .PreAddScore(
+    public static async Task<Result<long, string>> InsertPreBuildPlayAsync(
+        NpgsqlConnection db, long userId, string filename, string fileHash) {
+        
+        var idBblScorePreSubmit = await QueryPlayScorePreSubmit
+            .PreAddScoreAsync(
                 db,
                 userId,
                 filename,
                 fileHash);
 
-        if (idBblScorePreSubmit is null)
-            return Result<long, string>.Err("Server Error");
-        return Result<long, string>.Ok(idBblScorePreSubmit.Id);
+        if (idBblScorePreSubmit == EResult.Err)
+            return idBblScorePreSubmit.ChangeOkType<long>();
+        
+        return Result<long, string>.Ok(idBblScorePreSubmit.Ok().PlayScoreId);
     }
 
     public class ScoreProp {
-        public string? Mode { get; set; }
-        public string? Mark { get; set; }
-        public long Id { get; set; }
-        public long Score { get; set; }
-        public long Combo { get; set; }
-        public long Uid { get; set; }
-        public long Geki { get; set; }
-        public long Perfect { get; set; }
-        public long Katu { get; set; }
-        public long Good { get; set; }
-        public long Bad { get; set; }
-        public long Miss { get; set; }
+        public long PlayScoreId  { get; set; }
+        public long UserId   { get; set; }
+        public string? Filename { get; set; }
+        public string? Hash     { get; set; }
+        public string[]? Mode     { get; set; }
+        public long Score    { get; set; }
+        public long Combo    { get; set; }
+        public string? Mark     { get; set; }
+        public long Geki     { get; set; }
+        public long Perfect  { get; set; }
+        public long Katu     { get; set; }
+        public long Good     { get; set; }
+        public long Bad      { get; set; }
+        public long Miss     { get; set; }
         public long Accuracy { get; set; }
     }
 }

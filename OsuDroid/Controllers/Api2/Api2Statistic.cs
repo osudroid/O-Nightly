@@ -3,6 +3,7 @@ using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Model;
 using OsuDroidLib;
+using OsuDroidLib.Query;
 
 namespace OsuDroid.Controllers.Api2;
 
@@ -10,47 +11,67 @@ public class Api2Statistic : ControllerExtensions {
     [HttpGet("/api2/statistic/active-user")]
     [PrivilegeRoute(route: "/api2/statistic/active-user")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ExistOrFoundInfo<SqlFunc.StatisticActiveUser>))]
-    public IActionResult GetActiveUser() {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+        Type = typeof(ApiTypes.ExistOrFoundInfo<QueryUserInfo.StatisticActiveUser>))]
+    public async Task<IActionResult> GetActiveUser() {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        var rep = log.AddResultAndTransform(Statistic.ActiveUser());
-        if (rep == EResult.Err)
-            return Ok(ApiTypes.ExistOrFoundInfo<SqlFunc.StatisticActiveUser>.NotExist());
+        try {
+            var rep = await log.AddResultAndTransformAsync(await Statistic.ActiveUserAsync(db));
+            if (rep == EResult.Err)
+                return Ok(ApiTypes.ExistOrFoundInfo<QueryUserInfo.StatisticActiveUser>.NotExist());
 
-        var value = rep.Ok();
-        return Ok(ApiTypes.ExistOrFoundInfo<SqlFunc.StatisticActiveUser>.Exist(new SqlFunc.StatisticActiveUser {
-            RegisterUser = value.Register,
-            ActiveUserLast1h = value.Last1h,
-            ActiveUserLast1Day = value.Last1Day
-        }));
+            var value = rep.Ok();
+            return Ok(ApiTypes.ExistOrFoundInfo<QueryUserInfo.StatisticActiveUser>.Exist(new QueryUserInfo
+                .StatisticActiveUser { 
+                    RegisterUser = value.Register, 
+                    ActiveUserLast1H = value.Last1h, 
+                    ActiveUserLast1Day = value.Last1Day
+            }));
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpGet("/api2/statistic/all-patreon")]
     [PrivilegeRoute(route: "/api2/statistic/all-patreon")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<UsernameAndId>>))]
-    public IActionResult GetAllPatreon() {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> GetAllPatreon() {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
+        try {
+            var rep = await log.AddResultAndTransformAsync(await Statistic.GetActivePatreonAsync(db));
 
-        var rep = log.AddResultAndTransform(Statistic.GetActivePatreon());
+            if (rep == EResult.Err)
+                return Ok(ApiTypes.ExistOrFoundInfo<List<UsernameAndId>>.NotExist());
 
-        if (rep == EResult.Err)
-            return Ok(ApiTypes.ExistOrFoundInfo<List<UsernameAndId>>.NotExist());
+            var res = new List<UsernameAndId>(rep.Ok().Count);
 
-        var res = new List<UsernameAndId>(rep.Ok().Count);
+            foreach (var (username, id) in rep.Ok())
+                res.Add(new UsernameAndId {
+                    Id = id,
+                    Username = username
+                });
 
-        foreach (var (username, id) in rep.Ok())
-            res.Add(new UsernameAndId {
-                Id = id,
-                Username = username
-            });
-
-        return Ok(ApiTypes.ExistOrFoundInfo<List<UsernameAndId>>.Exist(res));
+            return Ok(ApiTypes.ExistOrFoundInfo<List<UsernameAndId>>.Exist(res));
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]

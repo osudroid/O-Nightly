@@ -1,17 +1,18 @@
 using Dapper;
 using LamLogger;
 using Npgsql;
+using OsuDroidLib.Database;
 using OsuDroidLib.Extension;
 
 namespace OsuDroidLib; 
 
 public static class Log {
     private static bool _settingsSet = false;
-    public static LamLogger.LamLog GetLog(NpgsqlConnection savePoco) {
+    public static LamLogger.LamLog GetLog(NpgsqlConnection db) {
         if (_settingsSet == false) {
             LamLogger.LamLog.Settings = new LamLogSettings() {
                 DbTable = Env.LogInDbName,
-                LazyDbPrint = false,
+                LazyDbPrint = true,
                 LazyTextWriterPrint = false,
                 UseDbAsPrint = Env.LogInDb,
                 PrintUseOk = Env.LogOk,
@@ -23,9 +24,7 @@ public static class Log {
             };
         }
 
-        async Task Insert(LamLogTable[] tables) {
-            var db = savePoco;
-
+        async Task InsertAsync(LamLogTable[] tables) {
             foreach (var log in tables) {
                 try {
                     var sql = @$"
@@ -49,6 +48,6 @@ VALUES ('{log.DateUuid.ToString()}', @DateTime, @Message, @Status, @Stack, @Trig
             }
         }
         
-        return new LamLog(Option<Func<LamLogTable[], Task>>.With(Insert));
+        return new LamLog(Option<Func<LamLogTable[], Task>>.With(InsertAsync));
     }
 }

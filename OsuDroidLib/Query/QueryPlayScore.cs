@@ -27,7 +27,7 @@ public static class QueryPlayScore {
         }).Map(x => x.ToList());
     }
 
-    public static async Task<Result<Option<PlayScore>, string>> GetUserTopScore(
+    public static async Task<Result<Option<PlayScore>, string>> GetUserTopScoreAsync(
         NpgsqlConnection db, long userId, string filename, string fileHash) {
         
         var sql = @"SELECT * FROM PlayScore WHERE UserId = @UserId AND Filename = @Filename AND Hash = @Hash";
@@ -38,7 +38,7 @@ public static class QueryPlayScore {
         });
     }
 
-    public static async Task<Result<Option<PlayScore>, string>> GetById(NpgsqlConnection db, long playId) {
+    public static async Task<Result<Option<PlayScore>, string>> GetByIdAsync(NpgsqlConnection db, long playId) {
         return await db.SafeQueryFirstOrDefaultAsync<PlayScore>(
             $"SELECT * FROM PlayScore WHERE UserId = {playId} LIMIT 1"
             );
@@ -57,19 +57,19 @@ WHERE TotalScore.Filename = refer.Filename
     }
     
     
-    public static async Task<Result<Option<PlayScore>, string>> GetPlayScoreById(NpgsqlConnection db, long id) {
+    public static async Task<Result<Option<PlayScore>, string>> GetPlayScoreByIdAsync(NpgsqlConnection db, long id) {
         return await db.SafeQueryFirstOrDefaultAsync<PlayScore>(@$"
 SELECT * FROM PlayScore WHERE PlayScoreId = {id}
 ");
     }
 
-    public static async Task<Result<Option<PlayScore>, string>> GetPlayScoreByIdAndUserId(NpgsqlConnection db, long id, long userId) {
+    public static async Task<Result<Option<PlayScore>, string>> GetPlayScoreByIdAndUserIdAsync(NpgsqlConnection db, long id, long userId) {
         return await db.SafeQueryFirstOrDefaultAsync<PlayScore>(@$"
 SELECT * FROM PlayScore WHERE PlayScoreId = {id} AND UserId = {userId}
 ");
     }
 
-    public static async Task<Result<Option<PlayScore>, string>> GetPlayScoreOldesByUserIdAndHash(NpgsqlConnection db, long userId, string mapHash) {
+    public static async Task<Result<Option<PlayScore>, string>> GetPlayScoreOldesByUserIdAndHashAsync(NpgsqlConnection db, long userId, string mapHash) {
         return await db.SafeQueryFirstOrDefaultAsync<PlayScore>(@$"
 SELECT * 
 FROM PlayScore 
@@ -80,7 +80,7 @@ LIMIT 1
 ");
     }
     
-    public static async Task<ResultErr<string>> InsertBblScore(NpgsqlConnection db, PlayScore newPlayScoreInsert) {
+    public static async Task<ResultErr<string>> InsertBblScoreAsync(NpgsqlConnection db, PlayScore newPlayScoreInsert) {
         var sql = @$"
 INSERT 
 INTO PlayScore (PlayScoreId, UserId, Filename, Hash, Mode, Score, Combo, Mark, Geki, Perfect, Katu, Good, Bad, Miss, Date, Accuracy) 
@@ -121,5 +121,66 @@ VALUES
             Date = newPlayScoreInsert.Date, 
             Accuracy = newPlayScoreInsert.Accuracy
         });
+    }
+    
+    public class MapTopPlays {
+        public long PlayScoreId { get; set; }
+        public long UserId { get; set; }
+        public string? Mode { get; set; }
+        public long Score { get; set; }
+        public long Combo { get; set; }
+        public string? Mark { get; set; }
+        public DateTime? Date { get; set; }
+        public long Accuracy { get; set; }
+        public string? Username { get; set; }
+        public long PlayRank { get; set; }
+    }
+    
+    public static async Task<Result<IReadOnlyList<MapTopPlays>, string>> MapTopPlaysByFilenameAndHashAsync(
+        NpgsqlConnection db, string filename, string fileHash, int maxResult) {
+
+        var sql = @$"
+SELECT DISTINCT ON (UserId) 
+    x.PlayScoreId as PlayScoreId, 
+    UserId as UserId, 
+    Mode as Mode, 
+    Score as Score, 
+    Combo as Combo, 
+    Mark as Mark, 
+    Date as Date, 
+    Accuracy as Accuracy, 
+    x.Username as Username
+FROM (SELECT 
+          PlayScore.PlayScoreId, 
+          UserId,
+          Mode, 
+          Score, 
+          Combo, 
+          Mark, 
+          Date, 
+          Accuracy, 
+          ur.Username
+      FROM PlayScore
+          FULL JOIN UserInfo ur on PlayScore.UserId = ur.UserId
+      WHERE Filename = Filename
+        AND Hash = Hash
+      ORDER BY PlayScore.Score DESC, PlayScore.Accuracy DESC, PlayScore.Date DESC 
+      ) x
+LIMIT {maxResult}
+";
+        var result = (await db.SafeQueryAsync<MapTopPlays>(
+            sql,
+            new { Filename = filename, Hash = fileHash }
+        )).Map(x => x.ToList());
+
+        if (result == EResult.Err)
+            return result.ChangeOkType<IReadOnlyList<MapTopPlays>>();
+
+        var plays = result.Ok();
+        
+        for (var i = 0; i < plays.Count; i++) {
+            plays[i].PlayRank = i + 1;
+        }
+        return Result<IReadOnlyList<MapTopPlays>, string>.Ok(plays);
     }
 }

@@ -1,12 +1,16 @@
 using System.Xml.Linq;
+using Npgsql;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Extension;
+using OsuDroidLib.Query;
 
 namespace OsuDroid.Model;
 
 public static class ScorePack {
-    public static Result<Option<(PlayScore Score, string Username, string Region)>, string> GetByPlayId(SavePoco db, long playId) {
-        var resultScore = db.FirstOrDefault<PlayScore>($"SELECT * FROM bbl_score WHERE id = {playId} LIMIT 1")
-            .Map(x => Option<PlayScore>.NullSplit(x));
+    public static async Task<Result<Option<(PlayScore Score, string Username, string Region)>, string>> GetByPlayIdAsync(
+        NpgsqlConnection db, long playId) {
+        
+        var resultScore = await QueryPlayScore.GetPlayScoreByIdAsync(db, playId);
 
         if (resultScore == EResult.Err)
             Result<Option<(PlayScore Score, string Username, string Region)>, string>.Err(resultScore.Err());
@@ -19,11 +23,9 @@ public static class ScorePack {
 
         
         var score = optionScore.Unwrap();
-        var resultUser = db.FirstOrDefault<UserInfo>(@$"
-SELECT username, region
-FROM bbl_user
-WHERE id = {score.Uid}
-").Map(x => Option<UserInfo>.NullSplit(x));
+        
+        
+        var resultUser = await QueryUserInfo.GetUsernameAndRegionByUserId(db, score.UserId);
         if (resultUser == EResult.Err)
             return Result<Option<(PlayScore Score, string Username, string Region)>, string>.Err(resultUser.Err());
         

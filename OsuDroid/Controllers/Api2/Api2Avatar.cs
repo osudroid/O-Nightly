@@ -14,29 +14,39 @@ public class Api2Avatar : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(byte[]))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult GetAvatar([FromRoute(Name = "size")] int size, [FromRoute(Name = "id")] long id) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> GetAvatar([FromRoute(Name = "size")] int size, [FromRoute(Name = "id")] long id) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        var filePath = $"{Env.AvatarPath}/" + id;
+        try {
+            var filePath = $"{Env.AvatarPath}/" + id;
 
-        var bytes = System.IO.File.Exists(filePath) switch {
-            true => System.IO.File.ReadAllBytes(filePath),
-            false => System.IO.File.ReadAllBytes($"{Env.AvatarPath}/default.jpg")
-        };
+            var bytes = System.IO.File.Exists(filePath) switch {
+                true => await System.IO.File.ReadAllBytesAsync(filePath),
+                false => await System.IO.File.ReadAllBytesAsync($"{Env.AvatarPath}/default.jpg")
+            };
 
-        var imageMemoryStream = new MemoryStream(bytes);
+            var imageMemoryStream = new MemoryStream(bytes);
 
-        var image = Image.Load(imageMemoryStream);
-        image.Mutate(x => x.Resize(size, size));
+            using var image = await Image.LoadAsync(imageMemoryStream);
+            image.Mutate(x => x.Resize(size, size));
 
-        var imageMemoryRes = new MemoryStream();
-        image.SaveAsPng(imageMemoryRes);
-        imageMemoryRes.Position = 0;
-        image.Dispose();
-        var file = File(imageMemoryRes, "image/png");
-        return file;
+            var imageMemoryRes = new MemoryStream();
+            await image.SaveAsPngAsync(imageMemoryRes);
+            imageMemoryRes.Position = 0;
+            image.Dispose();
+            var file = File(imageMemoryRes, "image/png");
+            return file;
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpGet("/api2/avatar/hash/{size:long}/{id:long}")]

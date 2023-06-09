@@ -1,6 +1,8 @@
 using System.IO.Compression;
 using Newtonsoft.Json;
+using Npgsql;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Query;
 
 namespace OsuDroid.Lib.OdrZip;
 
@@ -31,13 +33,11 @@ public class OdrZip {
     }
 
 
-    public static Result<Option<(FileStream stream, string name)>, string> Factory(SavePoco db, long odrNumber) {
-        var resultBblScore = db
-            .SingleOrDefault<PlayScore>("SELECT * FROM bbl_score WHERE id = " + odrNumber)
-            .Map(x => Option<PlayScore>.NullSplit(x));
+    public static async Task<Result<Option<(FileStream stream, string name)>, string>> FactoryAsync(NpgsqlConnection db, long odrNumber) {
+        var resultBblScore = await QueryPlayScore.GetByIdAsync(db, odrNumber);
 
         if (resultBblScore == EResult.Err)
-            return Result<Option<(FileStream stream, string name)>, string>.Err(resultBblScore.Err());
+            return resultBblScore.ChangeOkType<Option<(FileStream stream, string name)>>();
         
         var optionBblScore = resultBblScore.Ok();
         if (optionBblScore.IsSet() == false)
@@ -51,11 +51,10 @@ public class OdrZip {
             stream = File.OpenRead(Path.Combine(Env.ReplayZipPath, filename));
         }
         else {
-            var resultBblUser = db.SingleOrDefault<UserInfo>(
-                $"SELECT username FROM bbl_user WHERE id = {bblScore.Uid}").Map(x => Option<UserInfo>.NullSplit(x));
-            
+            var resultBblUser = await QueryUserInfo.GetUsernameByUserIdAsync(db, bblScore.PlayScoreId);
+
             if (resultBblUser == EResult.Err)
-                return Result<Option<(FileStream stream, string name)>, string>.Err(resultBblScore.Err());
+                return resultBblScore.ChangeOkType<Option<(FileStream stream, string name)>>();
             
             var optionBblUser = resultBblUser.Ok();
             if (optionBblUser.IsSet() == false)

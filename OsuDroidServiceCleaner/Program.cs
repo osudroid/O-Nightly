@@ -8,6 +8,8 @@ namespace OsuDroidServiceCleaner;
 
 public static class Program {
     public static async Task Main(string[] args) {
+        
+        return;
         WriteLine("Create Cleaner Service");
         DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
         await ServiceManager<ServiceState>

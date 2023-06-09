@@ -11,13 +11,12 @@ public static class Service {
 
     public static Result<ServiceState, string> RunRankingTimeline(ServiceState state) {
         WriteLine("Start Calc New Ranking Timeline");
-        var db = DbBuilder.BuildNpgsqlConnection();
+        var db = DbBuilder.BuildNpgsqlConnection().GetAwaiter().GetResult();
         if (db is null)
             throw new NullReferenceException(nameof(db));
         WriteLine("Finish Calc New Ranking Timeline");
-        var task = Run(db);
-        task.Wait();
-        var resultErr = task.Result;
+        ResultErr<string> resultErr = Run(db).GetAwaiter().GetResult();
+        
         return resultErr == EResult.Err 
             ? Result<ServiceState, string>.Err(resultErr.Err()) 
             : Result<ServiceState, string>.Ok(state);
@@ -88,13 +87,10 @@ public static class Service {
     }
 
     private static async Task<ResultErr<string>> CalcTableGlobalForThisDay(DateTime dateTime) {
-        try {
-            var date = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
-            using var db = DbBuilder.BuildNpgsqlConnection();
+        var date = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+        using var db = DbBuilder.BuildNpgsqlConnection().GetAwaiter().GetResult();
 
-            var com = db.CreateCommand();
-            
-            com.CommandText = @$"
+        var com = await db.SafeQueryAsync(@$"
 INSERT INTO GlobalRankingTimeline (UserId, Date, GlobalRanking, Score)
 SELECT
     UserId as UserId,
@@ -112,13 +108,7 @@ FROM (
          GROUP BY UserId
      ) ScoreBuilder
 ORDER BY global_ranking;
-";
-            await com.ExecuteNonQueryAsync();
-        }
-        catch (Exception e) {
-            return ResultErr<string>.Err(e.ToString());
-        }
-
-        return ResultErr<string>.Ok();
+");
+        return com;
     }
 }

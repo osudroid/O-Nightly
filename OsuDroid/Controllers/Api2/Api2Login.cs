@@ -4,6 +4,7 @@ using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Query;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 
@@ -14,102 +15,148 @@ public class Api2Login : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/token-create")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CreateApi2TokenResult))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult CreateApi2Token([FromBody] CreateApi2TokenProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> CreateApi2TokenAsync([FromBody] CreateApi2TokenProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        var user = log.AddResultAndTransform(db.SingleOrDefault<UserInfo>(
-            "SELECT id, username, password FROM bbl_user WHERE lower(username) = lower(@0)", prop.Username ?? ""))
-            .OkOrDefault();
+        try {
+            var userOption = (await log.AddResultAndTransformAsync(await QueryUserInfo
+                .GetIdUsernamePasswordByLowerUsernameAsync(db, prop.Username ?? "")))
+                .OkOr(Option<UserInfo>.Empty);
+            
+            
+            if (userOption.IsNotSet()) {
+                await log.AddLogDebugAsync("User Not Found");
+                return Ok(new CreateApi2TokenResult {
+                    Token = Guid.Empty,
+                    PasswdFalse = false,
+                    UsernameFalse = true
+                });
+            }
+            
+            var user = userOption.Unwrap();
+            if (user.Password != ToPasswdHash(prop.Passwd ?? string.Empty)) {
+                await log.AddLogDebugAsync("User Password False");
+                return Ok(new CreateApi2TokenResult {
+                    Token = Guid.Empty,
+                    PasswdFalse = true,
+                    UsernameFalse = false
+                });
+            }
 
-        if (user is null) {
-            log.AddLogDebug("User Not Found");
+            var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
+            var optionToken = await log.AddResultAndTransformAsync(
+                await tokenHandler.InsertAsync(db, user.UserId));
+            
+            if (optionToken == EResult.Err) {
+                return this.GetInternalServerError();
+            }
+
+            await log.AddLogDebugAsync("Return Token");
             return Ok(new CreateApi2TokenResult {
-                Token = Guid.Empty,
+                Token = optionToken.Ok(),
                 PasswdFalse = false,
-                UsernameFalse = true
-            });
-        }
-
-        if (user.Password != ToPasswdHash(prop.Passwd ?? string.Empty)) {
-            log.AddLogDebug("User Password False");
-            return Ok(new CreateApi2TokenResult {
-                Token = Guid.Empty,
-                PasswdFalse = true,
                 UsernameFalse = false
             });
         }
-
-        var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
-        var optionToken = log.AddResultAndTransform(
-                tokenHandler.Insert(db, user.UserId)).Map(x => Option<Guid>.NullSplit(x)).OkOr(Option<Guid>.Empty);
-        if (optionToken.IsSet() == false) {
-            return this.GetInternalServerError();
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
         }
-
-        log.AddLogDebug("Return Token");
-        return Ok(new CreateApi2TokenResult {
-            Token = optionToken.Unwrap(),
-            PasswdFalse = false,
-            UsernameFalse = false
-        });
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api2/token-refresh")]
     [PrivilegeRoute(route: "/api2/token-refresh")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult RefreshApi2Token([FromBody] SimpleTokenProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> RefreshApi2TokenAsync([FromBody] SimpleTokenProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
-        var optionExist = log.AddResultAndTransform(tokenHandler.TokenExist(db, prop.Token)).OkOr(false);
-        if (optionExist == false)
-            return Ok(new ApiTypes.Work { HasWork = false });
+        try {
+            var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
+            var optionExistResult = (await log.AddResultAndTransformAsync(await tokenHandler.TokenExistAsync(db, prop.Token)));
+            if (optionExistResult == EResult.Err)
+                return BadRequest();
+            
+            var optionExist = optionExistResult.Ok();
+            if (optionExist == false)
+                return Ok(new ApiTypes.Work { HasWork = false });
 
-        var resultErr = tokenHandler.Refresh(db, prop.Token);
-        if (resultErr == EResult.Err) {
-            log.AddLogError(resultErr.Err());
-            return Ok(new ApiTypes.Work { HasWork = false });
+            
+            var resultErr = await log.AddResultAndTransformAsync<ResultErr<string>>(await tokenHandler.RefreshAsync(db, prop.Token));
+            return Ok(resultErr == EResult.Err 
+                ? new ApiTypes.Work { HasWork = false } 
+                : new ApiTypes.Work { HasWork = true });
         }
-        return Ok(new ApiTypes.Work { HasWork = true });
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api2/token-remove")]
     [PrivilegeRoute(route: "/api2/token-remove")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult RemoveApi2Token([FromBody] SimpleTokenProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> RemoveApi2Token([FromBody] SimpleTokenProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
+        try {
 
-        var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
-        var resultErr = tokenHandler.RemoveToken(db, prop.Token);
-        if (resultErr == EResult.Err) {
-            log.AddLogError(resultErr.Err());
-            return Ok(new ApiTypes.Work { HasWork = false });
+            var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
+            var resultErr = await log.AddResultAndTransformAsync<ResultErr<string>>(await tokenHandler
+                .RemoveTokenAsync(db, prop.Token));
+
+            return Ok(resultErr == EResult.Err 
+                ? new ApiTypes.Work { HasWork = false } 
+                : new ApiTypes.Work { HasWork = true });
         }
-        return Ok(new ApiTypes.Work { HasWork = true });
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api2/token-user-id")]
     [PrivilegeRoute(route: "/api2/token-user-id")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<long>))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult GetTokenUserId([FromBody] SimpleTokenProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> GetTokenUserId([FromBody] SimpleTokenProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
-        var optionResp = log.AddResultAndTransform(tokenHandler.GetTokenInfo(db, prop.Token)).OkOr(Option<TokenInfo>.Empty);
-        return optionResp.IsSet() == false
-            ? Ok(new ApiTypes.ExistOrFoundInfo<long> { Value = -1, ExistOrFound = false })
-            : Ok(new ApiTypes.ExistOrFoundInfo<long> { Value = optionResp.Unwrap().UserId, ExistOrFound = true });
+        try {
+            var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
+            var optionResp = (await log.AddResultAndTransformAsync(await tokenHandler.GetTokenInfoAsync(db, prop.Token))).OkOr(Option<TokenInfo>.Empty);
+            return optionResp.IsSet() == false
+                ? Ok(new ApiTypes.ExistOrFoundInfo<long> { Value = -1, ExistOrFound = false })
+                : Ok(new ApiTypes.ExistOrFoundInfo<long> { Value = optionResp.Unwrap().UserId, ExistOrFound = true });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]

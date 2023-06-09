@@ -1,4 +1,3 @@
-using NPoco;
 
 namespace OsuDroid.Database.TableFn;
 

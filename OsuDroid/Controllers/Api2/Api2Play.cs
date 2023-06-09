@@ -15,79 +15,88 @@ public class Api2Play : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/play/by-id")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PlayInfoById))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(string))]
-    public IActionResult GetPlayById([FromBody] ApiTypes.Api2GroundWithHash<Api2PlayById> prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> GetPlayById([FromBody] ApiTypes.Api2GroundWithHash<Api2PlayById> prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.ValuesAreGood() == false) {
-            log.AddLogDebug("Values Are Bad");
-            return BadRequest();
+        try {
+            if (prop.ValuesAreGood() == false) {
+                await log.AddLogDebugAsync("Values Are Bad");
+                return BadRequest();
+            }
+
+
+            if (prop.HashValidate() == false) {
+                await log.AddLogDebugAsync("Hash Not Valid");
+                return BadRequest(prop.PrintHashOrder());
+            }
+
+
+            await log.AddLogDebugAsync("PlayId: " + prop.Body!.PlayId);
+            var optionRep = (await log.AddResultAndTransformAsync(await ScorePack
+                    .GetByPlayIdAsync(db, prop.Body!.PlayId)))
+                .OkOr(Option<(PlayScore Score, string Username, string Region)>.Empty);
+
+            await (optionRep.IsSet() 
+                ? log.AddLogDebugAsync("PlayId Found")
+                : log.AddLogDebugAsync("PlayId Not Found"));
+
+            return optionRep.IsSet() == false
+                ? BadRequest("Not Found")
+                : Ok(new PlayInfoById {
+                    Region = optionRep.Unwrap().Region,
+                    Score = optionRep.Unwrap().Score,
+                    Username = optionRep.Unwrap().Username
+                });
         }
-
-
-        if (prop.HashValidate() == false) {
-            log.AddLogDebug("Hash Not Valid");
-            return BadRequest(prop.PrintHashOrder());
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
         }
-
-
-        log.AddLogDebug("PlayId: " + prop.Body!.PlayId);
-        var optionRep = log.AddResultAndTransform(ScorePack.GetByPlayId(db, prop.Body!.PlayId))
-            .OkOr(Option<(PlayScore Score, string Username, string Region)>.Empty);
-
-        if (optionRep.IsSet()) {
-            log.AddLogDebug("PlayId Found");
+        finally {
+            await dbT.CommitAsync();
         }
-        else {
-            log.AddLogDebug("PlayId Not Found");
-        }
-
-        return optionRep.IsSet() == false
-            ? BadRequest("Not Found")
-            : Ok(new PlayInfoById {
-                Region = optionRep.Unwrap().Region,
-                Score = optionRep.Unwrap().Score,
-                Username = optionRep.Unwrap().Username
-            });
     }
 
     [HttpPost("/api2/play/recent")]
     [PrivilegeRoute(route: "/api2/play/recent")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.PlayScoreWithUsername>>))]
+        Type = typeof(ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayScoreWithUsername>>))]
     public async Task<IActionResult> GetRecentPlay([FromBody] ApiTypes.Api2GroundNoHeader<RecentPlays> prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
 
-        if (prop.ValuesAreGood() == false)
-            return BadRequest();
         try {
-            var repTask = PlayRecent.FilterByAsync(
+            if (prop.ValuesAreGood() == false)
+                return BadRequest();
+            
+            var repTaskResult = await log.AddResultAndTransformAsync(await PlayRecent.FilterByAsync(
+                db,
                 prop.Body!.FilterPlays!,
                 prop.Body!.OrderBy!,
                 prop.Body!.Limit,
                 prop.Body!.StartAt
-            );
+            ));
 
-            if (await Task.WhenAny(repTask, Task.Delay(3000)) != repTask)
-                // timeout logic
-                return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.PlayScoreWithUsername>> {
-                    Value = ArraySegment<PlayRecent.PlayScoreWithUsername>.Empty,
-                    ExistOrFound = false
-                });
-            // task completed within timeout
-            return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.PlayScoreWithUsername>> {
-                Value = repTask.Result,
+            if (repTaskResult == EResult.Err)
+                return GetInternalServerError();
+
+            var repTask = repTaskResult.Ok();
+            return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayScoreWithUsername>> {
+                Value = repTask,
                 ExistOrFound = true
             });
         }
-        catch (Exception) {
-            return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayRecent.PlayScoreWithUsername>> {
-                Value = ArraySegment<PlayRecent.PlayScoreWithUsername>.Empty,
-                ExistOrFound = false
-            });
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
         }
     }
 

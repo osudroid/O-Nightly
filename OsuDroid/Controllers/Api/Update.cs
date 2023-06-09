@@ -14,7 +14,7 @@ public class Update : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiUpdateInfo))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult GetUpdateInfo([FromQuery(Name = "lang")] string lang = "en") {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
+        using var db = await DbBuilder.BuildNpgsqlConnection();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
 

@@ -1,3 +1,4 @@
+using System.Numerics;
 using NetEscapades.EnumGenerators;
 using OsuDroidLib.Database.Entities;
 // ReSharper disable All

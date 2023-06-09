@@ -9,6 +9,7 @@ using OsuDroid.Lib.Validate;
 using OsuDroid.Utils;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Query;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using BblGlobalRankingTimeline = OsuDroid.Database.TableFn.BblGlobalRankingTimeline;
@@ -487,7 +488,7 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult DropAccountWithToken([FromRoute(Name = "token")] Guid token) {
+    public async Task<IActionResult> DropAccountWithTokenAsync([FromRoute(Name = "token")] Guid token) {
         using var db = DbBuilder.BuildPostSqlAndOpen();
         using var log = Log.GetLog(db);
         log.AddLogDebugStart();
@@ -501,7 +502,8 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
 
         var userId = deleteAccTokenResponse.Unwrap().UserId;
 
-        ResultErr<string> deleteAccountResponse = Bbl.DeleteAccount(db, userId);
+        
+        ResultErr<string> deleteAccountResponse = await QueryUserInfo.DeleteAsync(db, userId);
         if (deleteAccountResponse == EResult.Err)
             log.AddLogError(deleteAccountResponse.Err());
         this.RemoveCookieByEName(ECookie.LoginCookie);

@@ -5,10 +5,18 @@ using OsuDroid.Utils;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
 
+
+
+
+
+
+
+
 namespace OsuDroid;
 
 public static class Program {
     public static async Task Main(string[] args) {
+        
         DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
         Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
         await PrivilegeManager.Update();

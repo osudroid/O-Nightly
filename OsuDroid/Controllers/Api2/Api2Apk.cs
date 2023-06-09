@@ -9,23 +9,27 @@ public class Api2Apk : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/apk/version/{dirNameNumber:long}.apk")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(byte[]))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult GetUpdateInfo([FromRoute(Name = "dirNameNumber")] long version) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> GetUpdateInfo([FromRoute(Name = "dirNameNumber")] long version) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
         try {
-            using var fileStream = System.IO.File.OpenRead($"{Env.UpdatePath}/{version}/android.apk");
+            var path = $"{Env.UpdatePath}/{version}/android.apk";
+
+            if (System.IO.File.Exists(path) == false)
+                return BadRequest("Version Number not exist");
+
+            await using var fileStream = System.IO.File.OpenRead(path);
             return File(fileStream, "application/apk");
         }
-#if DEBUG
         catch (Exception e) {
-            throw;
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
         }
-#else
-        catch (Exception) {
-            return BadRequest();
+        finally {
+            await dbT.CommitAsync();
         }
-#endif
     }
 }

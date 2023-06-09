@@ -1,56 +1,55 @@
-using System.Globalization;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+using Dapper;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Extension;
 
 namespace OsuDroid.Utils;
 
 public static class FullRecalcUserRankingTimeline {
     public static void Run(DateTime startDate) {
+        RunAsync(startDate).Wait();
+    }
+
+    private static async Task RunAsync(DateTime startDate) {
         var iter = startDate;
         var dates = new List<DateTime>();
         var scoreMapKeyUser = new Dictionary<long, List<PlayScore>>();
         UserInfo[] userList;
+
+        await using var mainDb = await DbBuilder.BuildNpgsqlConnection();
         
-        using (var mainDb = DbBuilder.BuildPostSqlAndOpen()) {
-            WriteLine("Start FullRecalcUserRankingTimeline");
-            WriteLine("DELETE Old Values");
-            var dateStr = $"{startDate.Year}-{startDate.Month}-{startDate.Day}";
-            mainDb.Execute(@$"
-DELETE FROM public.bbl_global_ranking_timeline
+        WriteLine("Start FullRecalcUserRankingTimeline");
+        WriteLine("DELETE Old Values");
+        var dateStr = $"{startDate.Year}-{startDate.Month}-{startDate.Day}";
+        await mainDb.SafeQueryAsync(@$"
+DELETE FROM public.GlobalRankingTimeline
 WHERE date >= '{dateStr}' 
 ");
-
-            WriteLine("Get ALl User");
-            userList = CollectionsMarshal.AsSpan(
-                mainDb.Fetch<UserInfo>(
-                        "SELECT id, regist_time FROM public.bbl_user ORDER BY regist_time ASC")
-                    .OkOrDefault() ??
-                new List<UserInfo>(0)).ToArray();
+        
+        
+        WriteLine("Get ALl User");
+        userList = (await mainDb.SafeQueryAsync<UserInfo>(
+            "SELECT UserId, RegisterTime FROM UserInfo ORDER BY RegisterTime ASC")).Ok().ToArray();
 
             
 
-            foreach (var bblUser in userList) scoreMapKeyUser.Add(bblUser.UserId, new List<PlayScore>(128));
+        foreach (var bblUser in userList) scoreMapKeyUser.Add(bblUser.UserId, new List<PlayScore>(128));
 
-            WriteLine("Get ALl Score");
-            foreach (var bblScore in CollectionsMarshal.AsSpan(
-                         mainDb.Fetch<PlayScore>(
-                                 "SELECT id, hash, uid, score, date FROM public.bbl_score")
-                             .OkOrDefault() ??
-                         new List<PlayScore>(0))) {
-                if (!scoreMapKeyUser.TryGetValue(bblScore.Uid, out var list)) continue;
-                list.Add(bblScore);
-            }
+        WriteLine("Get ALl Score");
+        foreach (var bblScore in (await mainDb.SafeQueryAsync<PlayScore>(
+                     "SELECT PlayScoreId, Hash, UserId, Score, Date FROM public.PlayScore")).Ok().ToList()) {
+            if (!scoreMapKeyUser.TryGetValue(bblScore.UserId, out var list)) continue;
+            list.Add(bblScore);
+        }
 
-            GC.Collect();
+        GC.Collect();
 
-            var now = DateTime.UtcNow;
-            var endDate = new DateTime(now.Year, now.Month, now.Day, 0,0,0, System.DateTimeKind.Utc);
+        var now = DateTime.UtcNow;
+        var endDate = new DateTime(now.Year, now.Month, now.Day, 0,0,0, System.DateTimeKind.Utc);
         
-            while (iter <= endDate) {
-                dates.Add(iter.Date);
-                iter = iter.AddDays(1);
-            }
+        while (iter <= endDate) {
+            dates.Add(iter.Date);
+            iter = iter.AddDays(1);
         }
 
       
@@ -65,15 +64,25 @@ WHERE date >= '{dateStr}'
                 var timeLineArr = GetFullRecalcUserRankingTimelineForThisDay(scoreMapKeyUser, userList, i);
                 WriteLine(
                     $"FROM: {dates.Count} AT: {count} | Insert Values For: Y{i.Year} M{i.Month} D{i.Day} Start");
-                using var db = DbBuilder.BuildPostSqlAndOpenNormalPoco();
-                db.InsertBatch(timeLineArr);
+                using var db = DbBuilder.BuildNpgsqlConnection().GetAwaiter().GetResult();
+
+                
+                var lines = String.Join(
+                    ", ",
+                    timeLineArr.Select(x => $"({x.UserId}, {Time.ToScyllaString(x.Date)}, {x.GlobalRanking}, {x.Score})")
+                    );
+                db.QueryAsync(@$"
+INSERT INTO GlobalRankingTimeline
+(Userid, Date, Globalranking, Score) 
+VALUES
+{lines}
+").Wait();
             }
             catch (Exception e) {
                 WriteLine(e);
                 throw;
             }
         }
-
         
         Parallel.For(0, dates.Count, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount + 2 }, MultiIter);
     }

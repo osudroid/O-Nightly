@@ -12,7 +12,7 @@ public static class QueryPlayScorePreSubmit {
     /// <param name="filename"></param>
     /// <param name="fileHash"></param>
     /// <returns></returns>
-    public static async Task<Result<PlayScorePreSubmit, string>> PreAddScore(NpgsqlConnection db, long userId, string filename, string fileHash) {
+    public static async Task<Result<PlayScorePreSubmit, string>> PreAddScoreAsync(NpgsqlConnection db, long userId, string filename, string fileHash) {
         var insert = new PlayScorePreSubmit {
             UserId = userId,
             Filename = filename,
@@ -25,23 +25,34 @@ public static class QueryPlayScorePreSubmit {
         if (result == EResult.Err)
             return result.ChangeOkType<PlayScorePreSubmit>();
 
-        return (await db.SafeQuerySingleAsync<BoxLong>(@"
+        var sql = @"
 SELECT ScorePreSubmitId as Value 
 FROM PlayScorePreSubmit 
 WHERE UserId = @UserId
   AND Filename = @Filename
   AND Hash = @FileHash
 
-", new { UserId = userId, Filename = filename, FileHash = fileHash }))
+";
+        
+        return (await db.SafeQuerySingleAsync<BoxLong>(sql, 
+                new { UserId = userId, Filename = filename, FileHash = fileHash }))
             .Map(x => {
                 insert.PlayScoreId = x.Value;
                 return insert;
             });
     }
 
-    public static async Task<Result<Option<PlayScorePreSubmit>, string>> GetById(NpgsqlConnection db, long id) {
+    public static async Task<Result<Option<PlayScorePreSubmit>, string>> GetByIdAsync(NpgsqlConnection db, long id) {
         return (await db.SafeQueryFirstOrDefaultAsync<PlayScorePreSubmit>(@$"
 SELECT * FROM PlayScorePreSubmit WHERE ScorePreSubmitId = @Id
 ", new { Id = id }));
+    }
+
+    public static async Task<ResultErr<string>> DeleteByIdAsync(NpgsqlConnection db, long id) {
+        return await db.SafeQueryAsync(@$"
+DELETE 
+FROM PlayScorePreSubmit
+WHERE ScorePreSubmitId = { id }
+");
     }
 }

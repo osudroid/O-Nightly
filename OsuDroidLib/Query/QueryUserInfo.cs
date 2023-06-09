@@ -20,7 +20,40 @@ WHERE banned = false
             );        
     }
 
+    public static async Task<Result<Option<UserInfo>, string>> GetUsernameAndRegionByUserId(
+        NpgsqlConnection db, long userId) {
 
+        return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@$"
+SELECT username, region
+FROM UserInfo
+WHERE UserId = {userId}
+");
+    }
+    
+    public static async Task<Result<Option<UserInfo>, string>> GetUsernameByUserIdAsync(
+        NpgsqlConnection db, long userId) {
+
+        return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@$"
+SELECT Username
+FROM UserInfo
+WHERE UserId = {userId}
+");
+    }
+
+    public static async Task<ResultErr<string>> DeleteAsync(NpgsqlConnection db, long userId) {
+        return await db.SafeQueryAsync($"DELETE FROM UserInfo WHERE UserId = {userId}");
+    }
+
+    public static async Task<Result<Option<UserInfo>, string>> GetIdUsernamePasswordByLowerUsernameAsync(
+        NpgsqlConnection db, string username) {
+
+        return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@"
+SELECT UserId, Username, Password 
+FROM UserInfo 
+WHERE lower(username) = lower(@Username)", 
+            new { Username = username });
+    }
+    
     public sealed class StatisticActiveUser {
         public long ActiveUserLast1H { get; set; }
         public long ActiveUserLast1Day { get; set; }

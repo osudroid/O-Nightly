@@ -12,7 +12,6 @@ public static class Service {
     }
 
     public static Result<ServiceState, string> RunClean(ServiceState state) {
-        using var db = DbBuilder.BuildNpgsqlConnection();
 
         WriteLine("Start Update Patreon");
         
@@ -23,7 +22,7 @@ public static class Service {
             .SetCanpaignId(Env.PatreonCanpaignId!)
             .Use();
 
-        var task = UpdatePatreonStatusLoop(adapterPatreon, db);
+        var task = UpdatePatreonStatusLoop(adapterPatreon, DbBuilder.BuildNpgsqlConnection().GetAwaiter().GetResult());
         task.Wait();
         var resp = task.Result;
         WriteLine($"Finish Update Patreon (Status: Work = {resp == EResult.Ok})");
@@ -48,8 +47,6 @@ public static class Service {
 
 #endif
 
-        var task = QueryPatron.SyncPatronMembersByEmails(db, emailsActivePatronEmails.Ok());
-        task.Wait();
-        return task.Result;
+        return await QueryPatron.SyncPatronMembersByEmails(db, emailsActivePatronEmails.Ok());
     }
 }

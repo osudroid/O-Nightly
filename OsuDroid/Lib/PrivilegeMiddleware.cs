@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.Features;
+using Npgsql;
 using OsuDroidLib.Extension;
 
 namespace OsuDroid.Lib;
@@ -13,10 +14,13 @@ internal class PrivilegeRouteAttribute : Attribute
 public interface ICookieHandler {
     public string Name { get; }
     
-    public Result<(bool IsOk, long UserId), string> HandleCookie (IRequestCookieCollection requestCookie, IResponseCookies responseCookies);
+    public Task<Result<(bool IsOk, long UserId, Guid Token), string>> HandleCookieAsync (
+        NpgsqlConnection db, IRequestCookieCollection requestCookie, IResponseCookies responseCookies);
 }
 
 public class PrivilegeMiddleware {
+    public const string ItemName = "USER_ID";
+    
     public record RouteInfo(Guid NeedPrilegeId, string NeedPrivileName, bool NeedCookie, Option<ICookieHandler> CookieHandler);
     
     private static IReadOnlyDictionary<string, ICookieHandler> CookieHandlers = new Dictionary<string, ICookieHandler>(1);
@@ -73,7 +77,7 @@ public class PrivilegeMiddleware {
 
         var checkResult = CheckIfNeedCookie(attribute);
         if (checkResult.routeInfo.IsSet() == false) {
-            context.Response.StatusCode = 404;
+            context.Response.StatusCode = 403;
             return;
         }
         
@@ -91,19 +95,24 @@ public class PrivilegeMiddleware {
     }
 
     private async Task InvokeAsyncWithCookie(HttpContext context, RouteInfo routeInfo) {
-        var result = routeInfo.CookieHandler.Unwrap().HandleCookie(
+        await using var db = await DbBuilder.BuildNpgsqlConnection();
+        
+        var result = await routeInfo.CookieHandler.Unwrap().HandleCookieAsync(
+            db,
             context.Request.Cookies,
             context.Response.Cookies);
 
         if (result == EResult.Err)
             throw new Exception(result.Err());
+
+        var (isOk, userId, token) = result.Ok();
         
-        if (result.Ok().IsOk == false) {
+        if (isOk == false) {
             context.Response.StatusCode = 403;
             return;
         }
 
-        await using var db = await DbBuilder.BuildNpgsqlConnection();
+        
         var resultPrivilegeOk = OsuDroid.Lib.PrivilegeManager.UserCanUseById(db, routeInfo.NeedPrilegeId, result.Ok().UserId);
 
         if (resultPrivilegeOk == EResult.Err)
@@ -116,7 +125,9 @@ public class PrivilegeMiddleware {
             context.Response.StatusCode = 403;
             return;
         }
+
         
+        context.Items.Add(ItemName, new UserIdAndToken(userId, token));
         await _next(context);
     }
     
@@ -134,3 +145,6 @@ public static class PrivilegeMiddlewareExtensions
         return builder.UseMiddleware<PrivilegeMiddleware>();
     }
 }
+
+
+public record UserIdAndToken(long UserId, Guid Token);

@@ -15,35 +15,46 @@ public class Api2Submit : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/submit/play-start")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PushPlayStartResult200))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult PushPlayStart([FromBody] ApiTypes.Api2GroundWithHash<PushPlayStartProp> prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> PushPlayStart([FromBody] ApiTypes.Api2GroundWithHash<PushPlayStartProp> prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.ValuesAreGood() == false)
-            return BadRequest();
+        try {
+            if (prop.ValuesAreGood() == false)
+                return BadRequest();
 
-        if (prop.HashValidate() == false)
-            return BadRequest(prop.PrintHashOrder());
+            if (prop.HashValidate() == false)
+                return BadRequest(prop.PrintHashOrder());
 
 
-        var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User);
-        var tokenInfoResp = log
-            .AddResultAndTransform(tokenHandler.GetTokenInfo(db, prop.Header!.Token))
-            .OkOr(Option<TokenInfo>.Empty);
+            var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
+            var tokenInfoResp = (await log
+                    .AddResultAndTransformAsync(await tokenHandler.GetTokenInfoAsync(db, prop.Header!.Token)))
+                .OkOr(Option<TokenInfo>.Empty);
 
-        if (tokenInfoResp.IsSet() == false)
-            return BadRequest("Token Error");
+            if (tokenInfoResp.IsSet() == false)
+                return BadRequest("Token Error");
 
-        var resp = log.AddResultAndTransform(Submit.InsertPreBuildPlay(
-            tokenInfoResp.Unwrap().UserId,
-            prop.Body!.Filename!,
-            prop.Body!.FileHash!
-        ));
+            var resp = await log.AddResultAndTransformAsync(await Submit.InsertPreBuildPlayAsync(
+                db,
+                tokenInfoResp.Unwrap().UserId,
+                prop.Body!.Filename!,
+                prop.Body!.FileHash!
+            ));
 
-        return resp == EResult.Err
-            ? GetInternalServerError()
-            : Ok(new PushPlayStartResult200 { PlayId = resp.Ok() });
+            return resp == EResult.Err
+                ? GetInternalServerError()
+                : Ok(new PushPlayStartResult200 { PlayId = resp.Ok() });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api2/submit/play-end")]
@@ -51,35 +62,46 @@ public class Api2Submit : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PushReplayResult200))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult PushReplay([FromBody] ApiTypes.Api2GroundWithHash<PushPlayProp> prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> PushReplay([FromBody] ApiTypes.Api2GroundWithHash<PushPlayProp> prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.ValuesAreGood() == false)
-            return BadRequest();
+        try {
+            if (prop.ValuesAreGood() == false)
+                return BadRequest();
 
-        if (prop.HashValidate() == false)
-            return BadRequest(prop.PrintHashOrder());
+            if (prop.HashValidate() == false)
+                return BadRequest(prop.PrintHashOrder());
 
-        var tokenInfoResp = log
-            .AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User)
-            .GetTokenInfo(db, prop.Header!.Token))
-            .OkOr(Option<TokenInfo>.Empty);
+            var tokenHandlerManager = TokenHandlerManger.GetOrCreateCacheDatabase();
+            var tokenInfoResp = (await log
+                    .AddResultAndTransformAsync(await tokenHandlerManager.GetTokenInfoAsync(db, prop.Header!.Token)))
+                .OkOr(Option<TokenInfo>.Empty);
 
-        if (tokenInfoResp.IsSet() == false)
-            return BadRequest("Token Error");
+            if (tokenInfoResp.IsSet() == false)
+                return BadRequest("Token Error");
 
-        var resp = log
-            .AddResultAndTransform(Submit.InsertFinishPlayAndUpdateUserScore(tokenInfoResp.Unwrap().UserId, prop.Body!))
-            .OkOr(Option<(UserStats userStats, long BestPlayScoreId)>.Empty);
+            var resp = (await log
+                    .AddResultAndTransformAsync(await Submit
+                        .InsertFinishPlayAndUpdateUserScoreAsync(db, tokenInfoResp.Unwrap().UserId, prop.Body!)))
+                .OkOr(Option<(UserStats userStats, long BestPlayScoreId)>.Empty);
 
-        return resp.IsSet() == false
-            ? GetInternalServerError()
-            : Ok(new PushReplayResult200 {
-                UserStats = resp.Unwrap().userStats,
-                BestPlayScoreId = resp.Unwrap().BestPlayScoreId
-            });
+            return resp.IsSet() == false
+                ? GetInternalServerError()
+                : Ok(new PushReplayResult200 {
+                    UserStats = resp.Unwrap().userStats,
+                    BestPlayScoreId = resp.Unwrap().BestPlayScoreId
+                });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api2/submit/replay-file")]
@@ -115,7 +137,7 @@ public class Api2Submit : ControllerExtensions {
 
         var tokenInfoResp = log
             .AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User)
-            .GetTokenInfo(db, prop.Header!.Token))
+            .GetTokenInfoAsync(db, prop.Header!.Token))
             .OkOr(Option<TokenInfo>.Empty);
 
         if (tokenInfoResp.IsSet() == false)

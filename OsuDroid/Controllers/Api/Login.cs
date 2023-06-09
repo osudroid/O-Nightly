@@ -57,7 +57,7 @@ public sealed class Login : ControllerExtensions {
         if (fetchResult is null)
             return Ok(new WebLoginRes { Work = false });
 
-        var optionGuid = Option<Guid>.Trim(log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).Insert(db, fetchResult.UserId)));
+        var optionGuid = Option<Guid>.Trim(log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).InsertAsync(db, fetchResult.UserId)));
         if (optionGuid.IsSet() == false)
             return GetInternalServerError();
         AppendCookie(ECookie.LoginCookie, optionGuid.Unwrap().ToString());
@@ -105,7 +105,7 @@ public sealed class Login : ControllerExtensions {
         if (fetchResult is null)
             return Ok(new WebLoginRes { Work = false });
 
-        var resultGuid = log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).Insert(db, fetchResult.UserId));
+        var resultGuid = log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).InsertAsync(db, fetchResult.UserId));
         if (resultGuid == EResult.Err)
             return GetInternalServerError();
         AppendCookie(ECookie.LoginCookie, resultGuid.Ok().ToString());

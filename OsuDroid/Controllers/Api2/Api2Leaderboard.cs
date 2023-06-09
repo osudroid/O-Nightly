@@ -13,82 +13,114 @@ public class Api2Leaderboard : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/leaderboard")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult GetLeaderBoard([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardProp> prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> GetLeaderBoard([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardProp> prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.ValuesAreGood() == false)
-            return BadRequest();
-
-        var allRegion = prop.Body!.IsRegionAll();
-        Result<List<LeaderBoardUser>, string> rep;
-        switch (allRegion) {
-            case true:
-                rep = LeaderBoard.AnyRegion(prop.Body.Limit);
-                break;
-            default: {
-                var countyRep = prop.Body!.GetRegionAsCountry();
-                if (countyRep.IsSet() == false) {
-                    log.AddLogDebug("RegionAsCountry Not Found");
-                    return BadRequest();
-                }
-
-                rep = LeaderBoard.FilterRegion(prop.Body.Limit, countyRep.Unwrap());
-                break;
+        try {
+            if (prop.ValuesAreGood() == false) {
+                return BadRequest();
             }
-        }
+                
 
-        return Ok(rep == EResult.Err
-            ? ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.NotExist()
-            : ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.Exist(rep.Ok()));
+            var allRegion = prop.Body!.IsRegionAll();
+            Result<List<LeaderBoardUser>, string> rep;
+            switch (allRegion) {
+                case true:
+                    rep = await LeaderBoard.AnyRegionAsync(db, prop.Body.Limit);
+                    break;
+                default: {
+                    var countyRep = prop.Body!.GetRegionAsCountry();
+                    if (countyRep.IsSet() == false) {
+                        await log.AddLogDebugAsync("RegionAsCountry Not Found");
+                        return BadRequest();
+                    }
+
+                    rep = await LeaderBoard.FilterRegionAsync(db, prop.Body.Limit, countyRep.Unwrap());
+                    break;
+                }
+            }
+
+            return Ok(rep == EResult.Err
+                ? ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.NotExist()
+                : ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.Exist(rep.Ok()));
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api2/leaderboard/user")]
     [PrivilegeRoute(route: "/api2/leaderboard/user")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<LeaderBoardUser>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardUserProp> prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardUserProp> prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.ValuesAreGood() == false)
-            return BadRequest();
+        try {
+            if (prop.ValuesAreGood() == false)
+                return BadRequest();
 
-        var rep = log.AddResultAndTransform(
-            LeaderBoard.User(prop.Body!.UserId)).OkOr(Option<LeaderBoardUser>.Empty);
+            var rep = (await log.AddResultAndTransformAsync(
+                await LeaderBoard.UserAsync(db, prop.Body!.UserId))).OkOr(Option<LeaderBoardUser>.Empty);
 
-        return Ok(rep.IsSet() == false
-            ? ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.NotExist()
-            : ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.Exist(rep.Unwrap()));
+            return Ok(rep.IsSet() == false
+                ? ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.NotExist()
+                : ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.Exist(rep.Unwrap()));
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api2/leaderboard/search-user")]
     [PrivilegeRoute(route: "/api2/leaderboard/search-user")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardSearchUserProp> prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardSearchUserProp> prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.ValuesAreGood() == false)
-            return BadRequest();
+        try {
+            if (prop.ValuesAreGood() == false)
+                return BadRequest();
 
-        ((ILogRequestJsonPrint)prop.Body!).LogRequestJsonPrint();
+            ((ILogRequestJsonPrint)prop.Body!).LogRequestJsonPrint();
 
 
 
-        ResultOk<List<LeaderBoardUser>> rep = prop.Body!.IsRegionAll() switch {
-            true => log.AddResultAndTransform(LeaderBoard.SearchUser(prop.Body!.Limit, prop.Body!.Query!)),
-            _ => log.AddResultAndTransform(LeaderBoard.SearchUserWithRegion(prop.Body!.Limit, prop.Body!.Query!,
-                prop.Body.GetRegionAsCountry().Unwrap()))
-        };
+            ResultOk<List<LeaderBoardUser>> rep = prop.Body!.IsRegionAll() switch {
+                true => await log.AddResultAndTransformAsync(await LeaderBoard.SearchUserAsync(db, prop.Body!.Limit, prop.Body!.Query!)),
+                _ => await log.AddResultAndTransformAsync(await LeaderBoard.SearchUserWithRegionAsync(db, prop.Body!.Limit, prop.Body!.Query!,
+                    prop.Body.GetRegionAsCountry().Unwrap()))
+            };
 
-        return Ok(rep == EResult.Err
-            ? ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.NotExist()
-            : ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.Exist(rep.OkOr(new())));
+            return Ok(rep == EResult.Err
+                ? ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.NotExist()
+                : ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.Exist(rep.OkOr(new())));
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
 

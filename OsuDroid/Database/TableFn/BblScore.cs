@@ -1,13 +1,9 @@
-using NPoco;
+
 using OsuDroid.Utils;
 
 namespace OsuDroid.Database.TableFn; 
 
 public static class BblScore {
-    public static ResultErr<string> DeleteAllScoresByUserId(SavePoco db, long userId) {
-        return db.Execute(@$"Delete FROM bbl_score WHERE uid = {userId}");
-    }
-    
     public static Result<List<Entities.PlayScore>, string> GetTopScoreFromUserId(SavePoco db, long userId) {
         return db.Fetch<Entities.PlayScore>(@$"
 SELECT * 
