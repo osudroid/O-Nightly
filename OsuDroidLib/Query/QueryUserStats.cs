@@ -1,3 +1,4 @@
+using Dapper.Contrib.Extensions;
 using Npgsql;
 using OsuDroidLib.Class;
 using OsuDroidLib.Database.Entities;
@@ -19,7 +20,10 @@ WHERE UserId = {userId};
 ";
         return (await db.SafeQueryFirstAsync<BoxLong>(sql)).Map(x => x.Value);
     }
-    
+
+    public static async Task<ResultErr<string>> InsertAsync(NpgsqlConnection db, UserStats userStats) {
+        return await db.SafeInsertAsync(userStats);
+    } 
     
     public static async Task<ResultErr<string>> UpdateStatsFromScoreAsync(
         NpgsqlConnection db, long userId, PlayScoreDto now, PlayScoreDto? old = null) {

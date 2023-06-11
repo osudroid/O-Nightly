@@ -109,52 +109,66 @@ public class Api2Submit : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult UploadReplayFile([FromForm] Api2UploadReplayFilePropAsFormWrapper form) {
+    public async Task<IActionResult> UploadReplayFile([FromForm] Api2UploadReplayFilePropAsFormWrapper form) {
         ApiTypes.Api2GroundWithHash<Api2UploadReplayFileProp> prop;
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
 
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
         try {
-            var value =
-                JsonConvert.DeserializeObject<ApiTypes.Api2GroundWithHash<Api2UploadReplayFileProp>>(form.Prop ?? "");
-            if (value is null)
+            try {
+                var value =
+                    JsonConvert.DeserializeObject<ApiTypes.Api2GroundWithHash<Api2UploadReplayFileProp>>(form.Prop ?? "");
+                if (value is null)
+                    return BadRequest("JSON is false");
+                prop = value;
+            }
+            catch (Exception e) {
+                await log.AddLogErrorAsync(e.ToString());
                 return BadRequest("JSON is false");
-            prop = value;
+            }
+
+            if (prop.ValuesAreGood() == false)
+                return BadRequest("Values Are Values");
+
+            if (prop.HashValidate() == false)
+                return BadRequest(prop.PrintHashOrder());
+
+            if (form.File is null)
+                return NotFound("File Not Found In Form");
+
+            var tokenInfoResult = await log
+                .AddResultAndTransformAsync(await TokenHandlerManger.GetOrCreateCacheDatabase()
+                                                                    .GetTokenInfoAsync(db, prop.Header!.Token));
+
+            if (tokenInfoResult == EResult.Err)
+                return GetInternalServerError();
+            
+            if (tokenInfoResult.Ok().IsNotSet())
+                return BadRequest("Token Dead Or Error");
+
+            
+            var resp = await log.AddResultAndTransformAsync(await Upload.UploadReplayAsync(
+                db,
+                prop.Body!.MapHash ?? "",
+                prop.Body!.ReplayId,
+                tokenInfoResult.Ok().Unwrap().UserId,
+                form.File)
+            );
+
+            return resp == EResult.Err 
+                ? GetInternalServerError() 
+                : Ok(resp.Ok());
         }
         catch (Exception e) {
-            log.AddLogError(e.ToString());
-            return BadRequest("JSON is false");
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
         }
-
-        if (prop.ValuesAreGood() == false)
-            return BadRequest();
-
-        if (prop.HashValidate() == false)
-            return BadRequest(prop.PrintHashOrder());
-
-
-        var tokenInfoResp = log
-            .AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User)
-            .GetTokenInfoAsync(db, prop.Header!.Token))
-            .OkOr(Option<TokenInfo>.Empty);
-
-        if (tokenInfoResp.IsSet() == false)
-            return BadRequest("Token Error");
-
-        var resp = Upload.UploadReplay(
-            prop.Body!.MapHash ?? "",
-            prop.Body!.ReplayId,
-            tokenInfoResp.Unwrap().UserId,
-            form.File!);
-
-        if (resp == EResult.Err)
-            log.AddLogError(resp.Err());
-
-        return resp == EResult.Err
-            ? BadRequest(resp.Err())
-            : Ok(resp.Ok());
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]

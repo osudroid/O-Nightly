@@ -53,4 +53,12 @@ WHERE ActiveSupporter = true
             .Map(se => se.Select(f => (f.Username??"", f.UserId)));
     }
 
+    public static async Task<Result<Option<Patron>, string>> GetByPatronEmailAsync(NpgsqlConnection db, string patronEmail) {
+        var sql = $@"
+SELECT * 
+FROM Patron
+WHERE PatronEmail = @PatronEmail
+";
+        return await db.SafeQueryFirstOrDefaultAsync<Patron>(sql, new { PatronEmail = patronEmail });
+    }
 }

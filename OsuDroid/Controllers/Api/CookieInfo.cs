@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
+using OsuDroidLib.Query;
 
 namespace OsuDroid.Controllers.Api;
 
@@ -13,45 +14,46 @@ public sealed class CookieInfo : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUserInfoByCookie() {
         await using var start = await GetStartAsync();
-        var (db, log) = start.Unpack();
-        
+        var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-        await log.AddLogOkAsync("Start");
+
         try {
-            var optionToken = log.AddResultAndTransform(LoginTokenInfo(db.Connection!)).OkOr(Option<TokenInfo>.Empty);
-         
-            if (optionToken.IsSet() == false) 
-                return Ok(ApiTypes.ExistOrFoundInfo<UserInfo>.NotExist());
+            var tokenInfo = this.LoginTokenInfo(db).Ok().Unwrap();
 
-            var token = optionToken.Unwrap();
+            var userInfoResult = await log.AddResultAndTransformAsync(
+                await QueryUserInfo.GetByUserIdAsync(db, tokenInfo.UserId));
+
+            if (userInfoResult == EResult.Err)
+                return GetInternalServerError();
+
+            if (userInfoResult.Ok().IsNotSet())
+                return NotFound();
+
+            var userInfo = userInfoResult.Ok().Unwrap();
             
-            var optionUser = log.AddResultAndTransform(db.SingleOrDefaultById<Entities.UserInfo>(token.UserId))
-                                .Map(x => Option<Entities.UserInfo>.NullSplit(x))
-                                .OkOr(Option<Entities.UserInfo>.Empty);
-            if (optionUser.IsSet() == false)
-                return Ok(new ApiTypes.ExistOrFoundInfo<UserInfo> { ExistOrFound = false, Value = null });
-
-            var user = optionUser.Unwrap();
+            // TODO Check is Supporter
             return Ok(new ApiTypes.ExistOrFoundInfo<UserInfo> {
                 ExistOrFound = true,
                 Value = new UserInfo {
-                    Active = user.Active,
-                    Banned = user.Banned,
-                    Email = user.Email,
-                    Id = user.UserId,
-                    Region = user.Region,
-                    Username = user.Username,
-                    RegistTime = user.RegisterTime,
-                    RestrictMode = user.RestrictMode
+                    Active = userInfo.Active,
+                    Banned = userInfo.Banned,
+                    Email = userInfo.Email,
+                    Id = userInfo.UserId,
+                    Region = userInfo.Region,
+                    Username = userInfo.Username,
+                    RegistTime = userInfo.RegisterTime,
+                    RestrictMode = userInfo.RestrictMode,
+                     
                 }
             });
-            
-            await db.CommitAsync();
         }
         catch (Exception e) {
-            WriteLine(e);
-            await log.AddLogErrorAsync("Exception", Option<string>.With(e.ToString()));
-            await db.RollbackAsync();
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
         }
     }
 

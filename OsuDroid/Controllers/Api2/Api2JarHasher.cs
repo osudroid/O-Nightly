@@ -11,26 +11,35 @@ public class Api2JarHasher : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Jar([FromRoute(Name = "version")] string version, [FromQuery(Name = "q")] string keyToken) {
         await using var start = await GetStartAsync();
-        var (db, log) = start.Unpack();
+        var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
 
-        if (Env.Keyword != keyToken)
-            return BadRequest();
+        try {
+            if (Env.Keyword != keyToken)
+                return BadRequest();
         
-        var path = $"{Env.JarPath}/{version}.jar";
-        if (System.IO.File.Exists(path) == false) {
-            await log.AddLogDebugAsync($"File Not Found In {path}");
-            return BadRequest("Not Found");
-        }
+            var path = $"{Env.JarPath}/{version}.jar";
+            if (System.IO.File.Exists(path) == false) {
+                await log.AddLogDebugAsync($"File Not Found In {path}");
+                return BadRequest("Not Found");
+            }
             
         
-        try {
-            var fileStream = System.IO.File.OpenRead(path);
-            await log.AddLogOkAsync("Send File");
-            return File(fileStream, "application/apk");
+            try {
+                await log.AddLogOkAsync("Send File");
+                return File(System.IO.File.OpenRead(path), "application/apk");
+            }
+            catch (Exception) {
+                return GetInternalServerError();
+            }
         }
-        catch (Exception) {
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
             return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
         }
     }
 }

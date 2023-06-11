@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS UserStats
     OverallB         bigint NOT NULL DEFAULT 0,
     OverallC         bigint NOT NULL DEFAULT 0,
     OverallD         bigint NOT NULL DEFAULT 0,
+    OverallPerfect   bigint NOT NULL DEFAULT 0,
     OverallHits      bigint NOT NULL DEFAULT 0,
     Overall300       bigint NOT NULL DEFAULT 0,
     Overall100       bigint NOT NULL DEFAULT 0,
@@ -223,12 +224,17 @@ CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2030 PARTITION OF Global
 CREATE TABLE IF NOT EXISTS UserAvatar
 (
     UserId    BIGINT REFERENCES UserInfo(UserId) ON DELETE CASCADE,
-    TypeExt   TEXT,
-    PixelSize int,
-    Animation bool,
-    Hash    TEXT,
+    Hash      TEXT  Not NULL,
+    TypeExt   TEXT  Not NULL,
+    PixelSize int   Not NULL,
+    Animation bool  Not NULL,
+    Bytes     bytea Not NULL,
+    Original  bool  Not NULL,
     PRIMARY KEY (UserId, Hash)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_avatar_userid_pixelsize on UserAvatar(UserId, PixelSize);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_avatar_hash on UserAvatar(hash);
 
 -- Only IN Production (Need Space)
 CREATE INDEX IF NOT EXISTS idx_bbl_global_ranking_timeline_any
@@ -524,10 +530,10 @@ SELECT router_settings_with_privilege('/api/profile/drop-account/sendMail}', tru
 SELECT router_settings_with_privilege('/api/profile/drop-account/token/{token:guid}', true, 'BASE');
 SELECT router_settings_with_privilege('/api/profile/top-play-by-marks-length/user-id/{userId:long}', false, null);
 SELECT router_settings_with_privilege('/api/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}', false, null);
-SELECT router_settings_with_privilege('/api/update.php', false, null);
+SELECT router_settings_with_privilege('/api/update', false, null);
 SELECT router_settings_with_privilege('/api2/apk/version/{dirNameNumber:long}.apk', false, null);
 SELECT router_settings_with_privilege('/api2/avatar/hash', false, null);
-SELECT router_settings_with_privilege('/api2/avatar/hash/{size:long}/{id:long}', false, null);
+SELECT router_settings_with_privilege('/api2/avatar/hash/{hash:alpha}', false, null);
 SELECT router_settings_with_privilege('/api2/avatar/{size:long}/{id:long}', false, null);
 SELECT router_settings_with_privilege('/api2/jar/version/{version}.jar', false, null);
 SELECT router_settings_with_privilege('/api2/leaderboard', false, null);
@@ -550,3 +556,10 @@ SELECT router_settings_with_privilege('/api2/submit/play-start', true, 'BASE');
 SELECT router_settings_with_privilege('/api2/submit/play-end', true, 'BASE');
 SELECT router_settings_with_privilege('/api2/submit/replay-file', true, 'BASE');
 SELECT router_settings_with_privilege('/api2/update/{lang}', false, null);
+
+
+
+
+
+INSERT INTO Setting (MainKey, SubKey, Value) VALUES ('UserAvatar', 'SizeLow', '128');
+INSERT INTO Setting (MainKey, SubKey, Value) VALUES ('UserAvatar', 'SizeHigh', '256');

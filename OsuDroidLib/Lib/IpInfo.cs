@@ -2,7 +2,7 @@ using System.Net;
 using MaxMind.GeoIP2;
 using MaxMind.GeoIP2.Responses;
 
-namespace OsuDroid.Utils;
+namespace OsuDroidLib.Lib;
 
 public static class IpInfo {
     public static CountryResponse? Country(IPAddress ipAddress) {

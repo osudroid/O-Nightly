@@ -1,4 +1,5 @@
 using Npgsql;
+using OsuDroid.Utils;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Lib;
 using OsuDroidLib.Query;
@@ -9,7 +10,7 @@ public static class Submit {
     public static async Task<Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>> 
         InsertFinishPlayAndUpdateUserScoreAsync(NpgsqlConnection db, long userId, ScoreProp prop) {
 
-        var resultHistory = await PlayScorePreSubmitHandler.GetByIdAsync(db, prop.PlayScoreId);
+        var resultHistory = await PlayScorePreSubmitHandler.GetByIdAsync(db, prop.Id);
         if (resultHistory == EResult.Err)
             return resultHistory.ChangeOkType<Option<(UserStats userStats, long BestPlayScoreId)>>();
 
@@ -19,13 +20,20 @@ public static class Submit {
                 .Ok(Option<(UserStats userStats, long BestPlayScoreId)>.Empty);
 
         var history = optionHistory.Unwrap();
-        
+
+        string[]? fixMode;
+        try {
+            fixMode = Mode.ModeAsSingleStringToModeArray(prop.Mode);
+        }
+        catch (Exception e) {
+            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(e.ToString());
+        }
         PlayScore newScoreInsert = new PlayScore {
             PlayScoreId = history.PlayScoreId,
             UserId = history.UserId,
             Filename = history.Filename,
             Hash = history.Hash,
-            Mode = prop.Mode,
+            Mode = fixMode,
             Score = prop.Score,
             Combo = prop.Combo,
             Mark = prop.Mark,
@@ -135,11 +143,11 @@ public static class Submit {
     }
 
     public class ScoreProp {
-        public long PlayScoreId  { get; set; }
-        public long UserId   { get; set; }
+        public long Id  { get; set; }
+        public long Uid   { get; set; }
         public string? Filename { get; set; }
         public string? Hash     { get; set; }
-        public string[]? Mode     { get; set; }
+        public string? Mode     { get; set; }
         public long Score    { get; set; }
         public long Combo    { get; set; }
         public string? Mark     { get; set; }

@@ -55,4 +55,8 @@ FROM PlayScorePreSubmit
 WHERE ScorePreSubmitId = { id }
 ");
     }
+    
+    public static async Task<ResultErr<string>> DeleteAllScoresPreSubmitByUserIdAsync(NpgsqlConnection db, long userId) {
+        return await db.SafeQueryAsync(@$"Delete FROM PlayScorePreSubmit WHERE UserId = {userId}");
+    }
 }

@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
-using NPoco;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
@@ -11,6 +10,9 @@ using OsuDroid.Lib.Validate;
 using OsuDroid.Utils;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Extension;
+using OsuDroidLib.Lib;
+using OsuDroidLib.Query;
 
 namespace OsuDroid.Controllers.Api;
 
@@ -30,43 +32,67 @@ public sealed class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WebLoginRes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(WebLoginRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult WebLogin([FromBody] WebLoginProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> WebLogin([FromBody] WebLoginProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        var now = DateTime.UtcNow;
-        {
-            foreach (var token in TokenDic.Keys)
-                if (TokenDic.TryGetValue(token, out var valueTuple) && valueTuple.Item2 < now)
-                    TokenDic.TryRemove(token, out var _);
+        try {
+            var now = DateTime.UtcNow;
+            {
+                foreach (var token in TokenDic.Keys)
+                    if (TokenDic.TryGetValue(token, out var valueTuple) && valueTuple.Item2 < now)
+                        TokenDic.TryRemove(token, out var _);
+            }
+
+
+            if (TokenDic.Remove(prop.Token, out var tokenAndTime) == false)
+                return BadRequest();
+
+            var tokenValue = tokenAndTime.Item1;
+            if (prop.Math != tokenValue.MathValue1 + tokenValue.MathValue2)
+                return Ok(new WebLoginRes { Work = false });
+
+            var fetchResult = await log.AddResultAndTransformAsync(
+                await QueryUserInfo.GetLoginInfoByEmailAndPasswordByEmailAndPasswordAsync(
+                db,
+                (prop.Email??"").ToLower(),
+                ToPasswdHash(prop.Passwd??"")
+            ));
+
+            if (fetchResult == EResult.Err)
+                return GetInternalServerError();
+            
+            
+            if (fetchResult.Ok().IsNotSet())
+                return Ok(new WebLoginRes { Work = false });
+
+            var userInfo = fetchResult.Ok().Unwrap();
+
+            var tokenResult  = await log.AddResultAndTransformAsync(
+                await TokenHandlerManger.GetOrCreateCacheDatabase().InsertAsync(db, userInfo.UserId));
+            
+            if (tokenResult == EResult.Err)
+                return GetInternalServerError();
+            
+            
+            AppendCookie(ECookie.LoginCookie, tokenResult.Ok().ToString());
+
+            
+            await log.AddResultAndTransformAsync(await QueryUserInfo.UpdateLastLoginTimeAsync(db, userInfo.UserId));
+            var ipOption = (await log.AddResultAndTransformAsync(GetIpAddress())).OkOrDefault();
+            if (ipOption.IsSet())
+                await UserInfoHandler.UpdateIpAndRegionByIpAsync(db, userInfo, ipOption.Unwrap());
+            return Ok(new WebLoginRes { Work = true });
         }
-
-
-        if (TokenDic.Remove(prop.Token, out var tokenAndTime) == false)
-            return BadRequest();
-
-        var tokenValue = tokenAndTime.Item1;
-        if (prop.Math != tokenValue.MathValue1 + tokenValue.MathValue2)
-            return Ok(new WebLoginRes { Work = false });
-
-        UserInfo? fetchResult = log.AddResultAndTransform(db.SingleOrDefault<Entities.UserInfo>(
-            "SELECT id, email, password FROM bbl_user WHERE email = @0 AND banned = false AND password = @1 LIMIT 1",
-            prop.Email ?? "", this.ToPasswdHash(prop.Passwd ?? string.Empty))).OkOrDefault();
-
-        if (fetchResult is null)
-            return Ok(new WebLoginRes { Work = false });
-
-        var optionGuid = Option<Guid>.Trim(log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).InsertAsync(db, fetchResult.UserId)));
-        if (optionGuid.IsSet() == false)
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
             return GetInternalServerError();
-        AppendCookie(ECookie.LoginCookie, optionGuid.Unwrap().ToString());
-
-        Database.TableFn.BblUser.UpdateLastLoginTime(fetchResult, db);
-        var ip = log.AddResultAndTransform(GetIpAddress()).OkOr(Option<IPAddress>.Empty);
-        if (ip.IsSet())
-            Database.TableFn.BblUser.UpdateIpAndRegionByIp(fetchResult, db, ip.Unwrap());
-        return Ok(new WebLoginRes { Work = true });
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WebLoginRes))]
@@ -74,49 +100,66 @@ public sealed class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     [HttpPost("/api/webloginwithusername")]
     [PrivilegeRoute(route: "/api/webloginwithusername")]
-    public IActionResult WebLoginWithUsername([FromBody] WebLoginWithUsernameProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> WebLoginWithUsername([FromBody] WebLoginWithUsernameProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        prop.Username = this.FixUsername(prop.Username ?? string.Empty);
+        try {
+            prop.Username = this.FixUsername(prop.Username ?? string.Empty);
 
-        var now = DateTime.UtcNow;
-        {
-            foreach (var token in TokenDic.Keys)
-                if (TokenDic.TryGetValue(token, out var valueTuple) && valueTuple.Item2 < now)
-                    TokenDic.TryRemove(token, out var _);
+            var now = DateTime.UtcNow;
+            {
+                foreach (var token in TokenDic.Keys)
+                    if (TokenDic.TryGetValue(token, out var valueTuple) && valueTuple.Item2 < now)
+                        TokenDic.TryRemove(token, out var _);
+            }
+
+
+            if (TokenDic.Remove(prop.Token, out var tokenAndTime) == false)
+                return BadRequest();
+
+            var tokenValue = tokenAndTime.Item1;
+            if (prop.Math != tokenValue.MathValue1 + tokenValue.MathValue2)
+                return Ok(new WebLoginRes { Work = false });
+
+
+            var passwdHash = this.ToPasswdHash(prop.Passwd ?? string.Empty);
+            
+            var fetchResult = await log.AddResultAndTransformAsync(await QueryUserInfo
+                .GetLoginInfoByEmailAndPasswordByUsernameAndPasswordAsync(db, prop.Username.ToLower(), passwdHash));
+
+            if (fetchResult == EResult.Err)
+                return GetInternalServerError();
+            
+            if (fetchResult.Ok().IsNotSet())
+                return Ok(new WebLoginRes { Work = false });
+
+            var loginInfo = fetchResult.Ok().Unwrap();
+            var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
+            var resultGuid = await log.AddResultAndTransformAsync(
+                await tokenHandler.InsertAsync(db, loginInfo.UserId));
+            if (resultGuid == EResult.Err)
+                return GetInternalServerError();
+            AppendCookie(ECookie.LoginCookie, resultGuid.Ok().ToString());
+
+            await log.AddResultAndTransformAsync(await QueryUserInfo.UpdateLastLoginTimeAsync(db, loginInfo.UserId));
+            await log.AddResultAndTransformAsync(await QueryUserInfo.UpdateLastLoginTimeAsync(db, loginInfo.UserId));
+            var ipOption = (await log.AddResultAndTransformAsync(GetIpAddress())).OkOrDefault();
+            if (ipOption.IsSet())
+                await UserInfoHandler.UpdateIpAndRegionByIpAsync(db, fetchResult.Ok().Unwrap(), ipOption.Unwrap());
+
+            return Ok(new WebLoginRes
+                { Work = true, EmailExist = true, UsernameExist = true, UserOrPasswdOrMathIsFalse = false });
         }
-
-
-        if (TokenDic.Remove(prop.Token, out var tokenAndTime) == false)
-            return BadRequest();
-
-        var tokenValue = tokenAndTime.Item1;
-        if (prop.Math != tokenValue.MathValue1 + tokenValue.MathValue2)
-            return Ok(new WebLoginRes { Work = false });
-
-
-        var passwdHash = this.ToPasswdHash(prop.Passwd ?? string.Empty);
-        var fetchResult = log.AddResultAndTransform(db.SingleOrDefault<Entities.UserInfo>(
-            "SELECT id, email, password FROM bbl_user WHERE lower(username) = @0 AND banned = false AND password = @1 LIMIT 1",
-            (prop.Username ?? "").ToLower(), passwdHash)).OkOrDefault();
-
-        if (fetchResult is null)
-            return Ok(new WebLoginRes { Work = false });
-
-        var resultGuid = log.AddResultAndTransform(TokenHandlerManger.GetOrCreateCacheDatabase(ETokenHander.User).InsertAsync(db, fetchResult.UserId));
-        if (resultGuid == EResult.Err)
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
             return GetInternalServerError();
-        AppendCookie(ECookie.LoginCookie, resultGuid.Ok().ToString());
-
-        Database.TableFn.BblUser.UpdateLastLoginTime(fetchResult, db);
-        var optionIp = log.AddResultAndTransform(GetIpAddress()).OkOr(Option<IPAddress>.Empty);
-        if (optionIp.IsSet())
-            Database.TableFn.BblUser.UpdateIpAndRegionByIp(fetchResult, db, optionIp.Unwrap());
-
-        return Ok(new WebLoginRes
-            { Work = true, EmailExist = true, UsernameExist = true, UserOrPasswdOrMathIsFalse = false });
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api/webregister")]
@@ -124,124 +167,159 @@ public sealed class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WebLoginRes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(WebLoginRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult WebRegister([FromBody] WebRegisterProp value) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> WebRegister([FromBody] WebRegisterProp value) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (value.AnyValidate() == EResult.Err) {
-            return Ok(new WebLoginRes { UserOrPasswdOrMathIsFalse = true });
+        try {
+            if (value.AnyValidate() == EResult.Err) {
+                return Ok(new WebLoginRes { UserOrPasswdOrMathIsFalse = true });
+            }
+
+            value.Username = this.FixUsername(value.Username ?? string.Empty);
+
+            var now = DateTime.UtcNow;
+            {
+                foreach (var token in TokenDic.Keys)
+                    if (TokenDic.TryGetValue(token, out var valueTuple) && valueTuple.Item2 < now)
+                        TokenDic.TryRemove(token, out var _);
+            }
+
+            (WebLoginTokenRes?, DateTime) tokenValue = (default, default);
+
+            if (TokenDic.TryRemove(value.MathToken, out tokenValue!) == false
+                || tokenValue.Item1!.MathValue1 + tokenValue.Item1.MathValue2 != value.MathRes
+               ) 
+                return Ok(new WebLoginRes { UserOrPasswdOrMathIsFalse = true });
+
+            var findResult = await log.AddResultAndTransformAsync(
+                await QueryUserInfo.GetEmailAndUsernameByEmailAndUsername(db, value.Email??"", value.Username??""));
+
+            if (findResult == EResult.Err)
+                return GetInternalServerError();
+
+            var find = Option<UserInfo>.NullSplit(findResult.Ok().FirstOrDefault());
+            
+            if (find.IsSet()) {
+                if (find.Unwrap().Username == value.Username)
+                    return Ok(new WebLoginRes { UsernameExist = true });
+                if (find.Unwrap().Email == value.Email)
+                    return Ok(new WebLoginRes { EmailExist = true });
+            }
+
+            var optionIp = (await log.AddResultAndTransformAsync(GetIpAddress())).OkOr(Option<IPAddress>.Empty);
+            if (optionIp.IsSet() == false) {
+                await log.AddLogErrorAsync("ip not found", Option<string>.With(TraceMsg.WithMessage("ip not found")));
+                throw new Exception("ip not found");
+            }
+            
+            var ip = optionIp.Unwrap();
+
+
+            var optionCountry = CountryInfo.FindByName((IpInfo.Country(ip)?.Country.Name) ?? "");
+            var newUser = new Entities.UserInfo {
+                Active = true,
+                Banned = false,
+                DeviceId = "",
+                Email = (value.Email??"").ToLower(),
+                Password = this.ToPasswdHash(value.Passwd ?? string.Empty),
+                Username = value.Username,
+                Region = optionCountry.IsSet() ? optionCountry.Unwrap().NameShort: "",
+                LatestIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
+                RegisterTime = DateTime.UtcNow,
+                RestrictMode = false,
+                LastLoginTime = DateTime.UtcNow,
+                UsernameLastChange = DateTime.UtcNow
+            };
+            await QueryUserInfo.InsertAsync(db, newUser);
+            var userIdOpt = (await log.AddResultAndTransformAsync(await QueryUserInfo.GetUserIdByUsernameAsync(db, newUser.Username!)))
+                .Map(x => x.IsNotSet() ? Option<long>.Empty : Option<long>.With(x.Unwrap().UserId)).OkOr(Option<long>.Empty);
+
+            if (userIdOpt.IsNotSet())
+                return GetInternalServerError();
+
+
+            if (await log.AddResultAndTransformAsync<string>(
+                    await QueryUserStats.InsertAsync(db, new() { UserId = userIdOpt.Unwrap() })) == EResult.Err) {
+                return GetInternalServerError();
+            }
+            
+            return Ok(new WebLoginRes { Work = true });
         }
-
-        value.Username = this.FixUsername(value.Username ?? string.Empty);
-
-        var now = DateTime.UtcNow;
-        {
-            foreach (var token in TokenDic.Keys)
-                if (TokenDic.TryGetValue(token, out var valueTuple) && valueTuple.Item2 < now)
-                    TokenDic.TryRemove(token, out var _);
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
         }
-
-        (WebLoginTokenRes?, DateTime) tokenValue = (default, default);
-
-        if (TokenDic.TryRemove(value.MathToken, out tokenValue!) == false
-            || tokenValue.Item1!.MathValue1 + tokenValue.Item1.MathValue2 != value.MathRes
-           )
-            return Ok(new WebLoginRes { UserOrPasswdOrMathIsFalse = true });
-
-        var sql = new Sql(@"
-SELECT username, email FROM public.bbl_user
-WHERE email = @0
-or lower(username) = @1
-", value.Username.ToLower(), value.Email);
-
-        var userExist = log.AddResultAndTransform(db.SingleOrDefault<Entities.UserInfo>(sql)).OkOrDefault();
-        if (userExist is not null) {
-            if (userExist.Username == value.Username)
-                return Ok(new WebLoginRes { UsernameExist = true });
-            if (userExist.Email == value.Email)
-                return Ok(new WebLoginRes { EmailExist = true });
+        finally {
+            await dbT.CommitAsync();
         }
-
-        var optionIp = log.AddResultAndTransform(GetIpAddress()).OkOr(Option<IPAddress>.Empty);
-        if (optionIp.IsSet() == false)
-            throw new Exception("ip not found");
-        var ip = optionIp.Unwrap();
-
-
-        var optionCountry = CountryInfo.FindByName((IpInfo.Country(ip)?.Country.Name) ?? "");
-        var newUser = new Entities.UserInfo {
-            Active = true,
-            Banned = false,
-            DeviceId = "",
-            Email = value.Email,
-            Password = this.ToPasswdHash(value.Passwd ?? string.Empty),
-            Username = value.Username,
-            Region = optionCountry.IsSet() ? optionCountry.Unwrap().NameShort: "",
-            LatestIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty,
-            RegisterTime = DateTime.UtcNow,
-            RestrictMode = false,
-            LastLoginTime = DateTime.UtcNow,
-            UsernameLastChange = DateTime.UtcNow
-        };
-        db.Insert(newUser);
-        newUser.UserId = log.AddResultAndTransform(
-                db.SingleOrDefault<long>("SELECT id FROM bbl_user WHERE username = @0", newUser.Username)).OkOrDefault();
-        db.Execute("INSERT INTO bbl_user_stats (uid) VALUES ((SELECT id FROM bbl_user WHERE username = @0))",
-            newUser.Username);
-
-        return Ok(new WebLoginRes { Work = true });
     }
 
     [HttpGet("/api/weblogintoken")]
     [PrivilegeRoute(route: "/api/weblogintoken")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WebLoginTokenRes))]
-    public ActionResult WebLoginToken() {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> WebLoginToken() {
+         await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        var res = new WebLoginTokenRes {
-            Token = Guid.NewGuid(),
-            MathValue1 = Random.Next(1, 50),
-            MathValue2 = Random.Next(1, 50)
-        };
-        TokenDic[res.Token] = (res, DateTime.UtcNow + TimeSpan.FromMinutes(5));
-        return Ok(res);
+        try {
+            var res = new WebLoginTokenRes {
+                Token = Guid.NewGuid(),
+                MathValue1 = Random.Next(1, 50),
+                MathValue2 = Random.Next(1, 50)
+            };
+            TokenDic[res.Token] = (res, DateTime.UtcNow + TimeSpan.FromMinutes(5));
+            return Ok(res);
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpGet("/api/webupdateCookie")]
     [PrivilegeRoute(route: "/api/webupdateCookie")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<UpdateCookieInfo>))]
-    public IActionResult WebUpdateCookie() {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> WebUpdateCookie() {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        var response = log.AddResultAndTransform(this.LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
-        if (response.IsSet() == false) {
-            return Ok(ApiTypes.ExistOrFoundInfo<UpdateCookieInfo>.NotExist());
+        try {
+            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
+            this.AppendCookie(ECookie.LoginCookie, cookieInfo.Token.ToString());
+
+
+            var userInfoOption = (await log.AddResultAndTransformAsync(await QueryUserInfo
+                .GetByUserIdAsync(db, cookieInfo.UserId)))
+                .OkOrDefault();
+            if (userInfoOption.IsNotSet())
+                return GetInternalServerError();
+            
+            var userInfo = userInfoOption.Unwrap();
+            
+            return Ok(new ApiTypes.ExistOrFoundInfo<UpdateCookieInfo> {
+                ExistOrFound = true, Value = new () {
+                    Email = userInfo.Email!,
+                    Username = userInfo.Username!
+                }
+            });
         }
-
-        var f = log.AddResultAndTransform(this.GetCookieToken()).OkOr(Option<Guid>.Empty);
-        if (f.IsSet() == false)
-            return BadRequest();
-        this.AppendCookie(ECookie.LoginCookie, f.Unwrap().ToString());
-
-        var dbResp = log.AddResultAndTransform(db.Single<Entities.UserInfo>(@$"
-SELECT email, username FROM bbl_user
-WHERE id = {response.Unwrap().UserId}
-"));
-        if (dbResp == EResult.Err) {
-            return Ok(ApiTypes.ExistOrFoundInfo<UpdateCookieInfo>.NotExist());
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
         }
-
-        return Ok(new ApiTypes.ExistOrFoundInfo<UpdateCookieInfo> {
-            ExistOrFound = true, Value = new UpdateCookieInfo() {
-                Email = dbResp.Ok().Email,
-                Username = dbResp.Ok().Username
-            }
-        });
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     private static void FilterOldValuesFromCallsForResetPasswdAndResetPasswdTime() {
@@ -260,55 +338,64 @@ WHERE id = {response.Unwrap().UserId}
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResetPasswdAndSendEmailRes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResetPasswdAndSendEmailRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult ResetPasswdAndSendEmail([FromBody] ResetPasswdAndSendEmailProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> ResetPasswdAndSendEmail([FromBody] ResetPasswdAndSendEmailProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.AnyValidate() == EResult.Err) {
-            return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
+        try {
+            if (prop.AnyValidate() == EResult.Err) {
+                return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
+            }
+
+            Option<IPAddress> optionIpAddress = Option<IPAddress>.Trim(await log.AddResultAndTransformAsync(GetIpAddress()));
+            if (optionIpAddress.IsNotSet()) {
+                return BadRequest("Can Not Get IP IS NEEDED");
+            }
+                
+            var ipAddress = optionIpAddress.Unwrap();
+
+            FilterOldValuesFromCallsForResetPasswdAndResetPasswdTime();
+
+            if (CallsForResetPasswd.TryGetValue(ipAddress, out var lastCall)) {
+                if (lastCall.Calls > 3)
+                    return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = true });
+                CallsForResetPasswd[ipAddress] = (lastCall.LastCall, lastCall.Calls + 1);
+            }
+            else {
+                CallsForResetPasswd[ipAddress] = (lastCall.LastCall, lastCall.Calls + 1);
+            }
+
+            if (Email.ValidateEmail(prop.Email!) == false)
+                return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
+
+            var userInfoResult = (await log.AddResultAndTransformAsync(string.IsNullOrEmpty(prop.Email) switch {
+                true => await QueryUserInfo.GetByUsernameAsync(db, prop.Username ?? ""),
+                _ => await QueryUserInfo.GetByEmailAsync(db, prop.Email ?? "")
+            }));
+
+            if (userInfoResult == EResult.Err)
+                return GetInternalServerError();
+            var userInfoOption = userInfoResult.Ok(); 
+            
+            if (userInfoOption.IsNotSet())
+                return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
+            var userInfo = userInfoOption.Unwrap();
+            var token = RandomText.NextAZ09(12);
+            
+            ResetPasswdTime[token] = (DateTime.UtcNow, userInfo.UserId);
+            SendEmail.MainSendResetEmail(userInfo.UserId, userInfo.Username!, userInfo.Email!, token);
+
+            return Ok(new ResetPasswdAndSendEmailRes { Work = true, TimeOut = false });
         }
-
-        Option<IPAddress> optionIpAddress = Option<IPAddress>.Trim(log.AddResultAndTransform(GetIpAddress()));
-        if (optionIpAddress.IsSet() == false)
-            return BadRequest("IP IS NEEDED");
-        var ipAddress = optionIpAddress.Unwrap();
-
-        FilterOldValuesFromCallsForResetPasswdAndResetPasswdTime();
-
-        if (CallsForResetPasswd.TryGetValue(ipAddress, out var lastCall)) {
-            if (lastCall.Calls > 3)
-                return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = true });
-            CallsForResetPasswd[ipAddress] = (lastCall.LastCall, lastCall.Calls + 1);
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
         }
-        else {
-            CallsForResetPasswd[ipAddress] = (lastCall.LastCall, lastCall.Calls + 1);
+        finally {
+            await dbT.CommitAsync();
         }
-
-        if (Email.ValidateEmail(prop.Email!) == false)
-            return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
-
-        var sql = (string.IsNullOrEmpty(prop.Email) == false) switch {
-            true => new Sql(@"
-SELECT username, id, email FROM bbl_user
-WHERE email = @0
-LIMIT 1", prop.Email),
-            _ => new Sql(@"
-SELECT username, id, email FROM bbl_user
-WHERE username = @0
-LIMIT 1", prop.Username)
-        };
-
-        var dbRes = log.AddResultAndTransform(db.SingleOrDefault<Entities.UserInfo>(sql)).OkOrDefault();
-        if (dbRes is null)
-            return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
-
-        var token = RandomText.NextAZ09(16);
-        ResetPasswdTime[token] = (DateTime.UtcNow, dbRes.UserId);
-
-        SendEmail.MainSendResetEmail(dbRes.UserId, dbRes.Username ?? "", dbRes.Email!, token);
-
-        return Ok(new ResetPasswdAndSendEmailRes { Work = true, TimeOut = false });
     }
 
     [HttpPost("/api/token/newpasswdwithtoken")]
@@ -316,73 +403,86 @@ LIMIT 1", prop.Username)
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WebReplacePasswordWithToken))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(WebReplacePasswordWithToken))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult SetNewPasswd([FromBody] ApiTypes.Api2GroundNoHeader<SetNewPasswdProp> prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> SetNewPasswd([FromBody] ApiTypes.Api2GroundNoHeader<SetNewPasswdProp> prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.ValuesAreGood() == false) {
+        try {
+            if (prop.ValuesAreGood() == false) {
+                return Ok(new WebReplacePasswordWithToken {
+                    Work = false,
+                    ErrorMsg = "Send Error"
+                });
+            }
+
+            FilterOldValuesFromCallsForResetPasswdAndResetPasswdTime();
+
+            var body = prop.Body!;
+
+            if (ResetPasswdTime.TryGetValue(body.Token!, out var tokenValue) == false
+                || tokenValue.UserId != body.UserId)
+                return Ok(new WebReplacePasswordWithToken {
+                    Work = false,
+                    ErrorMsg = "Token To Old Or User Not Exist"
+                });
+
+            if (body.NewPasswd is null || body.NewPasswd.Length < 6)
+                return Ok(new WebReplacePasswordWithToken {
+                    Work = false,
+                    ErrorMsg = "Password To Short"
+                });
+            if (await log.AddResultAndTransformAsync<string>(
+                    await QueryUserInfo.UpdatePasswordAsync(db, tokenValue.UserId, ToPasswdHash(body.NewPasswd))) ==
+                EResult.Err) {
+
+                return GetInternalServerError();
+            }
+            
             return Ok(new WebReplacePasswordWithToken {
-                Work = false,
-                ErrorMsg = "Send Error"
+                Work = true,
+                ErrorMsg = ""
             });
         }
-
-        FilterOldValuesFromCallsForResetPasswdAndResetPasswdTime();
-
-        var body = prop.Body!;
-
-        if (ResetPasswdTime.TryGetValue(body.Token!, out var tokenValue) == false
-            || tokenValue.UserId != body.UserId)
-            return Ok(new WebReplacePasswordWithToken {
-                Work = false,
-                ErrorMsg = "Token To Old Or User Not Exist"
-            });
-
-        if (body.NewPasswd is null || body.NewPasswd.Length < 6)
-            return Ok(new WebReplacePasswordWithToken {
-                Work = false,
-                ErrorMsg = "Password To Short"
-            });
-
-        var response = log.AddResultAndTransform(db.Execute(@$"
-UPDATE bbl_user
-SET password = @0
-WHERE id = {tokenValue.UserId}
-", this.ToPasswdHash(body.NewPasswd)));
-
-        if (response == EResult.Err) {
-            return Ok(new WebReplacePasswordWithToken {
-                Work = false,
-                ErrorMsg = "Server Error"
-            });
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
         }
-
-        return Ok(new WebReplacePasswordWithToken {
-            Work = true,
-            ErrorMsg = ""
-        });
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api/signin/patreon")]
     [PrivilegeRoute(route: "/api/signin/patreon")]
     public async Task<IActionResult> PatreonSignLogin([FromForm] string provider) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        // Note: the "provider" parameter corresponds to the external
-        // authentication provider choosen by the user agent.
-        if (string.IsNullOrWhiteSpace(provider))
-            return BadRequest();
+        try {
+            // Note: the "provider" parameter corresponds to the external
+            // authentication provider choosen by the user agent.
+            if (string.IsNullOrWhiteSpace(provider))
+                return BadRequest();
 
-        if (await HttpContext.IsProviderSupportedAsync(provider))
-            return BadRequest();
+            if (await HttpContext.IsProviderSupportedAsync(provider))
+                return BadRequest();
 
-        // Instruct the middleware corresponding to the requested external identity
-        // provider to redirect the user agent to its own authorization endpoint.
-        // Note: the authenticationScheme parameter must match the value configured in Startup.cs
-        return Challenge(new AuthenticationProperties { RedirectUri = "/" }, provider);
+            // Instruct the middleware corresponding to the requested external identity
+            // provider to redirect the user agent to its own authorization endpoint.
+            // Note: the authenticationScheme parameter must match the value configured in Startup.cs
+            return Challenge(new AuthenticationProperties { RedirectUri = "/" }, provider);
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpGet("/api/signout/patreon")]
@@ -390,30 +490,50 @@ WHERE id = {tokenValue.UserId}
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult PatreonSignout() {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> PatreonSignout() {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        // TODO PatreonSignout
+        try {
+            // TODO PatreonSignout
 
 
-        // Instruct the cookies middleware to delete the local cookie created
-        // when the user agent is redirected from the external identity provider
-        // after a successful authentication flow (e.g Google or Facebook).
-        return Ok();
+            // Instruct the cookies middleware to delete the local cookie created
+            // when the user agent is redirected from the external identity provider
+            // after a successful authentication flow (e.g Google or Facebook).
+            return Ok();
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
 
     [HttpGet("/api/weblogout")]
     [PrivilegeRoute(route: "/api/weblogout")]
-    public IActionResult RemoveCookie() {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> RemoveCookie() {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        RemoveCookieByEName(ECookie.LoginCookie);
-        return Ok();
+        try {
+            RemoveCookieByEName(ECookie.LoginCookie);
+            return Ok();
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
 

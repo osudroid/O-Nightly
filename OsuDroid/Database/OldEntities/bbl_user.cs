@@ -1,5 +1,3 @@
-using NPoco;
-
 namespace OsuDroid.Database.OldEntities;
 
 public class bbl_user {

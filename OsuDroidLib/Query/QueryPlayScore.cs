@@ -1,4 +1,5 @@
 using System.Data.SqlTypes;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Metadata;
 using System.Text.RegularExpressions;
@@ -6,6 +7,7 @@ using Npgsql;
 using OsuDroidLib.Class;
 using OsuDroidLib.Extension;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Dto;
 
 namespace OsuDroidLib.Query; 
 
@@ -63,13 +65,15 @@ SELECT * FROM PlayScore WHERE PlayScoreId = {id}
 ");
     }
 
-    public static async Task<Result<Option<PlayScore>, string>> GetPlayScoreByIdAndUserIdAsync(NpgsqlConnection db, long id, long userId) {
+    public static async Task<Result<Option<PlayScore>, string>> GetPlayScoreByIdAndUserIdAsync(
+        NpgsqlConnection db, long id, long userId) {
         return await db.SafeQueryFirstOrDefaultAsync<PlayScore>(@$"
 SELECT * FROM PlayScore WHERE PlayScoreId = {id} AND UserId = {userId}
 ");
     }
 
-    public static async Task<Result<Option<PlayScore>, string>> GetPlayScoreOldesByUserIdAndHashAsync(NpgsqlConnection db, long userId, string mapHash) {
+    public static async Task<Result<Option<PlayScore>, string>> GetPlayScoreOldesByUserIdAndHashAsync(
+        NpgsqlConnection db, long userId, string mapHash) {
         return await db.SafeQueryFirstOrDefaultAsync<PlayScore>(@$"
 SELECT * 
 FROM PlayScore 
@@ -182,5 +186,104 @@ LIMIT {maxResult}
             plays[i].PlayRank = i + 1;
         }
         return Result<IReadOnlyList<MapTopPlays>, string>.Ok(plays);
+    }
+    
+    public static async Task<Result<List<PlayScore>, string>> GetTopScoreFromUserIdAsync(NpgsqlConnection db, long userId) {
+        return (await db.SafeQueryAsync<PlayScore>(@$"
+SELECT * 
+FROM (
+         SELECT distinct ON (filename) * FROM PlayScore
+         WHERE Userid = {userId}
+         ORDER BY filename, score DESC
+     ) x
+ORDER BY score DESC 
+LIMIT 50;
+")).Map(x => x.ToList());
+        
+    }
+
+    public static async Task<Result<List<PlayScore>, string>> GetLastPlayScoreFilterByUserIdAsync(
+        NpgsqlConnection db, long userId, int limit) {
+
+        var sql = @$"
+SELECT * 
+FROM PLayScore
+WHERE UserId = {userId}
+ORDER BY PLayScore.PlayScoreId DESC
+LIMIT {limit};
+";
+        return (await db.SafeQueryAsync<PlayScore>(sql)).Map(x => x.ToList());
+    }
+    
+    public static async Task<Result<List<PlayScore>, string>> GetTopScoreFromUserIdFilterMark(
+        NpgsqlConnection db, long userId, long page, int pageSize, PlayScoreDto.EPlayScoreMark mark) {
+
+        var sql = @$"
+SELECT *
+FROM (
+         SELECT distinct ON (filename) * FROM PLayScore
+         WHERE UserId = {userId}
+         AND mark = @Mark
+         ORDER BY filename, score DESC
+     ) x
+ORDER BY score
+LIMIT {pageSize}
+OFFSET {page * pageSize}
+;";
+        return (await db.SafeQueryAsync<PlayScore>(sql, new { Mark = mark.ToStringFast() }))
+            .Map(x => x.ToList());
+    }
+    
+    public static async Task<Result<List<PlayScore>, string>> GetTopScoreFromUserIdWithPageAsync(
+        NpgsqlConnection db, long userId, long page, int pageSize) {
+
+        var sql = @$"
+SELECT *
+FROM (
+         SELECT distinct ON (filename) * FROM PlayScore
+         WHERE UserId = {userId}
+         ORDER BY filename, score DESC
+     ) x
+ORDER BY score
+LIMIT {pageSize}
+OFFSET {page * pageSize}
+;";
+
+        return (await db.SafeQueryAsync<PlayScore>(sql)).Map(x => x.ToList());
+    }
+    
+    public static async Task<Result<Dictionary<PlayScoreDto.EPlayScoreMark, long>, string>> CountMarkPlaysByUserIdAsync(
+        NpgsqlConnection db, long userId) {
+        var sql = @$"
+SELECT count(*) as Count, Mark as Mark
+FROM PlayScore
+WHERE UserId = {userId}
+GROUP BY Mark
+;";
+        var fetchMarkResult = await db.SafeQueryAsync<CountMarkPlaysByUserIdClass>(sql);
+        if (fetchMarkResult == EResult.Err)
+            return fetchMarkResult.ChangeOkType<Dictionary<PlayScoreDto.EPlayScoreMark, long>>();
+        
+        var res = new Dictionary<PlayScoreDto.EPlayScoreMark, long>(12);
+        
+        foreach (var row in fetchMarkResult.Ok()) {
+            if (Enum.TryParse<PlayScoreDto.EPlayScoreMark>(row.Mark, out _) == false)
+                return Result<Dictionary<PlayScoreDto.EPlayScoreMark, long>, string>
+                    .Err(TraceMsg.WithMessage($"String ({row.Mark}) Parse To Entities.BblScore.EMark"));
+            res[row.GetMarkAsEMark()] = row.Count;
+        }
+
+        return Result<Dictionary<PlayScoreDto.EPlayScoreMark, long>, string>.Ok(res);
+    }
+    
+    private class CountMarkPlaysByUserIdClass {
+        public long Count { get; set; }
+        public string? Mark { get; set; }
+
+        public PlayScoreDto.EPlayScoreMark GetMarkAsEMark() {
+            return EPlayScoreMarkExtensions.TryParse(Mark ?? "", out var found)
+                ? found
+                : throw new Exception("EPlayScoreMark Not Found");
+        }
     }
 }

@@ -334,6 +334,7 @@ VALUES (
     {userStats.OverallB},
     {userStats.OverallC},
     {userStats.OverallD},
+    {userStats.OverallPerfect},
     {userStats.OverallHits},
     {userStats.Overall300},
     {userStats.Overall100},
@@ -596,6 +597,7 @@ VALUES (
                 OverallB = 0,
                 OverallC = 0,
                 OverallD = 0,
+                OverallPerfect = 0,
                 OverallHits = 0,
                 Overall300 = 0,
                 Overall100 = 0,
@@ -641,6 +643,7 @@ VALUES (
             bblUserStats.OverallB += dto.EqAsInt(PlayScoreDto.EPlayScoreMark.B);
             bblUserStats.OverallC += dto.EqAsInt(PlayScoreDto.EPlayScoreMark.C);
             bblUserStats.OverallD += dto.EqAsInt(PlayScoreDto.EPlayScoreMark.D);
+            bblUserStats.OverallPerfect += bblScore.Perfect;
             bblUserStats.OverallHits += dto.GetValue(PlayScoreDto.EPlayScore.Hits);
             bblUserStats.Overall300 += dto.GetValue(PlayScoreDto.EPlayScore.N300);
             bblUserStats.Overall100 += dto.GetValue(PlayScoreDto.EPlayScore.N100);

@@ -1,18 +1,12 @@
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using NPoco;
 using OsuDroid.Database.TableFn;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
-using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Lib.Validate;
 using OsuDroid.Utils;
-using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Dto;
 using OsuDroidLib.Query;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
-using BblGlobalRankingTimeline = OsuDroid.Database.TableFn.BblGlobalRankingTimeline;
 
 namespace OsuDroid.Controllers.Api;
 
@@ -31,104 +25,113 @@ public sealed class Profile : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ProfileStats))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProfileStats))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult WebProfileStats([FromRoute(Name = "id")] long userId) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> WebProfileStats([FromRoute(Name = "id")] long userId) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        var sql = new Sql(
-            "SELECT * FROM public.bbl_user JOIN bbl_user_stats bus on bus.uid = bbl_user.id WHERE id = @0", userId);
+        try {
+            var optionUserAndStatsResult = await log.AddResultAndTransformAsync(
+                await Query.GetUserInfoAndBblUserStatsByUserIdAsync(db, userId));
 
-        var optionUserAndStats = log.AddResultAndTransform(db.SingleOrDefault<UserInfoAndBblUserStats>(sql))
-            .Map(x => Option<UserInfoAndBblUserStats>.NullSplit(x))
-            .OkOr(Option<UserInfoAndBblUserStats>.Empty);
+            if (optionUserAndStatsResult == EResult.Err)
+                return GetInternalServerError();
+            if (optionUserAndStatsResult.Ok().IsNotSet())
+                return Ok(new ProfileStats { Found = false });
 
-        if (optionUserAndStats.IsSet() == false)
-            return Ok(new ProfileStats { Found = false });
+            var userInfoAndStats = optionUserAndStatsResult.Ok().Unwrap();
+            var rankOpt = (await log.AddResultAndTransformAsync(await Query
+                    .GetUserRankAsync(db, userId, userInfoAndStats.OverallScore)))
+                .OkOrDefault();
+            if (rankOpt.IsNotSet())
+                return GetInternalServerError();
+        
 
-        UserInfoAndBblUserStats userInfoAndStats = optionUserAndStats.Unwrap();
+            Option<Patron> optionBblPatron = Option<Patron>.Empty;
+            if ((userInfoAndStats.Email??"").Length == 0) {
+                optionBblPatron = (await log.AddResultAndTransformAsync(await QueryPatron
+                        .GetByPatronEmailAsync(db, userInfoAndStats.Email ?? "")))
+                    .OkOrDefault();
+            }
 
-        var sqlRank = new Sql(@$"
-SELECT t.global_rank as global_rank, t.country_rank as country_rank
-FROM (
-         SELECT uid,
-                rank() OVER (ORDER BY overall_score DESC, bu.last_login_time DESC) as global_rank,
-                rank() OVER (PARTITION BY bu.region ORDER BY overall_score DESC, bu.last_login_time DESC) as country_rank
-         FROM bbl_user_stats
-                  FULL JOIN bbl_user bu on bu.id = bbl_user_stats.uid
-         WHERE region IS NOT NULL
-         AND overall_score >= {userInfoAndStats.OverallScore} AND banned = false
-     ) as t
-WHERE uid = {userId}
-");
-
-        List<UserInfo.UserRank> userRank = log.AddResultAndTransform(db.Fetch<UserInfo.UserRank>(sqlRank)).OkOr(new());
-
-        Option<Patron> optionBblPatron = Option<Patron>.Empty;
-        if ((userInfoAndStats.Email??"").Length == 0) {
-            optionBblPatron = Option<Patron>.Transform(log.AddResultAndTransform(
-                Database.TableFn.BblUser.GetBblPatron(new UserInfo { PatronEmail = userInfoAndStats.Email }, db)));
+            return Ok(new ProfileStats {
+                Username = userInfoAndStats.Username,
+                Id = userInfoAndStats.UserId,
+                Found = true,
+                OverallPlaycount = userInfoAndStats.OverallPlaycount,
+                Region = userInfoAndStats.Region,
+                Active = userInfoAndStats.Active,
+                Supporter = optionBblPatron.IsSet() && optionBblPatron.Unwrap().ActiveSupporter,
+                GlobalRanking = rankOpt.Unwrap().GlobalRank,
+                CountryRanking = rankOpt.Unwrap().CountryRank,
+                OverallScore = userInfoAndStats.OverallScore,
+                OverallAccuracy = userInfoAndStats.OverallAccuracy,
+                OverallCombo = userInfoAndStats.OverallCombo,
+                OverallXss = userInfoAndStats.OverallXss,
+                OverallSs = userInfoAndStats.OverallSs,
+                OverallXs = userInfoAndStats.OverallXs,
+                OverallS = userInfoAndStats.OverallS,
+                OverallA = userInfoAndStats.OverallA,
+                OverallB = userInfoAndStats.OverallB,
+                OverallC = userInfoAndStats.OverallC,
+                OverallD = userInfoAndStats.OverallD,
+                OverallHits = userInfoAndStats.OverallHits,
+                OverallPerfect = userInfoAndStats.OverallPlaycount,
+                Overall300 = userInfoAndStats.Overall300,
+                Overall100 = userInfoAndStats.Overall100,
+                Overall50 = userInfoAndStats.Overall50,
+                OverallGeki = userInfoAndStats.OverallGeki,
+                OverallKatu = userInfoAndStats.OverallKatu,
+                OverallMiss = userInfoAndStats.OverallMiss,
+                RegistTime = userInfoAndStats.RegisterTime,
+                LastLoginTime = userInfoAndStats.LastLoginTime
+            });
         }
-
-        return Ok(new ProfileStats {
-            Username = userInfoAndStats.Username,
-            Id = userInfoAndStats.Id,
-            Found = true,
-            OverallPlaycount = userInfoAndStats.OverallPlaycount,
-            Region = userInfoAndStats.Region,
-            Active = userInfoAndStats.Active,
-            Supporter = optionBblPatron.IsSet() && optionBblPatron.Unwrap().ActiveSupporter,
-            GlobalRanking = userRank[0].GlobalRank,
-            CountryRanking = userRank[0].CountryRank,
-            OverallScore = userInfoAndStats.OverallScore,
-            OverallAccuracy = userInfoAndStats.OverallAccuracy,
-            OverallCombo = userInfoAndStats.OverallCombo,
-            OverallXss = userInfoAndStats.OverallXss,
-            OverallSs = userInfoAndStats.OverallSs,
-            OverallXs = userInfoAndStats.OverallXs,
-            OverallS = userInfoAndStats.OverallS,
-            OverallA = userInfoAndStats.OverallA,
-            OverallB = userInfoAndStats.OverallB,
-            OverallC = userInfoAndStats.OverallC,
-            OverallD = userInfoAndStats.OverallD,
-            OverallHits = userInfoAndStats.OverallHits,
-            OverallPerfect = userInfoAndStats.OverallPerfect,
-            Overall300 = userInfoAndStats.Overall300,
-            Overall100 = userInfoAndStats.Overall100,
-            Overall50 = userInfoAndStats.Overall50,
-            OverallGeki = userInfoAndStats.OverallGeki,
-            OverallKatu = userInfoAndStats.OverallKatu,
-            OverallMiss = userInfoAndStats.OverallMiss,
-            RegistTime = userInfoAndStats.RegistTime,
-            LastLoginTime = userInfoAndStats.LastLoginTime
-        });
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpGet("/api/profile/stats/timeline/{id:long}")]
     [PrivilegeRoute(route: "/api/profile/stats/timeline/{id:long}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UserRankTimeLine))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult WebProfileStatsTimeLine([FromRoute(Name = "id")] long userId) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> WebProfileStatsTimeLine([FromRoute(Name = "id")] long userId) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (userId < 0)
-            return BadRequest();
+        try {
+            if (userId < 0)
+                return BadRequest();
 
-        var rankingTimeline = log.AddResultAndTransform(BblGlobalRankingTimeline
-            .BuildTimeLine(db, userId, DateTime.UtcNow - TimeSpan.FromDays(90)))
-            .OkOr(Array.Empty<Entities.GlobalRankingTimeline>())
-            .Select(x => new UserRankTimeLine.RankTimeLineValue {
-                Date = x.Date,
-                Score = x.Score,
-                Rank = x.GlobalRanking
-            }).ToList();
+            var rankingTimeline = log.AddResultAndTransform(await QueryGlobalRankingTimeline
+                                         .BuildTimeLineAsync(db, userId, DateTime.UtcNow - TimeSpan.FromDays(90)))
+                                     .OkOr(Array.Empty<Entities.GlobalRankingTimeline>())
+                                     .Select(x => new UserRankTimeLine.RankTimeLineValue {
+                                         Date = x.Date,
+                                         Score = x.Score,
+                                         Rank = x.GlobalRanking
+                                     }).ToList();
 
-        return Ok(new UserRankTimeLine {
-            UserId = userId,
-            List = rankingTimeline
-        });
+            return Ok(new UserRankTimeLine {
+                UserId = userId,
+                List = rankingTimeline
+            });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpGet("/api/profile/topplays/{id:long}")]
@@ -136,37 +139,62 @@ WHERE uid = {userId}
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Plays))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(Plays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult WebProfileTopPlays([FromRoute(Name = "id")] long userId) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> WebProfileTopPlays([FromRoute(Name = "id")] long userId) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        return Ok(new Plays {
-            Found = true,
-            Scores = Database.TableFn.BblScore.GetTopScoreFromUserId(db, userId).OkOr(new List<PlayScore>(0))
-        });
+        try {
+            var result = await log.AddResultAndTransformAsync(await QueryPlayScore.GetTopScoreFromUserIdAsync(db, userId));
+            if (result == EResult.Err)
+                return GetInternalServerError();
+            
+            return Ok(new Plays {
+                Found = true,
+                Scores = result.Ok()
+            });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpGet("/api/profile/topplays/{id:long}/page/{page:int}")]
     [PrivilegeRoute(route: "/api/profile/topplays/{id:long}/page/{page:int}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Plays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult WebProfileTopPlaysPage([FromRoute(Name = "id")] long userId, int page) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> WebProfileTopPlaysPage([FromRoute(Name = "id")] long userId, int page) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (long.IsNegative(userId))
-            return BadRequest("userid Is Negative");
-        if (int.IsNegative(page))
-            return BadRequest("page Is Negative");
+        try {
+            if (long.IsNegative(userId))
+                return BadRequest("userid Is Negative");
+            if (int.IsNegative(page))
+                return BadRequest("page Is Negative");
+            
+            var fetchResult = await log.AddResultAndTransformAsync(
+                await QueryPlayScore.GetTopScoreFromUserIdWithPageAsync(db, userId, page, 50));
+            if (fetchResult == EResult.Err)
+                return GetInternalServerError();
 
-        var fetchResult = log.AddResultAndTransform(OsuDroid.Database.TableFn.BblScore.GetTopScoreFromUserIdWithPage(db, userId, page, 50));
-        if (fetchResult == EResult.Err)
+            var scores = fetchResult.Ok();
+            return Ok(new Plays() { Found = true, Scores = scores });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
             return GetInternalServerError();
-
-        var scores = fetchResult.Ok();
-        return Ok(new Plays() { Found = true, Scores = scores });
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpGet("/api/profile/recentplays/{id:long}")]
@@ -174,22 +202,31 @@ WHERE uid = {userId}
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Plays))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(Plays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult WebProfileTopRecent([FromRoute(Name = "id")] long userId) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> WebProfileTopRecent([FromRoute(Name = "id")] long userId) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        var sql = new Sql(@$"
-SELECT * FROM bbl_score
-WHERE uid = {userId}
-ORDER BY bbl_score.id DESC
-LIMIT 50;
-");
+        try {
+            var result = await log.AddResultAndTransformAsync(
+                await QueryPlayScore.GetLastPlayScoreFilterByUserIdAsync(db, userId, 50));
 
-        return Ok(new Plays {
-            Found = true,
-            Scores = db.Fetch<PlayScore>(sql).OkOrDefault() ?? new List<PlayScore>(0)
-        });
+            if (result == EResult.Err)
+                return GetInternalServerError();
+
+            return Ok(new Plays {
+                Found = true,
+                Scores = result.Ok()
+            });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api/profile/update/email")]
@@ -197,46 +234,50 @@ LIMIT 50;
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult UpdateEmail([FromBody] UpdateEmailProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> UpdateEmail([FromBody] UpdateEmailProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.AnyValidate() == EResult.Err)
-            return Ok(new ApiTypes.Work { HasWork = false });
-
-        var tokenInfoResp = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
-        if (tokenInfoResp.IsSet() == false) return Ok(ApiTypes.Work.False);
-
-        var userId = tokenInfoResp.Unwrap().UserId;
-
-        var bblUser = log.AddResultAndTransform(db
-                .SingleOrDefault<UserInfo>($"SELECT email, password FROM bbl_user WHERE id = {userId}"))
-            .OkOrDefault();
-
-        if (bblUser is null)
-            return Ok(new ApiTypes.Work { HasWork = false });
-
-        if (Database.TableFn.BblUser.PasswordEqual(bblUser, prop.Passwd ?? "") == false)
-            return Ok(new ApiTypes.Work { HasWork = false });
-
-        if (prop.OldEmail != bblUser.Email)
-            return Ok(new ApiTypes.Work { HasWork = false });
-
-        var filePathOld = $"{Env.AvatarPath}/{MD5.Hash(bblUser.Email ?? "")}";
-        var filePathNew = $"{Env.AvatarPath}/{MD5.Hash(prop.NewEmail ?? "")}";
         try {
-            System.IO.File.Move(filePathOld, filePathNew);
-        }
-        catch(Exception e) {
-            log.AddLogError(e.ToString());
-        }
+            if (prop.AnyValidate() == EResult.Err)
+                return Ok(new ApiTypes.Work { HasWork = false });
 
-        if (log.AddResultAndTransform(
-                db.Execute(@$"UPDATE bbl_user SET email = @0 WHERE id = {userId}", prop.NewEmail!)) == EResult.Err) {
-            return Ok(ApiTypes.Work.False);
+            var cookieToken = this.LoginTokenInfo(db).Ok().Unwrap();
+
+
+            var userInfoResult = await log.AddResultAndTransformAsync(
+                await QueryUserInfo.GetByUserIdAsync(db, cookieToken.UserId));
+            if (userInfoResult == EResult.Err)
+                return GetInternalServerError();
+
+            if (userInfoResult.Ok().IsNotSet())
+                return Ok(new ApiTypes.Work { HasWork = false });
+
+            var userInfo = userInfoResult.Ok().Unwrap();
+            
+            if (Database.TableFn.BblUser.PasswordEqual(userInfo, prop.Passwd ?? "") == false)
+                return Ok(new ApiTypes.Work { HasWork = false });
+
+            if (prop.OldEmail != userInfo.Email)
+                return Ok(new ApiTypes.Work { HasWork = false });
+
+
+            var updateResult = await log.AddResultAndTransformAsync<string>(
+                await QueryUserInfo.UpdatePasswordAsync(db, userInfo.UserId, prop.NewEmail ?? ""));
+            
+            if (updateResult == EResult.Err)
+                return GetInternalServerError();
+            return Ok(new ApiTypes.Work { HasWork = true });
         }
-        return Ok(new ApiTypes.Work { HasWork = true });
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api/profile/update/passwd")]
@@ -244,32 +285,44 @@ LIMIT 50;
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult UpdatePasswd([FromBody] UpdatePasswdProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> UpdatePasswd([FromBody] UpdatePasswdProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.AnyValidate() == EResult.Err)
-            return Ok(new ApiTypes.Work { HasWork = false });
+        try {
+            if (prop.AnyValidate() == EResult.Err)
+                return Ok(new ApiTypes.Work { HasWork = false });
 
-        var optiontokenInfoResp = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
-        if (optiontokenInfoResp.IsSet() == false)
-            return Ok(ApiTypes.Work.False);
+            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
+            
+            
+            var userInfoOption = (await log.AddResultAndTransformAsync(
+                await QueryUserInfo.GetByUserIdAsync(db, cookieInfo.UserId)))
+                .OkOrDefault();
+            if (userInfoOption.IsNotSet())
+                return GetInternalServerError();
 
-        var userId = optiontokenInfoResp.Unwrap().UserId;
-
-        var bblUser = log.AddResultAndTransform(db
-            .SingleOrDefault<UserInfo>($"SELECT password FROM bbl_user WHERE id = {userId}")).OkOrDefault();
-        if (bblUser is null)
-            return Ok(new ApiTypes.Work { HasWork = false });
-
-        var newPasswdHash = MD5.Hash(prop.NewPasswd + Env.PasswdSeed).ToLower();
-        var oldPasswdHash = MD5.Hash(prop.OldPasswd + Env.PasswdSeed).ToLower();
-        if (bblUser.Password != oldPasswdHash)
-            return Ok(new ApiTypes.Work { HasWork = false });
-
-        log.AddResultAndTransform(db.Execute(@$"UPDATE bbl_user SET password = @0 WHERE id = {userId}", newPasswdHash!));
-        return Ok(new ApiTypes.Work { HasWork = true });
+            var userInfo = userInfoOption.Unwrap();
+            var newPasswdHash = MD5.Hash(prop.NewPasswd + Env.PasswdSeed).ToLower();
+            var oldPasswdHash = MD5.Hash(prop.OldPasswd + Env.PasswdSeed).ToLower();
+            if (userInfo.Password != oldPasswdHash)
+                return Ok(new ApiTypes.Work { HasWork = false });
+            
+            var result = await log.AddResultAndTransformAsync<string>(
+                await QueryUserInfo.UpdatePasswordByUserIdAsync(db, cookieInfo.UserId, newPasswdHash));
+            if (result == EResult.Err)
+                return GetInternalServerError();
+            return Ok(new ApiTypes.Work { HasWork = true });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api/profile/update/username")]
@@ -277,44 +330,57 @@ LIMIT 50;
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UpdateUsernameRes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(UpdateUsernameRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult UpdateUsername([FromBody] UpdateUsernameProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> UpdateUsername([FromBody] UpdateUsernameProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        prop.NewUsername = prop.NewUsername?.Trim();
-        if (prop.AnyValidate() == EResult.Err)
-            return Ok(new UpdateUsernameRes { HasWork = false });
+        try {
+            prop.NewUsername = prop.NewUsername?.Trim();
+            if (prop.AnyValidate() == EResult.Err)
+                return Ok(new UpdateUsernameRes { HasWork = false });
 
-        var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
-        if (optionTokenInfo.IsSet() == false) return Ok(new UpdateUsernameRes { HasWork = false });
+            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
 
-        var userId = optionTokenInfo.Unwrap().UserId;
+            var userInfoOption = (await log.AddResultAndTransformAsync(await QueryUserInfo
+                .GetByUserIdAsync(db, cookieInfo.UserId))).OkOrDefault();
 
-        var bblUser =
-            log.AddResultAndTransform(db.SingleOrDefault<UserInfo>(
-                    $"SELECT username, password, username_last_change FROM bbl_user WHERE id = {userId}"))
-                .OkOrDefault();
+            if (userInfoOption.IsNotSet())
+                return GetInternalServerError();
 
-        if (bblUser is null
-            || Database.TableFn.BblUser.PasswordEqual(bblUser, prop.Passwd ?? "") == false
-            || bblUser.Username != prop.OldUsername
-           )
-            return Ok(new UpdateUsernameRes { HasWork = false });
+            var userInfo = userInfoOption.Unwrap();
 
+            if (BblUser.PasswordEqual(userInfo, prop.Passwd ?? "") == false
+                || (userInfo.Username ?? "").ToLower() != (prop.OldUsername ?? "").ToLower()
+               ) {
+                return Ok(new UpdateUsernameRes { HasWork = false });
+            }
 
-        if (bblUser.LastLoginTime + TimeSpan.FromDays(7) > DateTime.UtcNow)
-            return Ok(new UpdateUsernameRes {
-                HasWork = false,
-                WaitTimeForNextDayToUpdate = (bblUser.LastLoginTime + TimeSpan.FromDays(7) - DateTime.UtcNow).Days
-            });
+            var checkUsername = await log.AddResultAndTransformAsync(
+                await QueryUserInfo.GetByUsernameAsync(db, prop.NewUsername??""));
 
-        log.AddResultAndTransform(db.Execute(@$"
-UPDATE bbl_user
-SET username = @0, username_last_change = @1
-WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
+            if (checkUsername == EResult.Err)
+                return GetInternalServerError();
+            
+            if (checkUsername.Ok().IsSet())
+                return Ok(new ApiTypes.Work { HasWork = false }); 
+            
+            var result = await log.AddResultAndTransformAsync<string>(
+                await QueryUserInfo.UpdateUsernameByUserIdAsync(db, userInfo.UserId, prop.NewUsername ?? ""));
 
-        return Ok(new ApiTypes.Work { HasWork = true });
+            if (result == EResult.Err)
+                return GetInternalServerError();
+            
+            return Ok(new ApiTypes.Work { HasWork = true });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api/profile/update/avatar")]
@@ -322,64 +388,63 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UpdateAvatarRes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult UpdateAvatar([FromBody] UpdateAvatarProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
-
-        if (prop.AnyValidate() == EResult.Err)
-            return Ok(new UpdateAvatarRes { PasswdFalse = true });
-
-        var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
-        if (optionTokenInfo.IsSet() == false) return BadRequest();
-
-        var userId = optionTokenInfo.Unwrap().UserId;
-
-        byte[] imageBytes;
-        try {
-            var charArr = prop.ImageBase64.AsSpan(prop.ImageBase64!.IndexOf(',') + 1).ToArray();
-            // TODO Write one Convert.FromBase64String With Span
-            imageBytes = Convert.FromBase64CharArray(charArr, 0, charArr.Length);
-        }
-        catch (Exception e) {
-            log.AddLogError(e.ToString());
-            return BadRequest();
-        }
-
-        var bblUser = log.AddResultAndTransform(db
-            .SingleOrDefault<UserInfo>($"SELECT username, password, email, id FROM bbl_user WHERE id = {userId}"))
-            .OkOrDefault();
-        if (bblUser is null || bblUser.Password != ToPasswdHash(prop.Passwd ?? ""))
-            return Ok(new UpdateAvatarRes { PasswdFalse = true });
-
-        var imageMemoryStream = new MemoryStream(imageBytes);
-
-        var image = Image.Load(imageMemoryStream);
-
-        if (image.Height > 512 || image.Width > 512) {
-            (int height, int width) newSize = image.Height > image.Width
-                ? (512, image.Width / image.Height * 512)
-                : (image.Height / image.Width * 512, 512);
-
-            image.Mutate(x => x.Resize(newSize.height, newSize.width));
-        }
+    public async Task<IActionResult> UpdateAvatar([FromBody] UpdateAvatarProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
         try {
-            var filePath = $"{Env.AvatarPath}/{bblUser.UserId}";
-            image.SaveAsPng(filePath);
+            if (prop.AnyValidate() == EResult.Err)
+                return Ok(new UpdateAvatarRes { PasswdFalse = true });
+
+            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
+            
+            {
+                var userInfoOption = (await log.AddResultAndTransformAsync(await QueryUserInfo
+                    .GetByUserIdAsync(db, cookieInfo.UserId))).OkOrDefault();
+
+                if (userInfoOption.IsNotSet())
+                    return GetInternalServerError();
+
+                var userInfo = userInfoOption.Unwrap();
+
+                if (BblUser.PasswordEqual(userInfo, prop.Passwd ?? "") == false) {
+                    return Ok(new UpdateAvatarRes { PasswdFalse = true });
+                }
+            }
+            
+            
+            byte[] imageBytes = Array.Empty<byte>();
+            try {
+                var charArr = prop.ImageBase64.AsSpan(prop.ImageBase64!.IndexOf(',') + 1).ToArray();
+                // TODO Write one Convert.FromBase64String With Span
+                imageBytes = Convert.FromBase64CharArray(charArr, 0, charArr.Length);
+            }
+            catch (Exception e) {
+                await log.AddLogErrorAsync(e.ToString());
+                return BadRequest();
+            }
+
+            var result = await log.AddResultAndTransformAsync<string>(
+                await OsuDroidLib.Lib.UserAvatarHandler.UpdateImageForUserAsync(db, cookieInfo.UserId, imageBytes));
+
+            if (result == EResult.Err)
+                return GetInternalServerError();
+            
+            return Ok(new UpdateAvatarRes {
+                PasswdFalse = false,
+                ImageToBig = false,
+                IsNotAImage = false
+            });
         }
-#if DEBUG
         catch (Exception e) {
-            WriteLine(e);
-            throw;
-        }
-#else
-        catch (Exception) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
             return GetInternalServerError();
         }
-#endif
-
-        return Ok(new UpdateAvatarRes());
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api/profile/update/patreonemail")]
@@ -387,31 +452,40 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult UpdatePatreonEmail([FromBody] UpdatePatreonEmailProp prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> UpdatePatreonEmail([FromBody] UpdatePatreonEmailProp prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.AnyValidate() == EResult.Err)
-            return Ok(ApiTypes.Work.False);
+        try {
+            if (prop.AnyValidate() == EResult.Err)
+                return Ok(ApiTypes.Work.False);
 
-        var checkRes = log.AddResultAndTransform(Database.TableFn.BblUser.CheckPasswordGetId(db, prop.Username ?? "",
-            Database.TableFn.BblUser.HashPasswd(prop.Passwd ?? "", Env.PasswdSeed))).OkOr(Option<long>.Empty);
-        if (checkRes.IsSet() == false) return Ok(new ApiTypes.Work { HasWork = false });
-        var userId = checkRes.Unwrap();
+            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
+            var passwdHash = BblUser.HashPasswd(prop.Passwd ?? "", Env.PasswdSeed);
 
-        var optionBblUser = log.AddResultAndTransform(Database.TableFn.BblUser.GetUserById(db, userId)).OkOr(Option<UserInfo>.Empty);
-        if (optionBblUser.IsSet() == false) return Ok(new ApiTypes.Work { HasWork = false });
+            var result = await QueryUserInfo.CheckPasswordGetIdAndUsernameAsync(db, passwdHash);
+            if (result == EResult.Err)
+                return GetInternalServerError();
+            if (result.Ok().IsNotSet())
+                return Ok(new ApiTypes.Work { HasWork = false });
+            var userInfo = result.Ok().Unwrap();
+            var token = Guid.NewGuid();
 
-        var bblUser = optionBblUser.Unwrap();
+            _patreoneMailToken.Add(token, (cookieInfo.UserId, prop.Email!));
 
-        var token = Guid.NewGuid();
+            SendEmail.MainSendPatreonVerifyLinkToken(userInfo.Username!, userInfo.Email!, token);
 
-        _patreoneMailToken.Add(token, (userId, prop.Email!));
-
-        SendEmail.MainSendPatreonVerifyLinkToken(bblUser.Username!, bblUser.Email!, token);
-
-        return Ok(new ApiTypes.Work { HasWork = true });
+            return Ok(new ApiTypes.Work { HasWork = true });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpGet("/api/profile/accept/patreonemail/token/{token:guid}")]
@@ -419,68 +493,88 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult AcceptPatreonEmail([FromRoute(Name = "token")] Guid token) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> AcceptPatreonEmail([FromRoute(Name = "token")] Guid token) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (token == Guid.Empty)
-            return Ok(new ApiTypes.Work { HasWork = false });
+        try {
+            if (token == Guid.Empty)
+                return Ok(new ApiTypes.Work { HasWork = false });
 
-        var response = _patreoneMailToken.Pop(token);
+            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
+            
+            var response = _patreoneMailToken.Pop(token);
 
-        if (response.IsSet() == false) {
-            log.AddLogDebug($"Token Not Found: {token}");
-            return Ok(new ApiTypes.Work { HasWork = false });
+            if (response.IsNotSet()) {
+                await log.AddLogDebugAsync($"Token Not Found: {token}");
+                return Ok(new ApiTypes.Work { HasWork = false });
+            }
+
+            var userIdAndEmail = response.Unwrap();
+            
+            if ((await log.AddResultAndTransformAsync<string>(
+                    await QueryUserInfo.SetPatreonEmailAsync(db, userIdAndEmail.UserId, userIdAndEmail.Email))) == EResult.Err)
+                return GetInternalServerError();
+            
+            if ((await log.AddResultAndTransformAsync<string>(
+                    await QueryUserInfo.SetAcceptPatreonEmailAsync(db, userIdAndEmail.UserId))) == EResult.Err)
+                return GetInternalServerError();
+
+            return Ok(new ApiTypes.Work { HasWork = true });
         }
-
-        var userIdAndEmail = response.Unwrap();
-
-        var err = Database.TableFn.BblUser.SetPatreonEmail(db, userIdAndEmail.UserId, userIdAndEmail.Email!);
-        if (err == EResult.Err) {
-            log.AddLogError(err.Err());
-            return Ok(new ApiTypes.Work { HasWork = false });
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
         }
-        err = Database.TableFn.BblUser.SetAcceptPatreonEmail(db, userIdAndEmail.UserId);
-        if (err == EResult.Err) {
-            log.AddLogError(err.Err());
-            return Ok(new ApiTypes.Work { HasWork = false });
+        finally {
+            await dbT.CommitAsync();
         }
-
-        return Ok(new ApiTypes.Work { HasWork = true });
     }
 
     [HttpPost("/api/profile/drop-account/sendMail")]
     [PrivilegeRoute(route: "/api/profile/drop-account/sendMail}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CreateDropAccountTokenRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult CreateDropAccountToken([FromBody] ApiTypes.Api2GroundNoHeader<CreateDropAccountTokenProp> prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> CreateDropAccountToken([FromBody] ApiTypes.Api2GroundNoHeader<CreateDropAccountTokenProp> prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.ValuesAreGood() == false)
-            return Ok(CreateDropAccountTokenRes.HasElseError());
+        try {
+            if (prop.ValuesAreGood() == false)
+                return Ok(CreateDropAccountTokenRes.HasElseError());
 
-        var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
-        if (optionTokenInfo.IsSet() == false) return BadRequest();
+            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
+            
+            var optionBblUserResult = await log.AddResultAndTransformAsync(
+                await QueryUserInfo.GetByUserIdAsync(db, cookieInfo.UserId));
 
-        var userId = optionTokenInfo.Unwrap().UserId;
+            if (optionBblUserResult == EResult.Err)
+                return GetInternalServerError();
+            if (optionBblUserResult.Ok().IsNotSet())
+                return Ok(CreateDropAccountTokenRes.HasElseError());
 
-        var optionBblUser = log.AddResultAndTransform(Database.TableFn.BblUser.GetUserById(db, userId)).OkOr(Option<UserInfo>.Empty);
-        if (optionBblUser.IsSet() == false)
-            return Ok(CreateDropAccountTokenRes.HasElseError());
-
-        var bblUser = optionBblUser.Unwrap();
-        if (Database.TableFn.BblUser.PasswordEqual(bblUser, prop.Body!.Password ?? "") == false)
-            return Ok(CreateDropAccountTokenRes.PasswordIsFalse());
+            var userInfo = optionBblUserResult.Ok().Unwrap();
+            if (userInfo.Password != this.ToPasswdHash(prop.Body!.Password))
+                return Ok(CreateDropAccountTokenRes.PasswordIsFalse());
 
 
-        var deleteAccToken = Guid.NewGuid();
-        _deleteAccMailToken.Add(deleteAccToken, (userId, bblUser.Email??""));
-        Utils.SendEmail.MainSendDropAccountVerifyLinkToken(bblUser.Username??"", bblUser.Email??"", deleteAccToken);
+            var deleteAccToken = Guid.NewGuid();
+            _deleteAccMailToken.Add(deleteAccToken, (userInfo.UserId, userInfo.Email??""));
+            Utils.SendEmail.MainSendDropAccountVerifyLinkToken(userInfo.Username??"", userInfo.Email??"", deleteAccToken);
 
-        return Ok(CreateDropAccountTokenRes.NoError());
+            return Ok(CreateDropAccountTokenRes.NoError());
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpGet("/api/profile/drop-account/token/{token:guid}")]
@@ -489,25 +583,37 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DropAccountWithTokenAsync([FromRoute(Name = "token")] Guid token) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        _deleteAccMailToken.CleanDeadTokens();
+        try {
+            _deleteAccMailToken.CleanDeadTokens();
 
-        var optionTokenInfo = log.AddResultAndTransform(LoginTokenInfo(db)).OkOr(Option<TokenInfo>.Empty);
-        var deleteAccTokenResponse = _deleteAccMailToken.Pop(token: token);
-        if (optionTokenInfo.IsSet() == false || deleteAccTokenResponse.IsSet() == false)
-            return BadRequest();
+            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
+            var deleteAccTokenResponse = _deleteAccMailToken.Pop(token: token);
+            if (deleteAccTokenResponse.IsNotSet())
+                return BadRequest();
 
-        var userId = deleteAccTokenResponse.Unwrap().UserId;
-
+            var userId = deleteAccTokenResponse.Unwrap().UserId;
+            if (userId == cookieInfo.UserId)
+                return BadRequest();
         
-        ResultErr<string> deleteAccountResponse = await QueryUserInfo.DeleteAsync(db, userId);
-        if (deleteAccountResponse == EResult.Err)
-            log.AddLogError(deleteAccountResponse.Err());
-        this.RemoveCookieByEName(ECookie.LoginCookie);
-        return Ok(ApiTypes.Work.True);
+            var deleteAccountResponse = await log.AddResultAndTransformAsync<string>(
+                await QueryUserInfo.DeleteAsync(db, userId));
+            if (deleteAccountResponse == EResult.Err)
+                return GetInternalServerError();
+            
+            return Ok(ApiTypes.Work.True);
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
 
@@ -516,46 +622,71 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PlaysMarksLength))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult WebProfileTopPlaysByMarksLength([FromRoute] long userId) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> WebProfileTopPlaysByMarksLength([FromRoute] long userId) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
+        try {
+            if (long.IsNegative(userId)) return BadRequest("UserId < 0");
 
-        if (long.IsNegative(userId)) return BadRequest("UserId < 0");
-
-        var result = log.AddResultAndTransform(OsuDroid.Database.TableFn.BblScore.CountMarkPlaysByUserId(db, userId));
-        if (result == EResult.Err)
+            
+            var result = await log.AddResultAndTransformAsync(
+                await QueryPlayScore.CountMarkPlaysByUserIdAsync(db, userId));
+            if (result == EResult.Err)
+                return GetInternalServerError();
+            Dictionary<PlayScoreDto.EPlayScoreMark, long> dic = result.Ok();
+            
+            return Ok(PlaysMarksLength.Factory(dic));
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
             return GetInternalServerError();
-
-        return Ok(PlaysMarksLength.Factory(result.Ok()));
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpGet("/api/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
     [PrivilegeRoute(route: "/api/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Plays))]
-    public IActionResult WebProfileTopPlaysByMark(
+    public async Task<IActionResult> WebProfileTopPlaysByMark(
         [FromRoute] long userId, [FromRoute] string markString, [FromRoute] int page) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (long.IsNegative(userId))
-            return BadRequest("userid Is Negative");
-        if (string.IsNullOrEmpty(markString))
-            return BadRequest("markString Is Null Or Empty");
-        if (int.IsNegative(page))
-            return BadRequest("page Is Negative");
+        try {
+            if (long.IsNegative(userId))
+                return BadRequest("userid Is Negative");
+            if (string.IsNullOrEmpty(markString))
+                return BadRequest("markString Is Null Or Empty");
+            if (int.IsNegative(page))
+                return BadRequest("page Is Negative");
 
-        if (!Enum.TryParse<PlayScore.EMark>(markString, out PlayScore.EMark mark))
-            return BadRequest("markString Case Not Exist");
+            
+            if (EPlayScoreMarkExtensions.TryParse(markString, out var mark)) 
+                return BadRequest("markString Case Not Exist");
 
-        var fetchResult = log.AddResultAndTransform(OsuDroid.Database.TableFn.BblScore.GetTopScoreFromUserIdFilterMark(db, userId, page, 50, mark));
-        if (fetchResult == EResult.Err)
+            
+            var fetchResult = await log.AddResultAndTransformAsync(
+                await QueryPlayScore.GetTopScoreFromUserIdFilterMark(db, userId, page, 50, mark));
+            if (fetchResult == EResult.Err)
+                return GetInternalServerError();
+
+            var scores = fetchResult.Ok();
+            return Ok(new Plays() { Found = true, Scores = scores });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
             return GetInternalServerError();
-
-        var scores = fetchResult.Ok();
-        return Ok(new Plays() { Found = true, Scores = scores });
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
 
@@ -658,16 +789,16 @@ WHERE id = {userId}", prop.NewUsername!, DateTime.UtcNow));
         public long PlaysD { get; set; }
         public long PlaysAll { get; set; }
 
-        public static PlaysMarksLength Factory(Dictionary<PlayScore.EMark, long> dictionary) {
+        public static PlaysMarksLength Factory(Dictionary<PlayScoreDto.EPlayScoreMark, long> dictionary) {
             return new PlaysMarksLength() {
-                PlaysXSS = dictionary.ContainsKey(PlayScore.EMark.XSS)? dictionary[PlayScore.EMark.XSS]: 0,
-                PlaysSS = dictionary.ContainsKey(PlayScore.EMark.SS)? dictionary[PlayScore.EMark.SS]: 0,
-                PlaysXS = dictionary.ContainsKey(PlayScore.EMark.XS)? dictionary[PlayScore.EMark.XS]: 0,
-                PlaysS = dictionary.ContainsKey(PlayScore.EMark.S)? dictionary[PlayScore.EMark.S]: 0,
-                PlaysA = dictionary.ContainsKey(PlayScore.EMark.A)? dictionary[PlayScore.EMark.A]: 0,
-                PlaysB = dictionary.ContainsKey(PlayScore.EMark.B)? dictionary[PlayScore.EMark.B]: 0,
-                PlaysC = dictionary.ContainsKey(PlayScore.EMark.C)? dictionary[PlayScore.EMark.C]: 0,
-                PlaysD = dictionary.ContainsKey(PlayScore.EMark.D)? dictionary[PlayScore.EMark.D]: 0,
+                PlaysXSS = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.XSS, out var value)? value: 0,
+                PlaysSS = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.SS, out var value1)? value1: 0,
+                PlaysXS = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.XS, out var value2)? value2: 0,
+                PlaysS = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.S, out var value3)? value3: 0,
+                PlaysA = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.A, out var value4)? value4: 0,
+                PlaysB = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.B, out var value5)? value5: 0,
+                PlaysC = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.C, out var value6)? value6: 0,
+                PlaysD = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.D, out var value7)? value7: 0,
                 PlaysAll = dictionary.Select(x => x.Value).Sum()
             };
         }

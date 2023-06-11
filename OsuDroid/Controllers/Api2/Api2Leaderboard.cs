@@ -5,6 +5,7 @@ using OsuDroid.Model;
 using OsuDroid.Utils;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Lib;
 
 namespace OsuDroid.Controllers.Api2;
 

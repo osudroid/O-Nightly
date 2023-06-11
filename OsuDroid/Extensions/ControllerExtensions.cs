@@ -14,11 +14,16 @@ public abstract class ControllerExtensions : ControllerBase {
     public enum ECookie {
         LoginCookie
     }
-
+    
     public string FixUsername(string username) {
         return username.Trim();
     }
 
+    public async Task<IActionResult> RollbackAndGetInternalServerError(NpgsqlTransaction dbT) {
+        await dbT.RollbackAsync();
+        return GetInternalServerError();
+    }
+    
     public Result<Option<UserIdAndToken>, string> LoginTokenInfo(NpgsqlConnection db) {
         if (!HttpContext.Items.TryGetValue(PrivilegeMiddleware.ItemName, out var data)) 
             return Result<Option<UserIdAndToken>, string>.Ok(Option<UserIdAndToken>.Empty);

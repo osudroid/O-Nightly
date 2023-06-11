@@ -4,7 +4,7 @@ using OsuDroidLib.Query;
 namespace OsuDroid.Model;
 
 public static class Upload {
-    public static async Task<Result<ApiTypes.Work, string>> UploadReplay(
+    public static async Task<Result<ApiTypes.Work, string>> UploadReplayAsync(
         NpgsqlConnection db,
         string mapHash,
         long replayId,

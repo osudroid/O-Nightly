@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace OsuDroid.Utils;
+namespace OsuDroidLib.Lib;
 
 public static class CountryInfo {
     private const string JsonFile = @"

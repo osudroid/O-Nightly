@@ -38,7 +38,7 @@
 
     <ItemGroup>
         <PackageReference Include="Npgsql" Version="7.0.4" />
-        <PackageReference Include="SixLabors.ImageSharp" Version="2.1.4" />
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
         <PackageReference Include="Microsoft.OpenApi" Version="1.6.4" />
         <PackageReference Include="System.Threading.Channels" Version="6.0.0" />
     </ItemGroup>

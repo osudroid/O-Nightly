@@ -1,10 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
-using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
+using OsuDroidLib.Extension;
+using OsuDroidLib.Lib;
 
 namespace OsuDroid.Controllers.Api2;
 
@@ -20,24 +19,24 @@ public class Api2Avatar : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            var filePath = $"{Env.AvatarPath}/" + id;
+            var resultSetting = await SettingHandler.GetSettingUserAvatarAsync(db);
+            if (resultSetting == EResult.Err)
+                return GetInternalServerError();
 
-            var bytes = System.IO.File.Exists(filePath) switch {
-                true => await System.IO.File.ReadAllBytesAsync(filePath),
-                false => await System.IO.File.ReadAllBytesAsync($"{Env.AvatarPath}/default.jpg")
-            };
+            var setting = resultSetting.Ok();
+            
+            var resultUserAvatar = await log.AddResultAndTransformAsync(
+                await UserAvatarHandler.GetByUserIdAsync(db, id, setting.SizeLow >= size));
+            
+            if (resultUserAvatar == EResult.Err)
+                return GetInternalServerError();
+            if (resultUserAvatar.Ok().IsNotSet())
+                return NotFound();
 
-            var imageMemoryStream = new MemoryStream(bytes);
-
-            using var image = await Image.LoadAsync(imageMemoryStream);
-            image.Mutate(x => x.Resize(size, size));
-
-            var imageMemoryRes = new MemoryStream();
-            await image.SaveAsPngAsync(imageMemoryRes);
-            imageMemoryRes.Position = 0;
-            image.Dispose();
-            var file = File(imageMemoryRes, "image/png");
-            return file;
+            var userAvatar = resultUserAvatar.Ok().Unwrap();
+            
+            var mem = new MemoryStream(userAvatar.Bytes!);
+            return File(mem, $"image/{userAvatar.TypeExt}");
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -49,51 +48,80 @@ public class Api2Avatar : ControllerExtensions {
         }
     }
 
-    [HttpGet("/api2/avatar/hash/{size:long}/{id:long}")]
-    [PrivilegeRoute(route: "/api2/avatar/hash/{size:long}/{id:long}")]
+    [HttpGet("/api2/avatar/hash/{hash:alpha}")]
+    [PrivilegeRoute(route: "/api2/avatar/hash/{hash:alpha}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AvatarHashes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult AvatarHashByUserId([FromRoute(Name = "size")] int size, [FromRoute(Name = "id")] long id) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> AvatarByHash([FromRoute(Name = "hash")] string? hash) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (size > 1000 || size < 1 || id < 1) return BadRequest();
+        try {
+            var result = await log.AddResultAndTransformAsync(
+                await UserAvatarHandler.GetByHashAsync(db, hash??""));
+            
+            if (result == EResult.Err)
+                return GetInternalServerError();
+            
+            if (result.Ok().IsNotSet())
+                return NotFound();
 
-        var resp = log.AddResultAndTransform(db.Fetch<Entities.UserAvatar>(@$"
-SELECT user_id, hash
-FROM bbl_avatar_hash
-WHERE size = {size}
-AND user_id = {id}
-")).OkOr(new(0));
-
-        return Ok(new AvatarHashes {
-            List = resp.Select(x => new AvatarHash { Hash = x.Hash, UserId = x.UserId }).ToList()
-        });
+            var avatar = result.Ok().Unwrap();
+            
+            return File(avatar.Bytes!, $"image/{avatar.TypeExt}");
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [HttpPost("/api2/avatar/hash")]
     [PrivilegeRoute(route: "/api2/avatar/hash")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AvatarHashes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult AvatarHashesByUserIds([FromBody] ApiTypes.Api2GroundNoHeader<AvatarHashesByUserIdsProp> prop) {
-        using var db = DbBuilder.BuildPostSqlAndOpen();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> AvatarHashesByUserIds([FromBody] ApiTypes.Api2GroundNoHeader<AvatarHashesByUserIdsProp> prop) {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        if (prop.ValuesAreGood() == false)
-            return BadRequest();
+        try {
+            if (prop.ValuesAreGood() == false)
+                return BadRequest();
 
-        var resp = log.AddResultAndTransform(db.Fetch<Entities.UserAvatar>(@$"
-SELECT user_id, hash
-FROM bbl_avatar_hash
-WHERE size = {prop.Body!.Size}
-AND user_id in ({string.Join(',', prop.Body.UserIds ?? Array.Empty<long>())})
-")).OkOr(new(0));
+            var resultSetting = await SettingHandler.GetSettingUserAvatarAsync(db);
+            if (resultSetting == EResult.Err)
+                return GetInternalServerError();
 
-        return Ok(new AvatarHashes {
-            List = resp.Select(x => new AvatarHash { Hash = x.Hash, UserId = x.UserId }).ToList()
-        });
+            var setting = resultSetting.Ok();
+            var size = (setting.SizeLow >= prop.Body!.Size) ? setting.SizeLow : setting.SizeHigh;
+            var resp = await log.AddResultAndTransformAsync(await db.SafeQueryAsync<UserAvatar>(@$"
+SELECT UserId, Hash
+FROM UserAvatar
+WHERE PixelSize = {size}
+AND UserId in @UserIds
+", new { UserIds = prop.Body.UserIds }));
+
+            if (resp == EResult.Err)
+                return GetInternalServerError();
+            
+            return Ok(new AvatarHashes {
+                List = resp.Ok().Select(x => new AvatarHash { Hash = x.Hash, UserId = x.UserId }).ToList()
+            });
+        }
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]

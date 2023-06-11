@@ -18,6 +18,7 @@ public class UserStats {
     public long OverallB { get; set; }
     public long OverallC { get; set; }
     public long OverallD { get; set; }
+    public long OverallPerfect { get; set; }
     public long OverallHits { get; set; }
     public long Overall300 { get; set; }
     public long Overall100 { get; set; }

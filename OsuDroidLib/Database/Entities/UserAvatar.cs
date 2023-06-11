@@ -11,4 +11,6 @@ public class UserAvatar {
     public string? TypeExt { get; set; }
     public int PixelSize { get; set; }
     public bool Animation { get; set; }
+    public byte[]? Bytes { get; set; }
+    public bool Original { get; set; }
 }

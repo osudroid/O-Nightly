@@ -26,7 +26,7 @@ public class OdrEntry {
                 Misses = playScore.Miss,
                 Accuracy = playScore.Accuracy,
                 Time = playScore.Date.Ticks,
-                Perfect = 0
+                Perfect = playScore.Perfect,
             }
         };
     }

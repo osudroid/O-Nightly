@@ -1,47 +1,55 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
-using OsuDroidLib;
 
 namespace OsuDroid.Controllers.Api;
 
 public class Update : ControllerExtensions {
-    [HttpGet("/api/update.php")]
-    [PrivilegeRoute(route: "/api/update.php")]
+    [HttpGet("/api/update")]
+    [PrivilegeRoute(route: "/api/update")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiUpdateInfo))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult GetUpdateInfo([FromQuery(Name = "lang")] string lang = "en") {
-        using var db = await DbBuilder.BuildNpgsqlConnection();
-        using var log = Log.GetLog(db);
-        log.AddLogDebugStart();
+    public async Task<IActionResult> GetUpdateInfoAsync([FromQuery(Name = "lang")] string lang = "en") {
+        await using var start = await GetStartAsync();
+        var (dbT, db, log) = start.Unpack();
+        await log.AddLogDebugStartAsync();
 
-        var dirNameNumber = Directory.GetDirectories(Env.UpdatePath).Select(long.Parse).MaxBy(x => x);
-        if (dirNameNumber == 0) return GetInternalServerError();
+        try {
+            var dirNameNumber = Directory.GetDirectories(Env.UpdatePath).Select(long.Parse).MaxBy(x => x);
+            if (dirNameNumber == 0) return GetInternalServerError();
 
-        var langFiles = Directory.GetFiles($"{Env.UpdatePath}/{dirNameNumber}/changelog");
-        string? defaultFile = null;
-        string? wantFile = null;
-        foreach (var langFile in langFiles) {
-            if (langFile == "en")
-                defaultFile = "en";
-            if (langFile != lang)
-                continue;
-            wantFile = langFile;
-            break;
+            var langFiles = Directory.GetFiles($"{Env.UpdatePath}/{dirNameNumber}/changelog");
+            string? defaultFile = null;
+            string? wantFile = null;
+            foreach (var langFile in langFiles) {
+                if (langFile == "en")
+                    defaultFile = "en";
+                if (langFile != lang)
+                    continue;
+                wantFile = langFile;
+                break;
+            }
+
+            if (wantFile is null && defaultFile is null) return GetInternalServerError();
+
+            wantFile ??= defaultFile;
+
+            return Ok(new ApiUpdateInfo {
+                Changelog = await System.IO.File.ReadAllTextAsync($"{Env.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
+                VersionCode = dirNameNumber,
+                Link = $"https://{Env.Domain}/api2/apk/version/{dirNameNumber}.apk"
+            });
         }
-
-        if (wantFile is null && defaultFile is null) return GetInternalServerError();
-
-        wantFile ??= defaultFile;
-
-        return Ok(new ApiUpdateInfo {
-            Changelog = System.IO.File.ReadAllText($"{Env.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
-            VersionCode = dirNameNumber,
-            Link = $"https://{Env.Domain}/api2/apk/version/{dirNameNumber}.apk"
-        });
+        catch (Exception e) {
+            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
+            await dbT.RollbackAsync();
+            return GetInternalServerError();
+        }
+        finally {
+            await dbT.CommitAsync();
+        }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
