@@ -7,6 +7,7 @@ using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Lib.Validate;
+using OsuDroid.Post;
 using OsuDroid.Utils;
 using OsuDroid.View;
 using OsuDroidLib;
@@ -33,7 +34,7 @@ public sealed partial class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLogin))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewWebLogin))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> WebLogin([FromBody] WebLoginProp prop) {
+    public async Task<IActionResult> WebLogin([FromBody] PostWebLogin prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -101,7 +102,7 @@ public sealed partial class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     [HttpPost("/api/webloginwithusername")]
     [PrivilegeRoute(route: "/api/webloginwithusername")]
-    public async Task<IActionResult> WebLoginWithUsername([FromBody] WebLoginWithUsernameProp prop) {
+    public async Task<IActionResult> WebLoginWithUsername([FromBody] PostWebLoginWithUsername prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -168,7 +169,7 @@ public sealed partial class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLogin))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewWebLogin))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> WebRegister([FromBody] WebRegisterProp value) {
+    public async Task<IActionResult> WebRegister([FromBody] PostWebRegister value) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -339,7 +340,7 @@ public sealed partial class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewResetPasswdAndSendEmail))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewResetPasswdAndSendEmail))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ResetPasswdAndSendEmail([FromBody] ResetPasswdAndSendEmailProp prop) {
+    public async Task<IActionResult> ResetPasswdAndSendEmail([FromBody] PostResetPasswdAndSendEmail prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -404,7 +405,7 @@ public sealed partial class Login : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebReplacePasswordWithToken))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewWebReplacePasswordWithToken))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> SetNewPasswd([FromBody] ApiTypes.Api2GroundNoHeader<SetNewPasswdProp> prop) {
+    public async Task<IActionResult> SetNewPasswd([FromBody] ApiTypes.Api2GroundNoHeader<PostSetNewPasswd> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -535,58 +536,5 @@ public sealed partial class Login : ControllerExtensions {
         finally {
             await dbT.CommitAsync();
         }
-    }
-
-
-    public sealed class SetNewPasswdProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString {
-        [FromBody] public string? NewPasswd { get; set; }
-        [FromBody] public string? Token { get; set; }
-        [FromBody] public long UserId { get; set; }
-
-        public string ToSingleString() {
-            return Merge.ObjectsToString(new[] {
-                NewPasswd ?? "",
-                Token ?? "",
-                UserId.ToString()
-            });
-        }
-
-        public bool ValuesAreGood() {
-            return !(string.IsNullOrEmpty(NewPasswd)
-                     || string.IsNullOrEmpty(Token)
-                     || UserId < 0);
-        }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class ResetPasswdAndSendEmailProp : ValidateAll, IValidateEmail, IValidateUsername {
-        public string? Email { get; set; }
-        public string? Username { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class WebLoginWithUsernameProp : ValidateAll, IValidatePasswd, IValidateUsername {
-        public int Math { get; set; }
-        public Guid Token { get; set; }
-        public string? Passwd { get; set; }
-        public string? Username { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class WebRegisterProp : ValidateAll, IValidatePasswd, IValidateUsername {
-        public string? Email { get; set; }
-        public int MathRes { get; set; }
-        public Guid MathToken { get; set; }
-        public string? Region { get; set; }
-        public string? Passwd { get; set; }
-        public string? Username { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class WebLoginProp : ValidateAll, IValidatePasswd, IValidateEmail {
-        public int Math { get; set; }
-        public Guid Token { get; set; }
-        public string? Email { get; set; }
-        public string? Passwd { get; set; }
     }
 }

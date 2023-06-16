@@ -57,9 +57,3 @@ public sealed class CookieInfo : ControllerExtensions {
         }
     }
 }
-
-public class A: IAsyncDisposable {
-    public async ValueTask DisposeAsync() {
-        throw new NotImplementedException();
-    }
-}

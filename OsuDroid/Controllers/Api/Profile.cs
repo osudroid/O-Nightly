@@ -3,6 +3,7 @@ using OsuDroid.Database.TableFn;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.Validate;
+using OsuDroid.Post;
 using OsuDroid.Utils;
 using OsuDroid.View;
 using OsuDroidLib.Database.Entities;
@@ -235,7 +236,7 @@ public sealed class Profile : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateEmail([FromBody] UpdateEmailProp prop) {
+    public async Task<IActionResult> UpdateEmail([FromBody] PostUpdateEmail prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -286,7 +287,7 @@ public sealed class Profile : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdatePasswd([FromBody] UpdatePasswdProp prop) {
+    public async Task<IActionResult> UpdatePasswd([FromBody] PostUpdatePasswd prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -331,7 +332,7 @@ public sealed class Profile : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUpdateUsernameRes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewUpdateUsernameRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateUsername([FromBody] UpdateUsernameProp prop) {
+    public async Task<IActionResult> UpdateUsername([FromBody] PostUpdateUsername prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -389,7 +390,7 @@ public sealed class Profile : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUpdateAvatar))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateAvatar([FromBody] UpdateAvatarProp prop) {
+    public async Task<IActionResult> UpdateAvatar([FromBody] PostUpdateAvatar prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -453,7 +454,7 @@ public sealed class Profile : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdatePatreonEmail([FromBody] UpdatePatreonEmailProp prop) {
+    public async Task<IActionResult> UpdatePatreonEmail([FromBody] PostUpdatePatreonEmail prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -538,7 +539,7 @@ public sealed class Profile : ControllerExtensions {
     [PrivilegeRoute(route: "/api/profile/drop-account/sendMail}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewCreateDropAccountTokenRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CreateDropAccountToken([FromBody] ApiTypes.Api2GroundNoHeader<CreateDropAccountTokenProp> prop) {
+    public async Task<IActionResult> CreateDropAccountToken([FromBody] ApiTypes.Api2GroundNoHeader<PostCreateDropAccountToken> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -692,45 +693,5 @@ public sealed class Profile : ControllerExtensions {
 
 
 
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class CreateDropAccountTokenProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString {
-        public string? Password { get; set; }
 
-        public bool ValuesAreGood() => !string.IsNullOrEmpty(Password);
-
-        public string ToSingleString() => Password??"";
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class UpdatePatreonEmailProp : ValidateAll, IValidateEmail, IValidateUsername, IValidatePasswd {
-        public string? Email { get; set; }
-        public string? Passwd { get; set; }
-        public string? Username { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class UpdateAvatarProp : ValidateAll, IValidatePasswd {
-        public string? ImageBase64 { get; set; }
-        public string? Passwd { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class UpdateEmailProp : ValidateAll, IValidateOldEmail, IValidateNewEmail, IValidatePasswd {
-        public string? NewEmail { get; set; }
-        public string? OldEmail { get; set; }
-        public string? Passwd { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class UpdateUsernameProp : ValidateAll, IValidateOldUsername, IValidateNewUsername, IValidatePasswd {
-        public string? NewUsername { get; set; }
-        public string? OldUsername { get; set; }
-        public string? Passwd { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class UpdatePasswdProp : ValidateAll, IValidateOldPasswd, IValidateNewPasswd {
-        public string? NewPasswd { get; set; }
-        public string? OldPasswd { get; set; }
-    }
 }
