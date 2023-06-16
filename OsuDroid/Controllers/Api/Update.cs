@@ -1,15 +1,14 @@
-using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
+using OsuDroid.View;
 
 namespace OsuDroid.Controllers.Api;
 
 public class Update : ControllerExtensions {
     [HttpGet("/api/update")]
     [PrivilegeRoute(route: "/api/update")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiUpdateInfo))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewApiUpdateInfo))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUpdateInfoAsync([FromQuery(Name = "lang")] string lang = "en") {
         await using var start = await GetStartAsync();
@@ -36,7 +35,7 @@ public class Update : ControllerExtensions {
 
             wantFile ??= defaultFile;
 
-            return Ok(new ApiUpdateInfo {
+            return Ok(new ViewApiUpdateInfo {
                 Changelog = await System.IO.File.ReadAllTextAsync($"{Env.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
                 VersionCode = dirNameNumber,
                 Link = $"https://{Env.Domain}/api2/apk/version/{dirNameNumber}.apk"
@@ -50,20 +49,5 @@ public class Update : ControllerExtensions {
         finally {
             await dbT.CommitAsync();
         }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public class ApiUpdateInfo {
-        [JsonProperty]
-        [JsonPropertyName("version_code")]
-        public long VersionCode { get; set; }
-
-        [JsonProperty]
-        [JsonPropertyName("link")]
-        public string? Link { get; set; }
-
-        [JsonProperty]
-        [JsonPropertyName("changelog")]
-        public string? Changelog { get; set; }
     }
 }

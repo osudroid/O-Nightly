@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
+using OsuDroid.View;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Query;
@@ -13,7 +14,7 @@ namespace OsuDroid.Controllers.Api2;
 public class Api2Login : ControllerExtensions {
     [HttpPost("/api2/token-create")]
     [PrivilegeRoute(route: "/api2/token-create")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CreateApi2TokenResult))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewCreateApi2TokenResult))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateApi2TokenAsync([FromBody] CreateApi2TokenProp prop) {
         await using var start = await GetStartAsync();
@@ -28,7 +29,7 @@ public class Api2Login : ControllerExtensions {
             
             if (userOption.IsNotSet()) {
                 await log.AddLogDebugAsync("User Not Found");
-                return Ok(new CreateApi2TokenResult {
+                return Ok(new ViewCreateApi2TokenResult {
                     Token = Guid.Empty,
                     PasswdFalse = false,
                     UsernameFalse = true
@@ -38,7 +39,7 @@ public class Api2Login : ControllerExtensions {
             var user = userOption.Unwrap();
             if (user.Password != ToPasswdHash(prop.Passwd ?? string.Empty)) {
                 await log.AddLogDebugAsync("User Password False");
-                return Ok(new CreateApi2TokenResult {
+                return Ok(new ViewCreateApi2TokenResult {
                     Token = Guid.Empty,
                     PasswdFalse = true,
                     UsernameFalse = false
@@ -54,7 +55,7 @@ public class Api2Login : ControllerExtensions {
             }
 
             await log.AddLogDebugAsync("Return Token");
-            return Ok(new CreateApi2TokenResult {
+            return Ok(new ViewCreateApi2TokenResult {
                 Token = optionToken.Ok(),
                 PasswdFalse = false,
                 UsernameFalse = false
@@ -165,12 +166,7 @@ public class Api2Login : ControllerExtensions {
         public string? Passwd { get; set; }
     }
 
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public class CreateApi2TokenResult {
-        public required Guid Token { get; set; }
-        public required bool UsernameFalse { get; set; }
-        public required bool PasswdFalse { get; set; }
-    }
+
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public class SimpleTokenProp {

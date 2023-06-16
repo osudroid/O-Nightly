@@ -3,6 +3,7 @@ using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Model;
 using OsuDroid.Utils;
+using OsuDroid.View;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Lib;
@@ -12,7 +13,7 @@ namespace OsuDroid.Controllers.Api2;
 public class Api2Leaderboard : ControllerExtensions {
     [HttpPost("/api2/leaderboard")]
     [PrivilegeRoute(route: "/api2/leaderboard")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetLeaderBoard([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardProp> prop) {
         await using var start = await GetStartAsync();
@@ -26,10 +27,10 @@ public class Api2Leaderboard : ControllerExtensions {
                 
 
             var allRegion = prop.Body!.IsRegionAll();
-            Result<List<LeaderBoardUser>, string> rep;
+            Result<List<ViewLeaderBoardUser>, string> rep;
             switch (allRegion) {
                 case true:
-                    rep = await LeaderBoard.AnyRegionAsync(db, prop.Body.Limit);
+                    rep = (await LeaderBoard.AnyRegionAsync(db, prop.Body.Limit)).Map(x => x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
                     break;
                 default: {
                     var countyRep = prop.Body!.GetRegionAsCountry();
@@ -38,14 +39,14 @@ public class Api2Leaderboard : ControllerExtensions {
                         return BadRequest();
                     }
 
-                    rep = await LeaderBoard.FilterRegionAsync(db, prop.Body.Limit, countyRep.Unwrap());
+                    rep = (await LeaderBoard.FilterRegionAsync(db, prop.Body.Limit, countyRep.Unwrap())).Map(x => x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
                     break;
                 }
             }
 
             return Ok(rep == EResult.Err
-                ? ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.NotExist()
-                : ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.Exist(rep.Ok()));
+                ? ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>.NotExist()
+                : ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.Ok()));
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -59,7 +60,7 @@ public class Api2Leaderboard : ControllerExtensions {
 
     [HttpPost("/api2/leaderboard/user")]
     [PrivilegeRoute(route: "/api2/leaderboard/user")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<LeaderBoardUser>))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<ViewLeaderBoardUser>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardUserProp> prop) {
         await using var start = await GetStartAsync();
@@ -70,12 +71,13 @@ public class Api2Leaderboard : ControllerExtensions {
             if (prop.ValuesAreGood() == false)
                 return BadRequest();
 
-            var rep = (await log.AddResultAndTransformAsync(
-                await LeaderBoard.UserAsync(db, prop.Body!.UserId))).OkOr(Option<LeaderBoardUser>.Empty);
+            var rep = ((await log.AddResultAndTransformAsync(
+                await LeaderBoard.UserAsync(db, prop.Body!.UserId))).OkOr(Option<LeaderBoardUser>.Empty))
+                .Map(ViewLeaderBoardUser.FromLeaderBoardUser);
 
             return Ok(rep.IsSet() == false
-                ? ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.NotExist()
-                : ApiTypes.ExistOrFoundInfo<LeaderBoardUser>.Exist(rep.Unwrap()));
+                ? ApiTypes.ExistOrFoundInfo<ViewLeaderBoardUser>.NotExist()
+                : ApiTypes.ExistOrFoundInfo<ViewLeaderBoardUser>.Exist(rep.Unwrap()));
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -89,7 +91,7 @@ public class Api2Leaderboard : ControllerExtensions {
 
     [HttpPost("/api2/leaderboard/search-user")]
     [PrivilegeRoute(route: "/api2/leaderboard/search-user")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardSearchUserProp> prop) {
         await using var start = await GetStartAsync();
@@ -104,15 +106,15 @@ public class Api2Leaderboard : ControllerExtensions {
 
 
 
-            ResultOk<List<LeaderBoardUser>> rep = prop.Body!.IsRegionAll() switch {
+            ResultOk<List<ViewLeaderBoardUser>> rep = (prop.Body!.IsRegionAll() switch {
                 true => await log.AddResultAndTransformAsync(await LeaderBoard.SearchUserAsync(db, prop.Body!.Limit, prop.Body!.Query!)),
                 _ => await log.AddResultAndTransformAsync(await LeaderBoard.SearchUserWithRegionAsync(db, prop.Body!.Limit, prop.Body!.Query!,
                     prop.Body.GetRegionAsCountry().Unwrap()))
-            };
+            }).Map(x => x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
 
             return Ok(rep == EResult.Err
-                ? ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.NotExist()
-                : ApiTypes.ExistOrFoundInfo<List<LeaderBoardUser>>.Exist(rep.OkOr(new())));
+                ? ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>.NotExist()
+                : ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.OkOr(new())));
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));

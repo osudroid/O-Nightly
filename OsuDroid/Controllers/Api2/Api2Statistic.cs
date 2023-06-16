@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Model;
+using OsuDroid.View;
 using OsuDroidLib;
 using OsuDroidLib.Query;
 
@@ -11,7 +12,7 @@ public class Api2Statistic : ControllerExtensions {
     [HttpGet("/api2/statistic/active-user")]
     [PrivilegeRoute(route: "/api2/statistic/active-user")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ExistOrFoundInfo<QueryUserInfo.StatisticActiveUser>))]
+        Type = typeof(ApiTypes.ExistOrFoundInfo<ViewStatisticActiveUser>))]
     public async Task<IActionResult> GetActiveUser() {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
@@ -20,14 +21,13 @@ public class Api2Statistic : ControllerExtensions {
         try {
             var rep = await log.AddResultAndTransformAsync(await Statistic.ActiveUserAsync(db));
             if (rep == EResult.Err)
-                return Ok(ApiTypes.ExistOrFoundInfo<QueryUserInfo.StatisticActiveUser>.NotExist());
+                return Ok(ApiTypes.ExistOrFoundInfo<ViewStatisticActiveUser>.NotExist());
 
             var value = rep.Ok();
-            return Ok(ApiTypes.ExistOrFoundInfo<QueryUserInfo.StatisticActiveUser>.Exist(new QueryUserInfo
-                .StatisticActiveUser { 
-                    RegisterUser = value.Register, 
-                    ActiveUserLast1H = value.Last1h, 
-                    ActiveUserLast1Day = value.Last1Day
+            return Ok(ApiTypes.ExistOrFoundInfo<ViewStatisticActiveUser>.Exist(new ViewStatisticActiveUser { 
+                RegisterUser = value.Register, 
+                ActiveUserLast1H = value.Last1h, 
+                ActiveUserLast1Day = value.Last1Day
             }));
         }
         catch (Exception e) {
@@ -42,7 +42,7 @@ public class Api2Statistic : ControllerExtensions {
 
     [HttpGet("/api2/statistic/all-patreon")]
     [PrivilegeRoute(route: "/api2/statistic/all-patreon")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<UsernameAndId>>))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<ViewUsernameAndId>>))]
     public async Task<IActionResult> GetAllPatreon() {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
@@ -52,17 +52,17 @@ public class Api2Statistic : ControllerExtensions {
             var rep = await log.AddResultAndTransformAsync(await Statistic.GetActivePatreonAsync(db));
 
             if (rep == EResult.Err)
-                return Ok(ApiTypes.ExistOrFoundInfo<List<UsernameAndId>>.NotExist());
+                return Ok(ApiTypes.ExistOrFoundInfo<List<ViewUsernameAndId>>.NotExist());
 
-            var res = new List<UsernameAndId>(rep.Ok().Count);
+            var res = new List<ViewUsernameAndId>(rep.Ok().Count);
 
             foreach (var (username, id) in rep.Ok())
-                res.Add(new UsernameAndId {
+                res.Add(new ViewUsernameAndId {
                     Id = id,
                     Username = username
                 });
 
-            return Ok(ApiTypes.ExistOrFoundInfo<List<UsernameAndId>>.Exist(res));
+            return Ok(ApiTypes.ExistOrFoundInfo<List<ViewUsernameAndId>>.Exist(res));
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -74,11 +74,7 @@ public class Api2Statistic : ControllerExtensions {
         }
     }
 
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class UsernameAndId {
-        public string? Username { get; set; }
-        public long Id { get; set; }
-    }
+
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class ActiveUser {

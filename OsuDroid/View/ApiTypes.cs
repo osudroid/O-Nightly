@@ -1,6 +1,6 @@
 using OsuDroid.Lib;
 
-namespace OsuDroid.CMT;
+namespace OsuDroid.View;
 
 public static class ApiTypes {
     public class ExistOrFoundInfo<T> {

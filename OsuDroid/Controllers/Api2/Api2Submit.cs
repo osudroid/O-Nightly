@@ -5,6 +5,7 @@ using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Model;
 using OsuDroid.Utils;
+using OsuDroid.View;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
@@ -13,7 +14,7 @@ namespace OsuDroid.Controllers.Api2;
 public class Api2Submit : ControllerExtensions {
     [HttpPost("/api2/submit/play-start")]
     [PrivilegeRoute(route: "/api2/submit/play-start")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PushPlayStartResult200))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPushPlayStartResult200))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PushPlayStart([FromBody] ApiTypes.Api2GroundWithHash<PushPlayStartProp> prop) {
         await using var start = await GetStartAsync();
@@ -45,7 +46,7 @@ public class Api2Submit : ControllerExtensions {
 
             return resp == EResult.Err
                 ? GetInternalServerError()
-                : Ok(new PushPlayStartResult200 { PlayId = resp.Ok() });
+                : Ok(new ViewPushPlayStartResult200 { PlayId = resp.Ok() });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -59,7 +60,7 @@ public class Api2Submit : ControllerExtensions {
 
     [HttpPost("/api2/submit/play-end")]
     [PrivilegeRoute(route: "/api2/submit/play-end")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PushReplayResult200))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPushReplayResult200))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PushReplay([FromBody] ApiTypes.Api2GroundWithHash<PushPlayProp> prop) {
@@ -89,8 +90,8 @@ public class Api2Submit : ControllerExtensions {
 
             return resp.IsSet() == false
                 ? GetInternalServerError()
-                : Ok(new PushReplayResult200 {
-                    UserStats = resp.Unwrap().userStats,
+                : Ok(new ViewPushReplayResult200 {
+                    UserStats = ViewUserStats.FromUserStats(resp.Unwrap().userStats),
                     BestPlayScoreId = resp.Unwrap().BestPlayScoreId
                 });
         }
@@ -175,17 +176,6 @@ public class Api2Submit : ControllerExtensions {
     public sealed class Api2UploadReplayFilePropAsFormWrapper {
         public IFormFile? File { get; set; }
         public string? Prop { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class PushReplayResult200 {
-        public UserStats? UserStats { get; set; }
-        public long BestPlayScoreId { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class PushPlayStartResult200 {
-        public long PlayId { get; set; }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]

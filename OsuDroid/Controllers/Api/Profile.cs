@@ -4,6 +4,7 @@ using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.Validate;
 using OsuDroid.Utils;
+using OsuDroid.View;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Dto;
 using OsuDroidLib.Query;
@@ -22,8 +23,8 @@ public sealed class Profile : ControllerExtensions {
 
     [HttpGet("/api/profile/stats/{id:long}")]
     [PrivilegeRoute(route: "/api/profile/stats/{id:long}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ProfileStats))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProfileStats))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewProfileStats))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewProfileStats))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> WebProfileStats([FromRoute(Name = "id")] long userId) {
         await using var start = await GetStartAsync();
@@ -37,7 +38,7 @@ public sealed class Profile : ControllerExtensions {
             if (optionUserAndStatsResult == EResult.Err)
                 return GetInternalServerError();
             if (optionUserAndStatsResult.Ok().IsNotSet())
-                return Ok(new ProfileStats { Found = false });
+                return Ok(new ViewProfileStats { Found = false });
 
             var userInfoAndStats = optionUserAndStatsResult.Ok().Unwrap();
             var rankOpt = (await log.AddResultAndTransformAsync(await Query
@@ -54,7 +55,7 @@ public sealed class Profile : ControllerExtensions {
                     .OkOrDefault();
             }
 
-            return Ok(new ProfileStats {
+            return Ok(new ViewProfileStats {
                 Username = userInfoAndStats.Username,
                 Id = userInfoAndStats.UserId,
                 Found = true,
@@ -99,7 +100,7 @@ public sealed class Profile : ControllerExtensions {
 
     [HttpGet("/api/profile/stats/timeline/{id:long}")]
     [PrivilegeRoute(route: "/api/profile/stats/timeline/{id:long}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UserRankTimeLine))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUserRankTimeLine))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> WebProfileStatsTimeLine([FromRoute(Name = "id")] long userId) {
         await using var start = await GetStartAsync();
@@ -113,13 +114,13 @@ public sealed class Profile : ControllerExtensions {
             var rankingTimeline = log.AddResultAndTransform(await QueryGlobalRankingTimeline
                                          .BuildTimeLineAsync(db, userId, DateTime.UtcNow - TimeSpan.FromDays(90)))
                                      .OkOr(Array.Empty<Entities.GlobalRankingTimeline>())
-                                     .Select(x => new UserRankTimeLine.RankTimeLineValue {
+                                     .Select(x => new ViewUserRankTimeLine.RankTimeLineValue {
                                          Date = x.Date,
                                          Score = x.Score,
                                          Rank = x.GlobalRanking
                                      }).ToList();
 
-            return Ok(new UserRankTimeLine {
+            return Ok(new ViewUserRankTimeLine {
                 UserId = userId,
                 List = rankingTimeline
             });
@@ -136,8 +137,8 @@ public sealed class Profile : ControllerExtensions {
 
     [HttpGet("/api/profile/topplays/{id:long}")]
     [PrivilegeRoute(route: "/api/profile/topplays/{id:long}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Plays))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(Plays))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewPlays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> WebProfileTopPlays([FromRoute(Name = "id")] long userId) {
         await using var start = await GetStartAsync();
@@ -149,7 +150,7 @@ public sealed class Profile : ControllerExtensions {
             if (result == EResult.Err)
                 return GetInternalServerError();
             
-            return Ok(new Plays {
+            return Ok(new ViewPlays {
                 Found = true,
                 Scores = result.Ok()
             });
@@ -166,7 +167,7 @@ public sealed class Profile : ControllerExtensions {
 
     [HttpGet("/api/profile/topplays/{id:long}/page/{page:int}")]
     [PrivilegeRoute(route: "/api/profile/topplays/{id:long}/page/{page:int}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Plays))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> WebProfileTopPlaysPage([FromRoute(Name = "id")] long userId, int page) {
         await using var start = await GetStartAsync();
@@ -185,7 +186,7 @@ public sealed class Profile : ControllerExtensions {
                 return GetInternalServerError();
 
             var scores = fetchResult.Ok();
-            return Ok(new Plays() { Found = true, Scores = scores });
+            return Ok(new ViewPlays() { Found = true, Scores = scores });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -199,8 +200,8 @@ public sealed class Profile : ControllerExtensions {
 
     [HttpGet("/api/profile/recentplays/{id:long}")]
     [PrivilegeRoute(route: "/api/profile/recentplays/{id:long}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Plays))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(Plays))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewPlays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> WebProfileTopRecent([FromRoute(Name = "id")] long userId) {
         await using var start = await GetStartAsync();
@@ -214,7 +215,7 @@ public sealed class Profile : ControllerExtensions {
             if (result == EResult.Err)
                 return GetInternalServerError();
 
-            return Ok(new Plays {
+            return Ok(new ViewPlays {
                 Found = true,
                 Scores = result.Ok()
             });
@@ -327,8 +328,8 @@ public sealed class Profile : ControllerExtensions {
 
     [HttpPost("/api/profile/update/username")]
     [PrivilegeRoute(route: "/api/profile/update/username")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UpdateUsernameRes))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(UpdateUsernameRes))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUpdateUsernameRes))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewUpdateUsernameRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateUsername([FromBody] UpdateUsernameProp prop) {
         await using var start = await GetStartAsync();
@@ -338,7 +339,7 @@ public sealed class Profile : ControllerExtensions {
         try {
             prop.NewUsername = prop.NewUsername?.Trim();
             if (prop.AnyValidate() == EResult.Err)
-                return Ok(new UpdateUsernameRes { HasWork = false });
+                return Ok(new ViewUpdateUsernameRes { HasWork = false });
 
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
 
@@ -353,7 +354,7 @@ public sealed class Profile : ControllerExtensions {
             if (BblUser.PasswordEqual(userInfo, prop.Passwd ?? "") == false
                 || (userInfo.Username ?? "").ToLower() != (prop.OldUsername ?? "").ToLower()
                ) {
-                return Ok(new UpdateUsernameRes { HasWork = false });
+                return Ok(new ViewUpdateUsernameRes { HasWork = false });
             }
 
             var checkUsername = await log.AddResultAndTransformAsync(
@@ -385,7 +386,7 @@ public sealed class Profile : ControllerExtensions {
 
     [HttpPost("/api/profile/update/avatar")]
     [PrivilegeRoute(route: "/api/profile/update/avatar")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UpdateAvatarRes))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUpdateAvatar))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateAvatar([FromBody] UpdateAvatarProp prop) {
@@ -395,7 +396,7 @@ public sealed class Profile : ControllerExtensions {
 
         try {
             if (prop.AnyValidate() == EResult.Err)
-                return Ok(new UpdateAvatarRes { PasswdFalse = true });
+                return Ok(new ViewUpdateAvatar { PasswdFalse = true });
 
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
             
@@ -409,7 +410,7 @@ public sealed class Profile : ControllerExtensions {
                 var userInfo = userInfoOption.Unwrap();
 
                 if (BblUser.PasswordEqual(userInfo, prop.Passwd ?? "") == false) {
-                    return Ok(new UpdateAvatarRes { PasswdFalse = true });
+                    return Ok(new ViewUpdateAvatar { PasswdFalse = true });
                 }
             }
             
@@ -431,7 +432,7 @@ public sealed class Profile : ControllerExtensions {
             if (result == EResult.Err)
                 return GetInternalServerError();
             
-            return Ok(new UpdateAvatarRes {
+            return Ok(new ViewUpdateAvatar {
                 PasswdFalse = false,
                 ImageToBig = false,
                 IsNotAImage = false
@@ -535,7 +536,7 @@ public sealed class Profile : ControllerExtensions {
 
     [HttpPost("/api/profile/drop-account/sendMail")]
     [PrivilegeRoute(route: "/api/profile/drop-account/sendMail}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CreateDropAccountTokenRes))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewCreateDropAccountTokenRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateDropAccountToken([FromBody] ApiTypes.Api2GroundNoHeader<CreateDropAccountTokenProp> prop) {
         await using var start = await GetStartAsync();
@@ -544,7 +545,7 @@ public sealed class Profile : ControllerExtensions {
 
         try {
             if (prop.ValuesAreGood() == false)
-                return Ok(CreateDropAccountTokenRes.HasElseError());
+                return Ok(ViewCreateDropAccountTokenRes.HasElseError());
 
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
             
@@ -554,18 +555,18 @@ public sealed class Profile : ControllerExtensions {
             if (optionBblUserResult == EResult.Err)
                 return GetInternalServerError();
             if (optionBblUserResult.Ok().IsNotSet())
-                return Ok(CreateDropAccountTokenRes.HasElseError());
+                return Ok(ViewCreateDropAccountTokenRes.HasElseError());
 
             var userInfo = optionBblUserResult.Ok().Unwrap();
             if (userInfo.Password != this.ToPasswdHash(prop.Body!.Password))
-                return Ok(CreateDropAccountTokenRes.PasswordIsFalse());
+                return Ok(ViewCreateDropAccountTokenRes.PasswordIsFalse());
 
 
             var deleteAccToken = Guid.NewGuid();
             _deleteAccMailToken.Add(deleteAccToken, (userInfo.UserId, userInfo.Email??""));
             Utils.SendEmail.MainSendDropAccountVerifyLinkToken(userInfo.Username??"", userInfo.Email??"", deleteAccToken);
 
-            return Ok(CreateDropAccountTokenRes.NoError());
+            return Ok(ViewCreateDropAccountTokenRes.NoError());
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -619,7 +620,7 @@ public sealed class Profile : ControllerExtensions {
 
     [HttpGet("/api/profile/top-play-by-marks-length/user-id/{userId:long}")]
     [PrivilegeRoute(route: "/api/profile/top-play-by-marks-length/user-id/{userId:long}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PlaysMarksLength))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlaysMarksLength))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> WebProfileTopPlaysByMarksLength([FromRoute] long userId) {
@@ -637,7 +638,7 @@ public sealed class Profile : ControllerExtensions {
                 return GetInternalServerError();
             Dictionary<PlayScoreDto.EPlayScoreMark, long> dic = result.Ok();
             
-            return Ok(PlaysMarksLength.Factory(dic));
+            return Ok(ViewPlaysMarksLength.Factory(dic));
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -651,7 +652,7 @@ public sealed class Profile : ControllerExtensions {
 
     [HttpGet("/api/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
     [PrivilegeRoute(route: "/api/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(Plays))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
     public async Task<IActionResult> WebProfileTopPlaysByMark(
         [FromRoute] long userId, [FromRoute] string markString, [FromRoute] int page) {
         await using var start = await GetStartAsync();
@@ -677,7 +678,7 @@ public sealed class Profile : ControllerExtensions {
                 return GetInternalServerError();
 
             var scores = fetchResult.Ok();
-            return Ok(new Plays() { Found = true, Scores = scores });
+            return Ok(new ViewPlays() { Found = true, Scores = scores });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -701,19 +702,6 @@ public sealed class Profile : ControllerExtensions {
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class CreateDropAccountTokenRes {
-        public bool Work { get; set; }
-        public bool PasswordFalse { get; set; }
-        public bool CookieDead { get; set; }
-        public bool ElseError { get; set; }
-
-        public static CreateDropAccountTokenRes NoError() => new() { Work = true };
-        public static CreateDropAccountTokenRes PasswordIsFalse() => new() { Work = false, PasswordFalse = true };
-        public static CreateDropAccountTokenRes CookieIsDead() => new() { Work = false, CookieDead = true };
-        public static CreateDropAccountTokenRes HasElseError() => new() { Work = false, ElseError = true };
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UpdatePatreonEmailProp : ValidateAll, IValidateEmail, IValidateUsername, IValidatePasswd {
         public string? Email { get; set; }
         public string? Passwd { get; set; }
@@ -721,34 +709,9 @@ public sealed class Profile : ControllerExtensions {
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class UserRankTimeLine {
-        public long UserId { get; set; }
-        public IReadOnlyList<RankTimeLineValue>? List { get; set; }
-
-        public class RankTimeLineValue {
-            public DateTime Date { get; set; }
-            public long Score { get; set; }
-            public long Rank { get; set; }
-        }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class UpdateAvatarProp : ValidateAll, IValidatePasswd {
         public string? ImageBase64 { get; set; }
         public string? Passwd { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class UpdateAvatarRes {
-        public bool PasswdFalse { get; set; }
-        public bool ImageToBig { get; set; }
-        public bool IsNotAImage { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class UpdateUsernameRes {
-        public bool HasWork { get; set; }
-        public int WaitTimeForNextDayToUpdate { get; set; }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
@@ -769,73 +732,5 @@ public sealed class Profile : ControllerExtensions {
     public sealed class UpdatePasswdProp : ValidateAll, IValidateOldPasswd, IValidateNewPasswd {
         public string? NewPasswd { get; set; }
         public string? OldPasswd { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class Plays {
-        public bool Found { get; set; }
-        public IReadOnlyList<PlayScore>? Scores { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class PlaysMarksLength {
-        public long PlaysXSS { get; set; }
-        public long PlaysSS { get; set; }
-        public long PlaysXS { get; set; }
-        public long PlaysS { get; set; }
-        public long PlaysA { get; set; }
-        public long PlaysB { get; set; }
-        public long PlaysC { get; set; }
-        public long PlaysD { get; set; }
-        public long PlaysAll { get; set; }
-
-        public static PlaysMarksLength Factory(Dictionary<PlayScoreDto.EPlayScoreMark, long> dictionary) {
-            return new PlaysMarksLength() {
-                PlaysXSS = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.XSS, out var value)? value: 0,
-                PlaysSS = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.SS, out var value1)? value1: 0,
-                PlaysXS = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.XS, out var value2)? value2: 0,
-                PlaysS = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.S, out var value3)? value3: 0,
-                PlaysA = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.A, out var value4)? value4: 0,
-                PlaysB = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.B, out var value5)? value5: 0,
-                PlaysC = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.C, out var value6)? value6: 0,
-                PlaysD = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.D, out var value7)? value7: 0,
-                PlaysAll = dictionary.Select(x => x.Value).Sum()
-            };
-        }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class ProfileStats {
-        public long Id { get; set; }
-        public string? Username { get; set; }
-        public bool Found { get; set; }
-        public string? Region { get; set; }
-        public bool Active { get; set; }
-        public bool Supporter { get; set; }
-        public DateTime RegistTime { get; set; }
-        public DateTime LastLoginTime { get; set; }
-        public long GlobalRanking { get; set; }
-        public long CountryRanking { get; set; }
-
-        public long OverallScore { get; set; }
-        public long OverallAccuracy { get; set; }
-        public long OverallCombo { get; set; }
-        public long OverallXss { get; set; }
-        public long OverallSs { get; set; }
-        public long OverallXs { get; set; }
-        public long OverallS { get; set; }
-        public long OverallA { get; set; }
-        public long OverallB { get; set; }
-        public long OverallC { get; set; }
-        public long OverallD { get; set; }
-        public long OverallHits { get; set; }
-        public long OverallPerfect { get; set; }
-        public long Overall300 { get; set; }
-        public long Overall100 { get; set; }
-        public long Overall50 { get; set; }
-        public long OverallGeki { get; set; }
-        public long OverallKatu { get; set; }
-        public long OverallMiss { get; set; }
-        public long OverallPlaycount { get; set; }
     }
 }

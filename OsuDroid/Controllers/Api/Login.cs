@@ -8,6 +8,7 @@ using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Lib.Validate;
 using OsuDroid.Utils;
+using OsuDroid.View;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
@@ -18,19 +19,19 @@ namespace OsuDroid.Controllers.Api;
 
 #nullable enable
 
-public sealed class Login : ControllerExtensions {
+public sealed partial class Login : ControllerExtensions {
     private static readonly ConcurrentDictionary<IPAddress, (DateTime LastCall, int Calls)> CallsForResetPasswd = new();
 
     /// <summary> Key Token Value CreateTime </summary>
     private static readonly ConcurrentDictionary<string, (DateTime, long UserId)> ResetPasswdTime = new();
 
     private static readonly Random Random = new();
-    private static readonly ConcurrentDictionary<Guid, (WebLoginTokenRes, DateTime)> TokenDic = new();
+    private static readonly ConcurrentDictionary<Guid, (ViewWebLoginToken, DateTime)> TokenDic = new();
 
     [HttpPost("/api/weblogin")]
     [PrivilegeRoute(route: "/api/weblogin")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WebLoginRes))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(WebLoginRes))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLogin))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewWebLogin))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> WebLogin([FromBody] WebLoginProp prop) {
         await using var start = await GetStartAsync();
@@ -51,7 +52,7 @@ public sealed class Login : ControllerExtensions {
 
             var tokenValue = tokenAndTime.Item1;
             if (prop.Math != tokenValue.MathValue1 + tokenValue.MathValue2)
-                return Ok(new WebLoginRes { Work = false });
+                return Ok(new ViewWebLogin { Work = false });
 
             var fetchResult = await log.AddResultAndTransformAsync(
                 await QueryUserInfo.GetLoginInfoByEmailAndPasswordByEmailAndPasswordAsync(
@@ -65,7 +66,7 @@ public sealed class Login : ControllerExtensions {
             
             
             if (fetchResult.Ok().IsNotSet())
-                return Ok(new WebLoginRes { Work = false });
+                return Ok(new ViewWebLogin { Work = false });
 
             var userInfo = fetchResult.Ok().Unwrap();
 
@@ -83,7 +84,7 @@ public sealed class Login : ControllerExtensions {
             var ipOption = (await log.AddResultAndTransformAsync(GetIpAddress())).OkOrDefault();
             if (ipOption.IsSet())
                 await UserInfoHandler.UpdateIpAndRegionByIpAsync(db, userInfo, ipOption.Unwrap());
-            return Ok(new WebLoginRes { Work = true });
+            return Ok(new ViewWebLogin { Work = true });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -95,8 +96,8 @@ public sealed class Login : ControllerExtensions {
         }
     }
 
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WebLoginRes))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(WebLoginRes))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLogin))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewWebLogin))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     [HttpPost("/api/webloginwithusername")]
     [PrivilegeRoute(route: "/api/webloginwithusername")]
@@ -121,7 +122,7 @@ public sealed class Login : ControllerExtensions {
 
             var tokenValue = tokenAndTime.Item1;
             if (prop.Math != tokenValue.MathValue1 + tokenValue.MathValue2)
-                return Ok(new WebLoginRes { Work = false });
+                return Ok(new ViewWebLogin { Work = false });
 
 
             var passwdHash = this.ToPasswdHash(prop.Passwd ?? string.Empty);
@@ -133,7 +134,7 @@ public sealed class Login : ControllerExtensions {
                 return GetInternalServerError();
             
             if (fetchResult.Ok().IsNotSet())
-                return Ok(new WebLoginRes { Work = false });
+                return Ok(new ViewWebLogin { Work = false });
 
             var loginInfo = fetchResult.Ok().Unwrap();
             var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
@@ -149,7 +150,7 @@ public sealed class Login : ControllerExtensions {
             if (ipOption.IsSet())
                 await UserInfoHandler.UpdateIpAndRegionByIpAsync(db, fetchResult.Ok().Unwrap(), ipOption.Unwrap());
 
-            return Ok(new WebLoginRes
+            return Ok(new ViewWebLogin
                 { Work = true, EmailExist = true, UsernameExist = true, UserOrPasswdOrMathIsFalse = false });
         }
         catch (Exception e) {
@@ -164,8 +165,8 @@ public sealed class Login : ControllerExtensions {
 
     [HttpPost("/api/webregister")]
     [PrivilegeRoute(route: "/api/webregister")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WebLoginRes))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(WebLoginRes))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLogin))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewWebLogin))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> WebRegister([FromBody] WebRegisterProp value) {
         await using var start = await GetStartAsync();
@@ -174,7 +175,7 @@ public sealed class Login : ControllerExtensions {
 
         try {
             if (value.AnyValidate() == EResult.Err) {
-                return Ok(new WebLoginRes { UserOrPasswdOrMathIsFalse = true });
+                return Ok(new ViewWebLogin { UserOrPasswdOrMathIsFalse = true });
             }
 
             value.Username = this.FixUsername(value.Username ?? string.Empty);
@@ -186,12 +187,12 @@ public sealed class Login : ControllerExtensions {
                         TokenDic.TryRemove(token, out var _);
             }
 
-            (WebLoginTokenRes?, DateTime) tokenValue = (default, default);
+            (ViewWebLoginToken?, DateTime) tokenValue = (default, default);
 
             if (TokenDic.TryRemove(value.MathToken, out tokenValue!) == false
                 || tokenValue.Item1!.MathValue1 + tokenValue.Item1.MathValue2 != value.MathRes
                ) 
-                return Ok(new WebLoginRes { UserOrPasswdOrMathIsFalse = true });
+                return Ok(new ViewWebLogin { UserOrPasswdOrMathIsFalse = true });
 
             var findResult = await log.AddResultAndTransformAsync(
                 await QueryUserInfo.GetEmailAndUsernameByEmailAndUsername(db, value.Email??"", value.Username??""));
@@ -203,9 +204,9 @@ public sealed class Login : ControllerExtensions {
             
             if (find.IsSet()) {
                 if (find.Unwrap().Username == value.Username)
-                    return Ok(new WebLoginRes { UsernameExist = true });
+                    return Ok(new ViewWebLogin { UsernameExist = true });
                 if (find.Unwrap().Email == value.Email)
-                    return Ok(new WebLoginRes { EmailExist = true });
+                    return Ok(new ViewWebLogin { EmailExist = true });
             }
 
             var optionIp = (await log.AddResultAndTransformAsync(GetIpAddress())).OkOr(Option<IPAddress>.Empty);
@@ -245,7 +246,7 @@ public sealed class Login : ControllerExtensions {
                 return GetInternalServerError();
             }
             
-            return Ok(new WebLoginRes { Work = true });
+            return Ok(new ViewWebLogin { Work = true });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -259,14 +260,14 @@ public sealed class Login : ControllerExtensions {
 
     [HttpGet("/api/weblogintoken")]
     [PrivilegeRoute(route: "/api/weblogintoken")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WebLoginTokenRes))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLoginToken))]
     public async Task<IActionResult> WebLoginToken() {
          await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
 
         try {
-            var res = new WebLoginTokenRes {
+            var res = new ViewWebLoginToken {
                 Token = Guid.NewGuid(),
                 MathValue1 = Random.Next(1, 50),
                 MathValue2 = Random.Next(1, 50)
@@ -286,7 +287,7 @@ public sealed class Login : ControllerExtensions {
 
     [HttpGet("/api/webupdateCookie")]
     [PrivilegeRoute(route: "/api/webupdateCookie")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<UpdateCookieInfo>))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<ViewUpdateCookieInfo>))]
     public async Task<IActionResult> WebUpdateCookie() {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
@@ -305,7 +306,7 @@ public sealed class Login : ControllerExtensions {
             
             var userInfo = userInfoOption.Unwrap();
             
-            return Ok(new ApiTypes.ExistOrFoundInfo<UpdateCookieInfo> {
+            return Ok(new ApiTypes.ExistOrFoundInfo<ViewUpdateCookieInfo> {
                 ExistOrFound = true, Value = new () {
                     Email = userInfo.Email!,
                     Username = userInfo.Username!
@@ -335,8 +336,8 @@ public sealed class Login : ControllerExtensions {
 
     [HttpPost("/api/webresetpasswdandsendemail")]
     [PrivilegeRoute(route: "/api/webresetpasswdandsendemail")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResetPasswdAndSendEmailRes))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ResetPasswdAndSendEmailRes))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewResetPasswdAndSendEmail))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewResetPasswdAndSendEmail))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ResetPasswdAndSendEmail([FromBody] ResetPasswdAndSendEmailProp prop) {
         await using var start = await GetStartAsync();
@@ -345,7 +346,7 @@ public sealed class Login : ControllerExtensions {
 
         try {
             if (prop.AnyValidate() == EResult.Err) {
-                return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
+                return Ok(new ViewResetPasswdAndSendEmail { Work = false, TimeOut = false });
             }
 
             Option<IPAddress> optionIpAddress = Option<IPAddress>.Trim(await log.AddResultAndTransformAsync(GetIpAddress()));
@@ -359,7 +360,7 @@ public sealed class Login : ControllerExtensions {
 
             if (CallsForResetPasswd.TryGetValue(ipAddress, out var lastCall)) {
                 if (lastCall.Calls > 3)
-                    return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = true });
+                    return Ok(new ViewResetPasswdAndSendEmail { Work = false, TimeOut = true });
                 CallsForResetPasswd[ipAddress] = (lastCall.LastCall, lastCall.Calls + 1);
             }
             else {
@@ -367,7 +368,7 @@ public sealed class Login : ControllerExtensions {
             }
 
             if (Email.ValidateEmail(prop.Email!) == false)
-                return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
+                return Ok(new ViewResetPasswdAndSendEmail { Work = false, TimeOut = false });
 
             var userInfoResult = (await log.AddResultAndTransformAsync(string.IsNullOrEmpty(prop.Email) switch {
                 true => await QueryUserInfo.GetByUsernameAsync(db, prop.Username ?? ""),
@@ -379,14 +380,14 @@ public sealed class Login : ControllerExtensions {
             var userInfoOption = userInfoResult.Ok(); 
             
             if (userInfoOption.IsNotSet())
-                return Ok(new ResetPasswdAndSendEmailRes { Work = false, TimeOut = false });
+                return Ok(new ViewResetPasswdAndSendEmail { Work = false, TimeOut = false });
             var userInfo = userInfoOption.Unwrap();
             var token = RandomText.NextAZ09(12);
             
             ResetPasswdTime[token] = (DateTime.UtcNow, userInfo.UserId);
             SendEmail.MainSendResetEmail(userInfo.UserId, userInfo.Username!, userInfo.Email!, token);
 
-            return Ok(new ResetPasswdAndSendEmailRes { Work = true, TimeOut = false });
+            return Ok(new ViewResetPasswdAndSendEmail { Work = true, TimeOut = false });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -400,8 +401,8 @@ public sealed class Login : ControllerExtensions {
 
     [HttpPost("/api/token/newpasswdwithtoken")]
     [PrivilegeRoute(route: "/api/token/newpasswdwithtoken")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WebReplacePasswordWithToken))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(WebReplacePasswordWithToken))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebReplacePasswordWithToken))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewWebReplacePasswordWithToken))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> SetNewPasswd([FromBody] ApiTypes.Api2GroundNoHeader<SetNewPasswdProp> prop) {
         await using var start = await GetStartAsync();
@@ -410,7 +411,7 @@ public sealed class Login : ControllerExtensions {
 
         try {
             if (prop.ValuesAreGood() == false) {
-                return Ok(new WebReplacePasswordWithToken {
+                return Ok(new ViewWebReplacePasswordWithToken {
                     Work = false,
                     ErrorMsg = "Send Error"
                 });
@@ -422,13 +423,13 @@ public sealed class Login : ControllerExtensions {
 
             if (ResetPasswdTime.TryGetValue(body.Token!, out var tokenValue) == false
                 || tokenValue.UserId != body.UserId)
-                return Ok(new WebReplacePasswordWithToken {
+                return Ok(new ViewWebReplacePasswordWithToken {
                     Work = false,
                     ErrorMsg = "Token To Old Or User Not Exist"
                 });
 
             if (body.NewPasswd is null || body.NewPasswd.Length < 6)
-                return Ok(new WebReplacePasswordWithToken {
+                return Ok(new ViewWebReplacePasswordWithToken {
                     Work = false,
                     ErrorMsg = "Password To Short"
                 });
@@ -439,7 +440,7 @@ public sealed class Login : ControllerExtensions {
                 return GetInternalServerError();
             }
             
-            return Ok(new WebReplacePasswordWithToken {
+            return Ok(new ViewWebReplacePasswordWithToken {
                 Work = true,
                 ErrorMsg = ""
             });
@@ -564,23 +565,11 @@ public sealed class Login : ControllerExtensions {
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class ResetPasswdAndSendEmailRes {
-        public bool Work { get; set; }
-        public bool TimeOut { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class WebLoginWithUsernameProp : ValidateAll, IValidatePasswd, IValidateUsername {
         public int Math { get; set; }
         public Guid Token { get; set; }
         public string? Passwd { get; set; }
         public string? Username { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class UpdateCookieInfo {
-        public string? Username { get; set; }
-        public string? Email { get; set; }
     }
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
@@ -593,31 +582,11 @@ public sealed class Login : ControllerExtensions {
         public string? Username { get; set; }
     }
 
-    public sealed class WebLoginTokenRes {
-        public Guid Token { get; set; }
-        public int MathValue1 { get; set; }
-        public int MathValue2 { get; set; }
-    }
-
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class WebLoginProp : ValidateAll, IValidatePasswd, IValidateEmail {
         public int Math { get; set; }
         public Guid Token { get; set; }
         public string? Email { get; set; }
         public string? Passwd { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    private sealed class WebLoginRes {
-        public bool Work { get; set; }
-        public bool UserOrPasswdOrMathIsFalse { get; set; }
-        public bool UsernameExist { get; set; }
-        public bool EmailExist { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class WebReplacePasswordWithToken {
-        public bool Work { get; set; }
-        public string? ErrorMsg { get; set; }
     }
 }

@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
+using OsuDroid.View;
 
 namespace OsuDroid.Controllers.Api2;
 
 public class Api2Update : ControllerExtensions {
     [HttpGet("/api2/update/{lang}")]
     [PrivilegeRoute(route: "/api2/update/{lang}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiUpdateInfoV2))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewApiUpdateInfoV2))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUpdateInfoV2Async([FromRoute(Name = "lang")] string lang = "en") {
         await using var start = await GetStartAsync();
@@ -34,7 +35,7 @@ public class Api2Update : ControllerExtensions {
 
             wantFile ??= defaultFile;
 
-            return Ok(new ApiUpdateInfoV2 {
+            return Ok(new ViewApiUpdateInfoV2 {
                 Changelog = System.IO.File.ReadAllText($"{Env.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
                 VersionCode = dirNameNumber,
                 Link = $"https://{Env.Domain}/api2/apk/version/{dirNameNumber}.apk"
@@ -50,10 +51,5 @@ public class Api2Update : ControllerExtensions {
         }
     }
 
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public class ApiUpdateInfoV2 {
-        public long VersionCode { get; set; }
-        public string? Link { get; set; }
-        public string? Changelog { get; set; }
-    }
+
 }

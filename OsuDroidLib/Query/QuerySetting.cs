@@ -31,4 +31,10 @@ WHERE MainKey = @MainKey
 
         return await db.SafeQueryAsync<Setting>(sql, new { MainKey = mainKey });
     }
+
+    public static async Task<Result<IEnumerable<Setting>, string>> GetAllAsync(NpgsqlConnection db) {
+        var sql = @"SELECT * FROM Setting";
+
+        return await db.SafeQueryAsync<Setting>(sql);
+    }
 }

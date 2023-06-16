@@ -3,6 +3,7 @@ using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Model;
 using OsuDroid.Utils;
+using OsuDroid.View;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
@@ -13,7 +14,7 @@ namespace OsuDroid.Controllers.Api2;
 public class Api2Play : ControllerExtensions {
     [HttpPost("/api2/play/by-id")]
     [PrivilegeRoute(route: "/api2/play/by-id")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PlayInfoById))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlayInfoById))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(string))]
     public async Task<IActionResult> GetPlayById([FromBody] ApiTypes.Api2GroundWithHash<Api2PlayById> prop) {
         await using var start = await GetStartAsync();
@@ -44,9 +45,9 @@ public class Api2Play : ControllerExtensions {
 
             return optionRep.IsSet() == false
                 ? BadRequest("Not Found")
-                : Ok(new PlayInfoById {
+                : Ok(new ViewPlayInfoById {
                     Region = optionRep.Unwrap().Region,
-                    Score = optionRep.Unwrap().Score,
+                    Score = ViewPlayScore.FromPlayScore(optionRep.Unwrap().Score),
                     Username = optionRep.Unwrap().Username
                 });
         }
@@ -63,7 +64,7 @@ public class Api2Play : ControllerExtensions {
     [HttpPost("/api2/play/recent")]
     [PrivilegeRoute(route: "/api2/play/recent")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayScoreWithUsername>>))]
+        Type = typeof(ApiTypes.ExistOrFoundInfo<IReadOnlyList<ViewPlayScoreWithUsername>>))]
     public async Task<IActionResult> GetRecentPlay([FromBody] ApiTypes.Api2GroundNoHeader<RecentPlays> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
@@ -84,9 +85,11 @@ public class Api2Play : ControllerExtensions {
             if (repTaskResult == EResult.Err)
                 return GetInternalServerError();
 
-            var repTask = repTaskResult.Ok();
-            return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<PlayScoreWithUsername>> {
-                Value = repTask,
+            
+            return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<ViewPlayScoreWithUsername>> {
+                Value = repTaskResult
+                        .Ok()
+                        .Select(ViewPlayScoreWithUsername.FromPlayScoreWithUsername).ToList(),
                 ExistOrFound = true
             });
         }
@@ -184,12 +187,7 @@ public class Api2Play : ControllerExtensions {
         }
     }
 
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class PlayInfoById {
-        public PlayScore? Score { get; set; }
-        public string? Username { get; set; }
-        public string? Region { get; set; }
-    }
+
 
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     public sealed class Api2PlayById : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
