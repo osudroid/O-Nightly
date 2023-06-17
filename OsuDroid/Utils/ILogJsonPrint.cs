@@ -4,7 +4,7 @@ namespace OsuDroid.Utils;
 
 public interface ILogRequestJsonPrint {
     public void LogRequestJsonPrint() {
-        if (Env.LogRequestJsonPrint == false) return;
+        if (Setting.Log_RequestJsonPrint!.Value == false) return;
             
         try {
             Console.WriteLine(JsonConvert.SerializeObject(this));

@@ -8,6 +8,10 @@ namespace OsuDroidServiceRankingTimeline;
 
 public static class Program {
     public static async Task Main(string[] args) {
+        var loadResult = (await OsuDroidLib.Setting.LoadAsync());
+        if (loadResult == EResult.Err)
+            throw new Exception(loadResult.Err());
+        
         DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
 
         WriteLine("Create RankingTimeline Service");
@@ -22,15 +26,15 @@ public static class Program {
     }
 
     private static string CreateNpgsqlConnectionString() {
-        var ip = Env.CrDbIpv4;
-        var port = Convert.ToInt32(Env.CrDbPortStr);
+        var ip = Setting.CrDbIpv4;
+        var port = Convert.ToInt32(Setting.CrDbPortStr);
 
         var connStringBuilder = new NpgsqlConnectionStringBuilder {
             Host = ip,
             Port = port,
-            Password = Env.CrDbPasswd,
-            Username = Env.CrDbUsername,
-            Database = Env.CrDbDatabase,
+            Password = Setting.CrDbPasswd,
+            Username = Setting.CrDbUsername,
+            Database = Setting.CrDbDatabase,
             Pooling = true,
             ReadBufferSize = 1048576,
             WriteBufferSize = 1048576,

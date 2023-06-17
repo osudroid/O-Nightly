@@ -16,10 +16,10 @@ public static class Service {
         WriteLine("Start Update Patreon");
         
         var adapterPatreon = AdapterPatreon
-            .Adapt(new PatreonClient(Env.PatreonAccessToken!))
+            .Adapt(new PatreonClient(Setting.Patreon_AccessToken!.Value))
             .SetCaching(true)
             .SetCachingTime(TimeSpan.FromMinutes(4))
-            .SetCanpaignId(Env.PatreonCanpaignId!)
+            .SetCanpaignId(Setting.Patreon_CampaignId!.Value.ToString())
             .Use();
 
         var task = UpdatePatreonStatusLoop(adapterPatreon, DbBuilder.BuildNpgsqlConnection().GetAwaiter().GetResult());

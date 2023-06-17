@@ -426,7 +426,8 @@ VALUES (
     
     private async Task<UserInfo[]> GetBblUser() {
         await using var db = await DbBuilder.BuildNpgsqlConnection();
-        var bblUsersOld = (await db.QueryAsync<bbl_user>($"SELECT * FROM {Env.OldDatabase}.bbl_user")).ToList();
+        
+        var bblUsersOld = (await db.QueryAsync<bbl_user>($"SELECT * FROM {Setting.OldDatabase}.bbl_user")).ToList();
                 
         
         for (var i = bblUsersOld.Count - 1; i >= 0; i--) {
@@ -491,7 +492,7 @@ VALUES (
     private static async Task<PlayScore[]?> GetOldScoresByUserId(long id) {
         await using var db = await DbBuilder.BuildNpgsqlConnection();
         List<bbl_score> scores =
-            (await db.QueryAsync<bbl_score>($"SELECT * FROM {Env.OldDatabase}.bbl_score WHERE uid = {id}")).ToList();
+            (await db.QueryAsync<bbl_score>($"SELECT * FROM {Setting.OldDatabase}.bbl_score WHERE uid = {id}")).ToList();
 
         for (var i = scores.Count - 1; i >= 0; i--) {
             var score = scores[i];

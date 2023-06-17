@@ -15,7 +15,7 @@ public class Api2Apk : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            var path = $"{Env.UpdatePath}/{version}/android.apk";
+            var path = $"{Setting.UpdatePath}/{version}/android.apk";
 
             if (System.IO.File.Exists(path) == false)
                 return BadRequest("Version Number not exist");

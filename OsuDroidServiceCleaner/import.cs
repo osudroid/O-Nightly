@@ -6,4 +6,4 @@ global using System.Collections.Generic;
 global using System.Linq.Expressions;
 global using LamLibAllOver;
 global using DbBuilder = OsuDroidLib.Database.DbBuilder;
-global using Env = OsuDroidLib.Env;
+global using Env = OsuDroidLib.Setting;

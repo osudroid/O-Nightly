@@ -5,17 +5,13 @@ using OsuDroid.Utils;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
 
-
-
-
-
-
-
-
 namespace OsuDroid;
 
 public static class Program {
     public static async Task Main(string[] args) {
+        var loadResult = (await OsuDroidLib.Setting.LoadAsync());
+        if (loadResult == EResult.Err)
+            throw new Exception(loadResult.Err());
         
         DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
         Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
@@ -146,15 +142,15 @@ public static class Program {
     }
 
     private static string CreateNpgsqlConnectionString() {
-        var ip = Env.CrDbIpv4;
-        var port = Convert.ToInt32(Env.CrDbPortStr);
+        var ip = Setting.CrDbIpv4;
+        var port = Convert.ToInt32(Setting.CrDbPortStr);
 
         var connStringBuilder = new NpgsqlConnectionStringBuilder();
         connStringBuilder.Host = ip;
         connStringBuilder.Port = port;
-        connStringBuilder.Password = Env.CrDbPasswd;
-        connStringBuilder.Username = Env.CrDbUsername;
-        connStringBuilder.Database = Env.CrDbDatabase;
+        connStringBuilder.Password = Setting.CrDbPasswd;
+        connStringBuilder.Username = Setting.CrDbUsername;
+        connStringBuilder.Database = Setting.CrDbDatabase;
         connStringBuilder.Pooling = true;
         connStringBuilder.Multiplexing = true;
         connStringBuilder.SocketSendBufferSize = 4_048_576;

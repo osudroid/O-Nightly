@@ -16,7 +16,7 @@ public class Api2Odr : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            var filePath = $"{Env.ReplayPath}/{replayId}.odr";
+            var filePath = $"{Setting.ReplayPath}/{replayId}.odr";
 
             if (System.IO.File.Exists(filePath) == false) return BadRequest("File Not Exist");
 

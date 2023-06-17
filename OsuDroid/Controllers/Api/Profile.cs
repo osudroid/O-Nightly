@@ -306,8 +306,8 @@ public sealed class Profile : ControllerExtensions {
                 return GetInternalServerError();
 
             var userInfo = userInfoOption.Unwrap();
-            var newPasswdHash = MD5.Hash(prop.NewPasswd + Env.PasswdSeed).ToLower();
-            var oldPasswdHash = MD5.Hash(prop.OldPasswd + Env.PasswdSeed).ToLower();
+            var newPasswdHash = MD5.Hash(prop.NewPasswd + Setting.Password_Seed!.Value).ToLower();
+            var oldPasswdHash = MD5.Hash(prop.OldPasswd + Setting.Password_Seed!.Value).ToLower();
             if (userInfo.Password != oldPasswdHash)
                 return Ok(new ApiTypes.Work { HasWork = false });
             
@@ -464,7 +464,7 @@ public sealed class Profile : ControllerExtensions {
                 return Ok(ApiTypes.Work.False);
 
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-            var passwdHash = BblUser.HashPasswd(prop.Passwd ?? "", Env.PasswdSeed);
+            var passwdHash = BblUser.HashPasswd(prop.Passwd ?? "", Setting.Password_Seed!.Value);
 
             var result = await QueryUserInfo.CheckPasswordGetIdAndUsernameAsync(db, passwdHash);
             if (result == EResult.Err)

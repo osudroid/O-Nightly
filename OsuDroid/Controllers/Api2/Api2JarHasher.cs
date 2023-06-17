@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
+using OsuDroidLib.Class;
 
 namespace OsuDroid.Controllers.Api2;
 
@@ -15,10 +16,10 @@ public class Api2JarHasher : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            if (Env.Keyword != keyToken)
+            if (Setting.RequestHash_Keyword!.Value != keyToken)
                 return BadRequest();
         
-            var path = $"{Env.JarPath}/{version}.jar";
+            var path = $"{Setting.JarPath}/{version}.jar";
             if (System.IO.File.Exists(path) == false) {
                 await log.AddLogDebugAsync($"File Not Found In {path}");
                 return BadRequest("Not Found");

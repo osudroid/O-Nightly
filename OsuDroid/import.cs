@@ -10,6 +10,6 @@ global using OsuDroid.CMT;
 global using Entities = OsuDroidLib.Database.Entities;
 global using FnEntity = OsuDroid.Database.TableFn;
 global using DbBuilder = OsuDroidLib.Database.DbBuilder;
-global using Env = OsuDroidLib.Env;
+global using Setting = OsuDroidLib.Setting;
 global using System.Diagnostics.CodeAnalysis;
 global using OsuDroidLib;

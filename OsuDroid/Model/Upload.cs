@@ -41,11 +41,12 @@ public static class Upload {
         if (oldesMap.PlayScoreId != map.PlayScoreId)
             return Result<ApiTypes.Work, string>.Err(TraceMsg.WithMessage("Id Miss Match"));
 
-        if (File.Exists($"{Env.ReplayPath}/{oldesMap.PlayScoreId}.odr"))
+        
+        if (File.Exists($"{Setting.ReplayPath}/{oldesMap.PlayScoreId}.odr"))
             return Result<ApiTypes.Work, string>.Err("Not Allowed");
 
         await using var stream = odrApiStream.OpenReadStream();
-        await using var file = File.Create($"{Env.ReplayPath}/{oldesMap.PlayScoreId}.odr");
+        await using var file = File.Create($"{Setting.ReplayPath}/{oldesMap.PlayScoreId}.odr");
 
         file.Position = 0;
         CopyStream.Move(stream, file);

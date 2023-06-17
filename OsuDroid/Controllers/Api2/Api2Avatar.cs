@@ -20,14 +20,9 @@ public class Api2Avatar : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            var resultSetting = await SettingHandler.GetSettingUserAvatarAsync(db);
-            if (resultSetting == EResult.Err)
-                return GetInternalServerError();
-
-            var setting = resultSetting.Ok();
             
             var resultUserAvatar = await log.AddResultAndTransformAsync(
-                await UserAvatarHandler.GetByUserIdAsync(db, id, setting.SizeLow >= size));
+                await UserAvatarHandler.GetByUserIdAsync(db, id, Setting.UserAvatar_SizeLow!.Value >= size));
             
             if (resultUserAvatar == EResult.Err)
                 return GetInternalServerError();
@@ -94,13 +89,10 @@ public class Api2Avatar : ControllerExtensions {
         try {
             if (prop.ValuesAreGood() == false)
                 return BadRequest();
-
-            var resultSetting = await SettingHandler.GetSettingUserAvatarAsync(db);
-            if (resultSetting == EResult.Err)
-                return GetInternalServerError();
-
-            var setting = resultSetting.Ok();
-            var size = (setting.SizeLow >= prop.Body!.Size) ? setting.SizeLow : setting.SizeHigh;
+            
+            var size = (Setting.UserAvatar_SizeLow!.Value >= prop.Body!.Size) 
+                ? Setting.UserAvatar_SizeLow!.Value 
+                : Setting.UserAvatar_SizeHigh!.Value;
             var resp = await log.AddResultAndTransformAsync(await db.SafeQueryAsync<UserAvatar>(@$"
 SELECT UserId, Hash
 FROM UserAvatar

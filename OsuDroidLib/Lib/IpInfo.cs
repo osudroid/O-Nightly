@@ -7,7 +7,7 @@ namespace OsuDroidLib.Lib;
 public static class IpInfo {
     public static CountryResponse? Country(IPAddress ipAddress) {
         try {
-            var client = new WebServiceClient(int.Parse(Env.UserIdGeoIp), Env.LicenseKeyGeoIp, null, "geolite.info");
+            var client = new WebServiceClient(Setting.GeoIp_UserId!.Value, Setting.GeoIp_LicenseKey!.Value, null, "geolite.info");
             var country = client.Country(ipAddress);
             return country;
         }

@@ -8,4 +8,4 @@ global using LamLibAllOver;
 global using Logger = LamLibAllOver.Logger;
 global using Entities = OsuDroidLib.Database.Entities;
 global using DbBuilder = OsuDroidLib.Database.DbBuilder;
-global using Env = OsuDroidLib.Env;
+global using Setting = OsuDroidLib.Setting;

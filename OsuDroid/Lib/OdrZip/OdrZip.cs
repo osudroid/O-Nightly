@@ -10,7 +10,7 @@ public class OdrZip {
     public required FileStream Stream { get; init; }
 
     private static FileStream CreateOdrZip(FileStream odrStream, OdrEntry entry, string fileName) {
-        var file = File.Create(Path.Combine(Env.ReplayZipPath, fileName), 4096 * 2);
+        var file = File.Create(Path.Combine(Setting.ReplayZipPath!, fileName), 4096 * 2);
         using var archive = new ZipArchive(file, ZipArchiveMode.Create, true);
 
         {
@@ -47,8 +47,8 @@ public class OdrZip {
         
         var filename = odrNumber + ".zip";
         FileStream stream;
-        if (File.Exists(Env.ReplayZipPath)) {
-            stream = File.OpenRead(Path.Combine(Env.ReplayZipPath, filename));
+        if (File.Exists(Setting.ReplayZipPath)) {
+            stream = File.OpenRead(Path.Combine(Setting.ReplayZipPath, filename));
         }
         else {
             var resultBblUser = await QueryUserInfo.GetUsernameByUserIdAsync(db, bblScore.PlayScoreId);
@@ -60,7 +60,7 @@ public class OdrZip {
             if (optionBblUser.IsSet() == false)
                 return Result<Option<(FileStream stream, string name)>, string>.Ok(Option<(FileStream stream, string name)>.Empty);
 
-            var odrPath = Path.Join(Env.ReplayPath, odrNumber + ".odr");
+            var odrPath = Path.Join(Setting.ReplayPath, odrNumber + ".odr");
             if (Path.Exists(odrPath) == false)
                 return Result<Option<(FileStream stream, string name)>, string>.Err($"Path Error odrPath: {odrPath}");
 

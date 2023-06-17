@@ -73,11 +73,11 @@ public static class ApiTypes {
         public bool HashValidate() {
             if (Header is null) return false;
             if (Body is null) return false;
-
+            
             return Security.GetSecurity().Api2HashValidate(
                 Header.HashBodyData ?? "",
                 Body.ToSingleString(),
-                Env.Keyword ?? "");
+                Setting.RequestHash_Keyword!.Value);
         }
     }
 

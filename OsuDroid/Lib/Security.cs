@@ -11,7 +11,7 @@ public static class Security {
         if (_security is not null) return _security;
         try {
             WriteLine("TryLoad Load Extra Security DLL");
-            var path = Path.Process() + Env.OSUDROID_SECURITY_DLL;
+            var path = Path.Process() + Setting.OsuDroidSecurityDll;
             var assembly = Assembly.LoadFile(path);
             _security = (ISecurity)Activator.CreateInstance(assembly.ExportedTypes.FirstOrDefault()!)!;
             WriteLine("Extra Security DLL Loaded");

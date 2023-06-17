@@ -15,6 +15,6 @@ public static class BblUser {
     }
 
     public static bool PasswordEqual(Entities.UserInfo userInfo, string passwd) {
-        return userInfo.Password == LamLibAllOver.MD5.Hash(passwd + Env.PasswdSeed).ToLower();
+        return userInfo.Password == LamLibAllOver.MD5.Hash(passwd + Setting.Password_Seed!.Value).ToLower();
     }
 }

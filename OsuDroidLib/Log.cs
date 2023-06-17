@@ -9,18 +9,19 @@ namespace OsuDroidLib;
 public static class Log {
     private static bool _settingsSet = false;
     public static LamLogger.LamLog GetLog(NpgsqlConnection db) {
+        
         if (_settingsSet == false) {
-            LamLogger.LamLog.Settings = new LamLogSettings() {
-                DbTable = Env.LogInDbName,
+            LamLog.Settings = new () {
+                DbTable = Setting.Log_DbName!.Value,
                 LazyDbPrint = true,
                 LazyTextWriterPrint = false,
-                UseDbAsPrint = Env.LogInDb,
-                PrintUseOk = Env.LogOk,
-                PrintUseDebug = Env.LogDebug,
-                PrintUseError = Env.LogError,
-                PrintDBUseOk = Env.LogOk,
-                PrintDBUseDebug = Env.LogDebug,
-                PrintDBUseError = Env.LogError,
+                UseDbAsPrint = Setting.Log_SaveInDb!.Value,
+                PrintUseOk = Setting.Log_Ok!.Value,
+                PrintUseDebug = Setting.Log_Debug!.Value,
+                PrintUseError = Setting.Log_Error!.Value,
+                PrintDBUseOk = Setting.Log_Ok.Value,
+                PrintDBUseDebug = Setting.Log_Debug.Value,
+                PrintDBUseError = Setting.Log_Error.Value,
             };
         }
 
@@ -28,7 +29,7 @@ public static class Log {
             foreach (var log in tables) {
                 try {
                     var sql = @$"
-INSERT INTO {Env.LogInDbName} 
+INSERT INTO {LamLog.Settings.DbTable} 
     (Id, DateTime, Message, Status, Stack, Trigger)
 VALUES ('{log.DateUuid.ToString()}', @DateTime, @Message, @Status, @Stack, @Trigger)
 ";

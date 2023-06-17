@@ -14,11 +14,6 @@ namespace OsuDroidLib.Lib;
 public static class UserAvatarHandler {
     /// <returns> Hash </returns>
     public static async Task<ResultErr<string>> UpdateImageForUserAsync(NpgsqlConnection db, long userId, byte[] bytes) {
-        var resultSetting = await SettingHandler.GetSettingUserAvatarAsync(db);
-        if (resultSetting == EResult.Err)
-            return resultSetting;
-        var setting = resultSetting.Ok();
-        
         var resultErr = await QueryUserAvatar.DeleteAllFromUserIdAsync(db, userId);
         if (resultErr == EResult.Err)
             return resultErr;
@@ -30,6 +25,8 @@ public static class UserAvatarHandler {
         if (originalResult.Ok().IsNotSet())
             return ResultErr<string>.Err(TraceMsg.WithMessage("False Image Type Or Can Not Read Image"));
 
+        var setting = new SettingUserAvatar(Setting.UserAvatar_SizeLow!.Value, Setting.UserAvatar_SizeHigh!.Value);
+        
         var original = originalResult.Ok().Unwrap();
         
         await QueryUserAvatar.InsertAsync(db, original.UserAvatar);

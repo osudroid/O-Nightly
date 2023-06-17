@@ -16,10 +16,10 @@ public class Update : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            var dirNameNumber = Directory.GetDirectories(Env.UpdatePath).Select(long.Parse).MaxBy(x => x);
+            var dirNameNumber = Directory.GetDirectories(Setting.UpdatePath!).Select(long.Parse).MaxBy(x => x);
             if (dirNameNumber == 0) return GetInternalServerError();
 
-            var langFiles = Directory.GetFiles($"{Env.UpdatePath}/{dirNameNumber}/changelog");
+            var langFiles = Directory.GetFiles($"{Setting.UpdatePath}/{dirNameNumber}/changelog");
             string? defaultFile = null;
             string? wantFile = null;
             foreach (var langFile in langFiles) {
@@ -36,9 +36,9 @@ public class Update : ControllerExtensions {
             wantFile ??= defaultFile;
 
             return Ok(new ViewApiUpdateInfo {
-                Changelog = await System.IO.File.ReadAllTextAsync($"{Env.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
+                Changelog = await System.IO.File.ReadAllTextAsync($"{Setting.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
                 VersionCode = dirNameNumber,
-                Link = $"https://{Env.Domain}/api2/apk/version/{dirNameNumber}.apk"
+                Link = $"https://{Setting.Domain_Name!.Value}/api2/apk/version/{dirNameNumber}.apk"
             });
         }
         catch (Exception e) {

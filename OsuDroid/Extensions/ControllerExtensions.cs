@@ -133,7 +133,7 @@ public abstract class ControllerExtensions : ControllerBase {
             Secure = false,
             HttpOnly = false,
             SameSite = SameSiteMode.Lax,
-            Domain = Env.Domain,
+            Domain = Setting.Domain_Name!.Value,
             MaxAge = new TimeSpan(TimeSpan.TicksPerDay * 30)
         });
     }
@@ -144,7 +144,7 @@ public abstract class ControllerExtensions : ControllerBase {
             return ResultErr<string>.Err("Can Not Convert Cookie To String");
         
         Response.Cookies.Delete(cookieToString.Unwrap(), new CookieOptions {
-            Domain = Env.Domain,
+            Domain = Setting.Domain_Name!.Value,
             SameSite = SameSiteMode.Lax
         });
         return ResultErr<string>.Ok();
