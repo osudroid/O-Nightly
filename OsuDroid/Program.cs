@@ -13,7 +13,6 @@ public static class Program {
         if (loadResult == EResult.Err)
             throw new Exception(loadResult.Err());
         
-        DbBuilder.NpgsqlConnectionString = CreateNpgsqlConnectionString();
         Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
         await PrivilegeManager.Update();
 
@@ -33,12 +32,12 @@ public static class Program {
             WriteLine(console);
             return code;
         }
-
+        
         Environment.Exit(args switch {
             ["--reload-user-stats" or "-s"] => (int)(await ReloadUserStats()),
             ["--transfer"] => (int)(await RunTransferDb()),
             ["--reload-timeline" or "-f"] => (int)(await FullReloadRankingTimeline()),
-            ["--hashpass", var password] => (int)ParseAndPrint(() => Password.Hash(password)),
+            ["--hashpass", var password] => (int)ParseAndPrint(() => OsuDroidLib.Lib.PasswordHash.HashWithBCryptPassword(password)),
             _ => (int)ParseAndPrintExistCode(EExitCode.ArgNotExist, "Argument Not Exist")
         });
     }
@@ -88,8 +87,11 @@ public static class Program {
         var builder = WebApplication.CreateBuilder(args);
         // Add services to the container.
         var services = builder.Services;
-        services.AddMemoryCache();
         services.AddControllers();
+        services.AddEndpointsApiExplorer();
+        // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+        services.AddSwaggerGen();
+        services.AddMemoryCache();
         services.Configure<IpRateLimitOptions>(options => {
             options.EnableEndpointRateLimiting = true;
             options.HttpStatusCode = 429;
@@ -104,9 +106,9 @@ public static class Program {
                 }
             };
         });
-        // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-        services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen();
+        
+        
+        
         services.AddRouting();
         services.AddCors(options => {
             options.AddPolicy("_myAllowSpecificOrigins",
@@ -124,42 +126,20 @@ public static class Program {
         services.AddInMemoryRateLimiting();
         
         var app = builder.Build();
-
+        
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment()) {
             app.UseSwagger();
             app.UseSwaggerUI();
         }
-
+        
         app.UseIpRateLimiting();
         app.UseHttpsRedirection();
+        // app.UseAuthorization();
         app.UsePrivilege(new List<ICookieHandler>() {
             new CookieHandlerBasic()
         });
-        // app.UseAuthorization();
         app.MapControllers();
         app.Run();
-    }
-
-    private static string CreateNpgsqlConnectionString() {
-        var ip = Setting.CrDbIpv4;
-        var port = Convert.ToInt32(Setting.CrDbPortStr);
-
-        var connStringBuilder = new NpgsqlConnectionStringBuilder();
-        connStringBuilder.Host = ip;
-        connStringBuilder.Port = port;
-        connStringBuilder.Password = Setting.CrDbPasswd;
-        connStringBuilder.Username = Setting.CrDbUsername;
-        connStringBuilder.Database = Setting.CrDbDatabase;
-        connStringBuilder.Pooling = true;
-        connStringBuilder.Multiplexing = true;
-        connStringBuilder.SocketSendBufferSize = 4_048_576;
-        connStringBuilder.ReadBufferSize = 1048576;
-        connStringBuilder.WriteBufferSize = 1048576;
-        connStringBuilder.MaxPoolSize = 1024;
-        connStringBuilder.MinPoolSize = 32;
-        connStringBuilder.KeepAlive = 10;
-
-        return connStringBuilder.ConnectionString;
     }
 }

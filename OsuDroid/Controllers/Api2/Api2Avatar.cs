@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
-using OsuDroid.View;
+using OsuDroid.Post;
+using OsuDroid.Class;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
 using OsuDroidLib.Lib;
@@ -46,7 +47,7 @@ public class Api2Avatar : ControllerExtensions {
 
     [HttpGet("/api2/avatar/hash/{hash:alpha}")]
     [PrivilegeRoute(route: "/api2/avatar/hash/{hash:alpha}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AvatarHashes))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewAvatarHashes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> AvatarByHash([FromRoute(Name = "hash")] string? hash) {
         await using var start = await GetStartAsync();
@@ -79,9 +80,9 @@ public class Api2Avatar : ControllerExtensions {
 
     [HttpPost("/api2/avatar/hash")]
     [PrivilegeRoute(route: "/api2/avatar/hash")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AvatarHashes))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewAvatarHashes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> AvatarHashesByUserIds([FromBody] ApiTypes.Api2GroundNoHeader<AvatarHashesByUserIdsProp> prop) {
+    public async Task<IActionResult> AvatarHashesByUserIds([FromBody] PostApi.PostApi2GroundNoHeader<PostAvatarHashesByUserIds> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -103,8 +104,8 @@ AND UserId in @UserIds
             if (resp == EResult.Err)
                 return GetInternalServerError();
             
-            return Ok(new AvatarHashes {
-                List = resp.Ok().Select(x => new AvatarHash { Hash = x.Hash, UserId = x.UserId }).ToList()
+            return Ok(new ViewAvatarHashes {
+                List = resp.Ok().Select(x => new ViewAvatarHash { Hash = x.Hash, UserId = x.UserId }).ToList()
             });
         }
         catch (Exception e) {
@@ -115,36 +116,5 @@ AND UserId in @UserIds
         finally {
             await dbT.CommitAsync();
         }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public class AvatarHashesByUserIdsProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString {
-        public int Size { get; set; }
-        public long[]? UserIds { get; set; }
-
-        public string ToSingleString() {
-            return Merge.ListToString(new object[] {
-                Size,
-                Merge.ListToString(UserIds ?? Array.Empty<long>())
-            });
-        }
-
-        public bool ValuesAreGood() {
-            return !(
-                Size > 1000
-                || Size < 1
-                || UserIds is null or { Length: > 1000 or 0 });
-        }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public class AvatarHash {
-        public long UserId { get; set; }
-        public string? Hash { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public class AvatarHashes {
-        public List<AvatarHash>? List { get; set; }
     }
 }

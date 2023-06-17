@@ -27,4 +27,6 @@ public enum ESettingSubKey {
     RequestJsonPrint,
     SizeLow,
     SizeHigh,
+    MinLength,
+    BCryptSalt,
 }

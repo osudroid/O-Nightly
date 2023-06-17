@@ -1,8 +1,3 @@
-using System.Data.SqlTypes;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Reflection.Metadata;
-using System.Text.RegularExpressions;
 using Npgsql;
 using OsuDroidLib.Class;
 using OsuDroidLib.Extension;
@@ -217,7 +212,7 @@ LIMIT {limit};
     
     public static async Task<Result<List<PlayScore>, string>> GetTopScoreFromUserIdFilterMark(
         NpgsqlConnection db, long userId, long page, int pageSize, PlayScoreDto.EPlayScoreMark mark) {
-
+        
         var sql = @$"
 SELECT *
 FROM (

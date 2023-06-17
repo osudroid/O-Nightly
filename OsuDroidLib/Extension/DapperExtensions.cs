@@ -13,7 +13,7 @@ public static class DapperExtensions {
         int? commandTimeout = null, ISqlAdapter sqlAdapter = null) where T : class {
 
         try {
-            return Result<int, string>.Ok(await connection.InsertAsync(entityToInsert, transaction, commandTimeout, sqlAdapter));
+            return Result<int, string>.Ok(await connection.InsertAsync<T>(entityToInsert, transaction, commandTimeout, sqlAdapter));
         }
         catch (Exception e) {
             return Result<int, string>.Err(e.ToString());
@@ -161,7 +161,7 @@ public static class DapperExtensions {
 
         try {
             return Result<T, string>.Ok(
-                await cnn.QueryFirstAsync(sql, param, transaction, commandTimeout, commandType));
+                await cnn.QueryFirstAsync<T>(sql, param, transaction, commandTimeout, commandType));
         }
         catch (Exception e) {
             return Result<T, string>.Err(e.ToString());
@@ -182,7 +182,7 @@ public static class DapperExtensions {
         IDbTransaction transaction = null, int? commandTimeout = null, CommandType? commandType = null) where T: class {
         
         try {
-            return Result<T, string>.Ok(Option<T>.With(await cnn.QueryFirstOrDefaultAsync(sql, param, transaction, commandTimeout, commandType)));
+            return Result<Option<T>, string>.Ok(Option<T>.NullSplit(await cnn.QueryFirstOrDefaultAsync<T>(sql, param, transaction, commandTimeout, commandType)));
         }
         catch (Exception e) {
             return Result<Option<T>, string>.Err(e.ToString());
@@ -203,7 +203,7 @@ public static class DapperExtensions {
         IDbTransaction transaction = null, int? commandTimeout = null, CommandType? commandType = null) {
         
         try {
-            return Result<T, string>.Ok(await cnn.QuerySingleAsync(sql, param, transaction, commandTimeout, commandType));
+            return Result<T, string>.Ok(await cnn.QuerySingleAsync<T>(sql, param, transaction, commandTimeout, commandType));
         }
         catch (Exception e) {
             return Result<T, string>.Err(e.ToString());
@@ -225,7 +225,7 @@ public static class DapperExtensions {
         IDbTransaction transaction = null, int? commandTimeout = null, CommandType? commandType = null) {
         
         try {
-            return Result<T, string>.Ok(await cnn.QuerySingleOrDefaultAsync(sql, param, transaction, commandTimeout, commandType));
+            return Result<T, string>.Ok(await cnn.QuerySingleOrDefaultAsync<T>(sql, param, transaction, commandTimeout, commandType));
         }
         catch (Exception e) {
             return Result<T, string>.Err(e.ToString());
@@ -640,7 +640,7 @@ public static class DapperExtensions {
             bool buffered = true, string splitOn = "Id", int? commandTimeout = null, CommandType? commandType = null) {
 
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TFirst, TSecond, TReturn>(
                     sql, map, param, transaction, buffered, splitOn, commandTimeout, commandType));
             }
             catch (Exception e) {
@@ -695,7 +695,7 @@ public static class DapperExtensions {
             CommandType? commandType = null) {
             
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TFirst, TSecond, TThird, TReturn>(
                     sql, map, param, transaction, buffered, splitOn, commandTimeout, commandType
                     ));
             }
@@ -721,7 +721,7 @@ public static class DapperExtensions {
             CommandDefinition command, Func<TFirst, TSecond, TThird, TReturn> map, string splitOn = "Id") {
             
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TFirst, TSecond, TThird, TReturn>(
                     command, map, splitOn
                 ));
             }
@@ -756,7 +756,7 @@ public static class DapperExtensions {
                 int? commandTimeout = null, CommandType? commandType = null) {
             
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TFirst, TSecond, TThird, TFourth, TReturn>(
                     sql, map, param, transaction, buffered, splitOn, commandTimeout, commandType
                     ));
             }
@@ -784,7 +784,7 @@ public static class DapperExtensions {
             string splitOn = "Id") {
             
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(command, map, splitOn));
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TFirst, TSecond, TThird, TFourth, TReturn>(command, map, splitOn));
             }
             catch (Exception e) {
                 return Result<IEnumerable<TReturn>, string>.Err(e.ToString());
@@ -817,7 +817,7 @@ public static class DapperExtensions {
             int? commandTimeout = null, CommandType? commandType = null) {
             
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(
                     sql, map, param, transaction,  buffered, splitOn, commandTimeout, commandType
                     ));
             }
@@ -846,7 +846,7 @@ public static class DapperExtensions {
             Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn> map, string splitOn = "Id") {
             
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(
                     command, map, splitOn
                 ));
             }
@@ -882,7 +882,7 @@ public static class DapperExtensions {
             int? commandTimeout = null, CommandType? commandType = null) {
             
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>(
                     sql, map, param, transaction, buffered, splitOn,
                     commandTimeout, commandType
                 ));
@@ -913,7 +913,7 @@ public static class DapperExtensions {
             Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn> map, string splitOn = "Id") {
             
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>(
                     command, map, splitOn
                 ));
             }
@@ -951,7 +951,7 @@ public static class DapperExtensions {
                 int? commandTimeout = null, CommandType? commandType = null) {
             
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(
                     sql, map, param, transaction, buffered, splitOn,
                     commandTimeout, commandType
                 ));
@@ -984,7 +984,7 @@ public static class DapperExtensions {
                 Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn> map, string splitOn = "Id") {
             
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(
                     command, map, splitOn
                 ));
             }
@@ -1010,9 +1010,10 @@ public static class DapperExtensions {
         /// <param name="commandTimeout">Number of seconds before command execution timeout.</param>
         /// <param name="commandType">Is it a stored proc or a batch?</param>
         /// <returns>An enumerable of <typeparamref name="TReturn"/>.</returns>
-        public static async Task<Result<IEnumerable<TReturn>, string>> SafeQueryAsync<TReturn>(this IDbConnection cnn, string sql, Type[] types, Func<object[], TReturn> map, object param = null, IDbTransaction transaction = null, bool buffered = true, string splitOn = "Id", int? commandTimeout = null, CommandType? commandType = null) {
+        public static async Task<Result<IEnumerable<TReturn>, string>> SafeQueryAsync<TReturn>(
+            this IDbConnection cnn, string sql, Type[] types, Func<object[], TReturn> map, object param = null, IDbTransaction transaction = null, bool buffered = true, string splitOn = "Id", int? commandTimeout = null, CommandType? commandType = null) {
             try {
-                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync(
+                return Result<IEnumerable<TReturn>, string>.Ok(await cnn.QueryAsync<TReturn>(
                     sql, types, map, param, transaction, buffered, splitOn, commandTimeout, commandType
                 ));
             }
@@ -1128,7 +1129,8 @@ public static class DapperExtensions {
         /// This is typically used when the results of a query are not processed by Dapper, for example, used to fill a <see cref="DataTable"/>
         /// or <see cref="T:DataSet"/>.
         /// </remarks>
-        public static async Task<Result<IDataReader, string>> SafeExecuteReaderAsync(this IDbConnection cnn, CommandDefinition command) {
+        public static async Task<Result<IDataReader, string>> SafeExecuteReaderAsync(
+            this IDbConnection cnn, CommandDefinition command) {
             try {
                 return Result<IDataReader, string>.Ok(await cnn.ExecuteReaderAsync(command));
             }
@@ -1142,7 +1144,8 @@ public static class DapperExtensions {
         /// </summary>
         /// <param name="cnn">The connection to execute on.</param>
         /// <param name="command">The command to execute.</param>
-        public static async Task<Result<DbDataReader, string>> SafeExecuteReaderAsync(this DbConnection cnn, CommandDefinition command) {
+        public static async Task<Result<DbDataReader, string>> SafeExecuteReaderAsync(
+            this DbConnection cnn, CommandDefinition command) {
             try {
                 var reader = await cnn.ExecuteReaderAsync(command);
                 return Result<DbDataReader, string>.Ok((DbDataReader)reader);
@@ -1163,8 +1166,8 @@ public static class DapperExtensions {
         /// This is typically used when the results of a query are not processed by Dapper, for example, used to fill a <see cref="DataTable"/>
         /// or <see cref="T:DataSet"/>.
         /// </remarks>
-        public static async Task<Result<IDataReader, string>> SafeExecuteReaderAsync(this IDbConnection cnn, CommandDefinition command,
-            CommandBehavior commandBehavior) {
+        public static async Task<Result<IDataReader, string>> SafeExecuteReaderAsync(
+            this IDbConnection cnn, CommandDefinition command, CommandBehavior commandBehavior) {
             try {
                 return Result<IDataReader, string>.Ok(await cnn.ExecuteReaderAsync(command, commandBehavior));
             }
@@ -1179,8 +1182,8 @@ public static class DapperExtensions {
         /// <param name="cnn">The connection to execute on.</param>
         /// <param name="command">The command to execute.</param>
         /// <param name="commandBehavior">The <see cref="CommandBehavior"/> flags for this reader.</param>
-        public static async Task<Result<IDataReader, string>> SafeExecuteReaderAsync(this DbConnection cnn, CommandDefinition command,
-            CommandBehavior commandBehavior) {
+        public static async Task<Result<IDataReader, string>> SafeExecuteReaderAsync(
+            this DbConnection cnn, CommandDefinition command, CommandBehavior commandBehavior) {
 
             try {
                 return Result<IDataReader, string>.Ok(await cnn.ExecuteReaderAsync(command, commandBehavior));
@@ -1200,7 +1203,8 @@ public static class DapperExtensions {
         /// <param name="commandTimeout">Number of seconds before command execution timeout.</param>
         /// <param name="commandType">Is it a stored proc or a batch?</param>
         /// <returns>The first cell returned, as <see cref="object"/>.</returns>
-        public static async Task<Result<object, string>> SafeExecuteScalarAsync(this IDbConnection cnn, string sql, object param = null,
+        public static async Task<Result<object, string>> SafeExecuteScalarAsync(
+            this IDbConnection cnn, string sql, object param = null,
             IDbTransaction transaction = null, int? commandTimeout = null, CommandType? commandType = null) {
             try {
                 return Result<object, string>.Ok(await cnn.ExecuteScalarAsync(
@@ -1223,7 +1227,8 @@ public static class DapperExtensions {
         /// <param name="commandTimeout">Number of seconds before command execution timeout.</param>
         /// <param name="commandType">Is it a stored proc or a batch?</param>
         /// <returns>The first cell returned, as <typeparamref name="T"/>.</returns>
-        public static async Task<Result<T, string>> SafeExecuteScalarAsync<T>(this IDbConnection cnn, string sql, object param = null,
+        public static async Task<Result<T, string>> SafeExecuteScalarAsync<T>(
+            this IDbConnection cnn, string sql, object param = null,
             IDbTransaction transaction = null, int? commandTimeout = null, CommandType? commandType = null) {
             try {
                 return Result<T, string>.Ok(await cnn.ExecuteScalarAsync<T>(sql, param, transaction, commandTimeout, commandType));
@@ -1240,7 +1245,8 @@ public static class DapperExtensions {
         /// <param name="cnn">The connection to execute on.</param>
         /// <param name="command">The command to execute.</param>
         /// <returns>The first cell selected as <see cref="object"/>.</returns>
-        public static async Task<Result<object, string>> SafeExecuteScalarAsync(this IDbConnection cnn, CommandDefinition command) {
+        public static async Task<Result<object, string>> SafeExecuteScalarAsync(
+            this IDbConnection cnn, CommandDefinition command) {
             try {
                 return Result<object, string>.Ok(await cnn.ExecuteScalarAsync(command));
             }
@@ -1256,7 +1262,8 @@ public static class DapperExtensions {
         /// <param name="cnn">The connection to execute on.</param>
         /// <param name="command">The command to execute.</param>
         /// <returns>The first cell selected as <typeparamref name="T"/>.</returns>
-        public static async Task<Result<T, string>> SafeExecuteScalarAsync<T>(this IDbConnection cnn, CommandDefinition command) {
+        public static async Task<Result<T, string>> SafeExecuteScalarAsync<T>(
+            this IDbConnection cnn, CommandDefinition command) {
             try {
                 return Result<T, string>.Ok(await cnn.ExecuteScalarAsync<T>(command));
             }

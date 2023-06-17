@@ -1,16 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
-using OsuDroid.Database.TableFn;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
-using OsuDroid.Lib.Validate;
 using OsuDroid.Post;
 using OsuDroid.Utils;
-using OsuDroid.View;
-using OsuDroidLib.Database.Entities;
+using OsuDroid.Class;
 using OsuDroidLib.Dto;
 using OsuDroidLib.Query;
 
-namespace OsuDroid.Controllers.Api;
+namespace OsuDroid.Controllers.Api2;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 public sealed class Profile : ControllerExtensions {
@@ -22,8 +19,8 @@ public sealed class Profile : ControllerExtensions {
     private static readonly TimeoutTokenDictionary<Guid, (long UserId, string Email)> _deleteAccMailToken =
         new(TimeSpan.FromMinutes(5), 10000, 10000);
 
-    [HttpGet("/api/profile/stats/{id:long}")]
-    [PrivilegeRoute(route: "/api/profile/stats/{id:long}")]
+    [HttpGet("/api2/profile/stats/{id:long}")]
+    [PrivilegeRoute(route: "/api2/profile/stats/{id:long}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewProfileStats))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewProfileStats))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -49,7 +46,7 @@ public sealed class Profile : ControllerExtensions {
                 return GetInternalServerError();
         
 
-            Option<Patron> optionBblPatron = Option<Patron>.Empty;
+            Option<Entities.Patron> optionBblPatron = Option<Entities.Patron>.Empty;
             if ((userInfoAndStats.Email??"").Length == 0) {
                 optionBblPatron = (await log.AddResultAndTransformAsync(await QueryPatron
                         .GetByPatronEmailAsync(db, userInfoAndStats.Email ?? "")))
@@ -99,8 +96,8 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpGet("/api/profile/stats/timeline/{id:long}")]
-    [PrivilegeRoute(route: "/api/profile/stats/timeline/{id:long}")]
+    [HttpGet("/api2/profile/stats/timeline/{id:long}")]
+    [PrivilegeRoute(route: "/api2/profile/stats/timeline/{id:long}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUserRankTimeLine))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> WebProfileStatsTimeLine([FromRoute(Name = "id")] long userId) {
@@ -136,8 +133,8 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpGet("/api/profile/topplays/{id:long}")]
-    [PrivilegeRoute(route: "/api/profile/topplays/{id:long}")]
+    [HttpGet("/api2/profile/topplays/{id:long}")]
+    [PrivilegeRoute(route: "/api2/profile/topplays/{id:long}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewPlays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -166,8 +163,8 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpGet("/api/profile/topplays/{id:long}/page/{page:int}")]
-    [PrivilegeRoute(route: "/api/profile/topplays/{id:long}/page/{page:int}")]
+    [HttpGet("/api2/profile/topplays/{id:long}/page/{page:int}")]
+    [PrivilegeRoute(route: "/api2/profile/topplays/{id:long}/page/{page:int}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> WebProfileTopPlaysPage([FromRoute(Name = "id")] long userId, int page) {
@@ -199,8 +196,8 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpGet("/api/profile/recentplays/{id:long}")]
-    [PrivilegeRoute(route: "/api/profile/recentplays/{id:long}")]
+    [HttpGet("/api2/profile/recentplays/{id:long}")]
+    [PrivilegeRoute(route: "/api2/profile/recentplays/{id:long}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewPlays))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -231,19 +228,23 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpPost("/api/profile/update/email")]
-    [PrivilegeRoute(route: "/api/profile/update/email")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
+    [HttpPost("/api2/profile/update/email")]
+    [PrivilegeRoute(route: "/api2/profile/update/email")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateEmail([FromBody] PostUpdateEmail prop) {
+    public async Task<IActionResult> UpdateEmail([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdateEmail> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
 
         try {
-            if (prop.AnyValidate() == EResult.Err)
-                return Ok(new ApiTypes.Work { HasWork = false });
+            if (prop.ValuesAreGood() == false) {
+                await log.AddLogDebugAsync("Post Prop Are Bad");
+                return BadRequest();
+            }
+
+            var body = prop.Body!;
 
             var cookieToken = this.LoginTokenInfo(db).Ok().Unwrap();
 
@@ -254,23 +255,23 @@ public sealed class Profile : ControllerExtensions {
                 return GetInternalServerError();
 
             if (userInfoResult.Ok().IsNotSet())
-                return Ok(new ApiTypes.Work { HasWork = false });
+                return Ok(new ApiTypes.ViewWork { HasWork = false });
 
             var userInfo = userInfoResult.Ok().Unwrap();
             
-            if (Database.TableFn.BblUser.PasswordEqual(userInfo, prop.Passwd ?? "") == false)
-                return Ok(new ApiTypes.Work { HasWork = false });
+            if (Database.TableFn.BblUser.PasswordEqual(userInfo, body.Passwd ?? "") == false)
+                return Ok(new ApiTypes.ViewWork { HasWork = false });
 
-            if (prop.OldEmail != userInfo.Email)
-                return Ok(new ApiTypes.Work { HasWork = false });
+            if (body.OldEmail != userInfo.Email)
+                return Ok(new ApiTypes.ViewWork { HasWork = false });
 
 
             var updateResult = await log.AddResultAndTransformAsync<string>(
-                await QueryUserInfo.UpdatePasswordAsync(db, userInfo.UserId, prop.NewEmail ?? ""));
+                await QueryUserInfo.UpdatePasswordAsync(db, userInfo.UserId, body.NewEmail ?? ""));
             
             if (updateResult == EResult.Err)
                 return GetInternalServerError();
-            return Ok(new ApiTypes.Work { HasWork = true });
+            return Ok(new ApiTypes.ViewWork { HasWork = true });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -282,19 +283,19 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpPost("/api/profile/update/passwd")]
-    [PrivilegeRoute(route: "/api/profile/update/passwd")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
+    [HttpPost("/api2/profile/update/passwd")]
+    [PrivilegeRoute(route: "/api2/profile/update/passwd")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdatePasswd([FromBody] PostUpdatePasswd prop) {
+    public async Task<IActionResult> UpdatePasswd([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdatePasswd> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
 
         try {
             if (prop.AnyValidate() == EResult.Err)
-                return Ok(new ApiTypes.Work { HasWork = false });
+                return Ok(new ApiTypes.ViewWork { HasWork = false });
 
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
             
@@ -309,13 +310,13 @@ public sealed class Profile : ControllerExtensions {
             var newPasswdHash = MD5.Hash(prop.NewPasswd + Setting.Password_Seed!.Value).ToLower();
             var oldPasswdHash = MD5.Hash(prop.OldPasswd + Setting.Password_Seed!.Value).ToLower();
             if (userInfo.Password != oldPasswdHash)
-                return Ok(new ApiTypes.Work { HasWork = false });
+                return Ok(new ApiTypes.ViewWork { HasWork = false });
             
             var result = await log.AddResultAndTransformAsync<string>(
                 await QueryUserInfo.UpdatePasswordByUserIdAsync(db, cookieInfo.UserId, newPasswdHash));
             if (result == EResult.Err)
                 return GetInternalServerError();
-            return Ok(new ApiTypes.Work { HasWork = true });
+            return Ok(new ApiTypes.ViewWork { HasWork = true });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -327,8 +328,8 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpPost("/api/profile/update/username")]
-    [PrivilegeRoute(route: "/api/profile/update/username")]
+    [HttpPost("/api2/profile/update/username")]
+    [PrivilegeRoute(route: "/api2/profile/update/username")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUpdateUsernameRes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewUpdateUsernameRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -352,7 +353,7 @@ public sealed class Profile : ControllerExtensions {
 
             var userInfo = userInfoOption.Unwrap();
 
-            if (BblUser.PasswordEqual(userInfo, prop.Passwd ?? "") == false
+            if (FnEntity.BblUser.PasswordEqual(userInfo, prop.Passwd ?? "") == false
                 || (userInfo.Username ?? "").ToLower() != (prop.OldUsername ?? "").ToLower()
                ) {
                 return Ok(new ViewUpdateUsernameRes { HasWork = false });
@@ -365,7 +366,7 @@ public sealed class Profile : ControllerExtensions {
                 return GetInternalServerError();
             
             if (checkUsername.Ok().IsSet())
-                return Ok(new ApiTypes.Work { HasWork = false }); 
+                return Ok(new ApiTypes.ViewWork { HasWork = false }); 
             
             var result = await log.AddResultAndTransformAsync<string>(
                 await QueryUserInfo.UpdateUsernameByUserIdAsync(db, userInfo.UserId, prop.NewUsername ?? ""));
@@ -373,7 +374,7 @@ public sealed class Profile : ControllerExtensions {
             if (result == EResult.Err)
                 return GetInternalServerError();
             
-            return Ok(new ApiTypes.Work { HasWork = true });
+            return Ok(new ApiTypes.ViewWork { HasWork = true });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -385,8 +386,8 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpPost("/api/profile/update/avatar")]
-    [PrivilegeRoute(route: "/api/profile/update/avatar")]
+    [HttpPost("/api2/profile/update/avatar")]
+    [PrivilegeRoute(route: "/api2/profile/update/avatar")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUpdateAvatar))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -410,7 +411,7 @@ public sealed class Profile : ControllerExtensions {
 
                 var userInfo = userInfoOption.Unwrap();
 
-                if (BblUser.PasswordEqual(userInfo, prop.Passwd ?? "") == false) {
+                if (FnEntity.BblUser.PasswordEqual(userInfo, prop.Passwd ?? "") == false) {
                     return Ok(new ViewUpdateAvatar { PasswdFalse = true });
                 }
             }
@@ -449,10 +450,10 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpPost("/api/profile/update/patreonemail")]
-    [PrivilegeRoute(route: "/api/profile/update/patreonemail")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
+    [HttpPost("/api2/profile/update/patreonemail")]
+    [PrivilegeRoute(route: "/api2/profile/update/patreonemail")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdatePatreonEmail([FromBody] PostUpdatePatreonEmail prop) {
         await using var start = await GetStartAsync();
@@ -461,16 +462,16 @@ public sealed class Profile : ControllerExtensions {
 
         try {
             if (prop.AnyValidate() == EResult.Err)
-                return Ok(ApiTypes.Work.False);
+                return Ok(ApiTypes.ViewWork.False);
 
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-            var passwdHash = BblUser.HashPasswd(prop.Passwd ?? "", Setting.Password_Seed!.Value);
+            var passwdHash = FnEntity.BblUser.HashPasswd(prop.Passwd ?? "", Setting.Password_Seed!.Value);
 
             var result = await QueryUserInfo.CheckPasswordGetIdAndUsernameAsync(db, passwdHash);
             if (result == EResult.Err)
                 return GetInternalServerError();
             if (result.Ok().IsNotSet())
-                return Ok(new ApiTypes.Work { HasWork = false });
+                return Ok(new ApiTypes.ViewWork { HasWork = false });
             var userInfo = result.Ok().Unwrap();
             var token = Guid.NewGuid();
 
@@ -478,7 +479,7 @@ public sealed class Profile : ControllerExtensions {
 
             SendEmail.MainSendPatreonVerifyLinkToken(userInfo.Username!, userInfo.Email!, token);
 
-            return Ok(new ApiTypes.Work { HasWork = true });
+            return Ok(new ApiTypes.ViewWork { HasWork = true });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -490,10 +491,10 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpGet("/api/profile/accept/patreonemail/token/{token:guid}")]
-    [PrivilegeRoute(route: "/api/profile/accept/patreonemail/token/{token:guid}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
+    [HttpGet("/api2/profile/accept/patreonemail/token/{token:guid}")]
+    [PrivilegeRoute(route: "/api2/profile/accept/patreonemail/token/{token:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> AcceptPatreonEmail([FromRoute(Name = "token")] Guid token) {
         await using var start = await GetStartAsync();
@@ -502,7 +503,7 @@ public sealed class Profile : ControllerExtensions {
 
         try {
             if (token == Guid.Empty)
-                return Ok(new ApiTypes.Work { HasWork = false });
+                return Ok(new ApiTypes.ViewWork { HasWork = false });
 
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
             
@@ -510,7 +511,7 @@ public sealed class Profile : ControllerExtensions {
 
             if (response.IsNotSet()) {
                 await log.AddLogDebugAsync($"Token Not Found: {token}");
-                return Ok(new ApiTypes.Work { HasWork = false });
+                return Ok(new ApiTypes.ViewWork { HasWork = false });
             }
 
             var userIdAndEmail = response.Unwrap();
@@ -523,7 +524,7 @@ public sealed class Profile : ControllerExtensions {
                     await QueryUserInfo.SetAcceptPatreonEmailAsync(db, userIdAndEmail.UserId))) == EResult.Err)
                 return GetInternalServerError();
 
-            return Ok(new ApiTypes.Work { HasWork = true });
+            return Ok(new ApiTypes.ViewWork { HasWork = true });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -535,11 +536,11 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpPost("/api/profile/drop-account/sendMail")]
-    [PrivilegeRoute(route: "/api/profile/drop-account/sendMail}")]
+    [HttpPost("/api2/profile/drop-account/sendMail")]
+    [PrivilegeRoute(route: "/api2/profile/drop-account/sendMail}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewCreateDropAccountTokenRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CreateDropAccountToken([FromBody] ApiTypes.Api2GroundNoHeader<PostCreateDropAccountToken> prop) {
+    public async Task<IActionResult> CreateDropAccountToken([FromBody] PostApi.PostApi2GroundNoHeader<PostCreateDropAccountToken> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -579,10 +580,10 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpGet("/api/profile/drop-account/token/{token:guid}")]
-    [PrivilegeRoute(route: "/api/profile/drop-account/token/{token:guid}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.Work))]
+    [HttpGet("/api2/profile/drop-account/token/{token:guid}")]
+    [PrivilegeRoute(route: "/api2/profile/drop-account/token/{token:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DropAccountWithTokenAsync([FromRoute(Name = "token")] Guid token) {
         await using var start = await GetStartAsync();
@@ -606,7 +607,7 @@ public sealed class Profile : ControllerExtensions {
             if (deleteAccountResponse == EResult.Err)
                 return GetInternalServerError();
             
-            return Ok(ApiTypes.Work.True);
+            return Ok(ApiTypes.ViewWork.True);
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -619,8 +620,8 @@ public sealed class Profile : ControllerExtensions {
     }
 
 
-    [HttpGet("/api/profile/top-play-by-marks-length/user-id/{userId:long}")]
-    [PrivilegeRoute(route: "/api/profile/top-play-by-marks-length/user-id/{userId:long}")]
+    [HttpGet("/api2/profile/top-play-by-marks-length/user-id/{userId:long}")]
+    [PrivilegeRoute(route: "/api2/profile/top-play-by-marks-length/user-id/{userId:long}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlaysMarksLength))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -651,8 +652,8 @@ public sealed class Profile : ControllerExtensions {
         }
     }
 
-    [HttpGet("/api/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
-    [PrivilegeRoute(route: "/api/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
+    [HttpGet("/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
+    [PrivilegeRoute(route: "/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
     public async Task<IActionResult> WebProfileTopPlaysByMark(
         [FromRoute] long userId, [FromRoute] string markString, [FromRoute] int page) {

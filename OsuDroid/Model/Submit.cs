@@ -142,7 +142,24 @@ public static class Submit {
         return Result<long, string>.Ok(idBblScorePreSubmit.Ok().PlayScoreId);
     }
 
-    public class ScoreProp {
+    public interface IScoreProp {
+        public long Id  { get; }
+        public long Uid   { get; }
+        public string? Filename { get; }
+        public string? Hash     { get; }
+        public string? Mode     { get; }
+        public long Score    { get; }
+        public long Combo    { get; }
+        public string? Mark     { get; }
+        public long Geki     { get; }
+        public long Perfect  { get; }
+        public long Katu     { get; }
+        public long Good     { get; }
+        public long Bad      { get; }
+        public long Miss     { get; }
+        public long Accuracy { get; }
+    }
+    public class ScoreProp: IScoreProp {
         public long Id  { get; set; }
         public long Uid   { get; set; }
         public string? Filename { get; set; }

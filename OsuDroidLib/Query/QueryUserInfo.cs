@@ -88,30 +88,30 @@ WHERE lower(username) = lower(@Username)",
             new { Username = username });
     }
 
-    public static async Task<Result<Option<UserInfo>, string>> GetLoginInfoByEmailAndPasswordByEmailAndPasswordAsync(
-        NpgsqlConnection db, string email, string passwordHash) {
+    /// <returns> UserId, Email, Password, Username  </returns>
+    public static async Task<Result<Option<UserInfo>, string>> GetLoginInfoByEmailAsync(
+        NpgsqlConnection db, string email) {
         
         return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@"
 SELECT UserId, Email, Password, Username 
 FROM UserInfo 
 WHERE Email = lower(@Email) 
   AND Banned = false 
-  AND Password = @Password 
 LIMIT 1", 
-            new { Email = email, Password = passwordHash });
+            new { Email = email });
     }
     
-    public static async Task<Result<Option<UserInfo>, string>> GetLoginInfoByEmailAndPasswordByUsernameAndPasswordAsync(
-        NpgsqlConnection db, string username, string passwordHash) {
+    /// <returns> UserId, Email, Password, Username  </returns>
+    public static async Task<Result<Option<UserInfo>, string>> GetLoginInfoByByUsernameAsync(
+        NpgsqlConnection db, string username) {
         
         return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@"
 SELECT UserId, Email, Password, Username
 FROM UserInfo 
 WHERE Username = lower(@Username) 
   AND Banned = false 
-  AND Password = @Password 
 LIMIT 1", 
-            new { Username = username, Password = passwordHash });
+            new { Username = username });
     }
     
     public static async Task<ResultErr<string>> UpdateIpAndRegionAsync(

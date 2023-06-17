@@ -71,8 +71,14 @@ public class PrivilegeMiddleware {
 
     public async Task InvokeAsync(HttpContext context) {
         Endpoint? endpoint = context.Features.Get<IEndpointFeature>()?.Endpoint;
-        PrivilegeRouteAttribute? attribute = endpoint?.Metadata.GetMetadata<PrivilegeRouteAttribute>();
 
+        if (endpoint is null) {
+            await _next.Invoke(context);
+            return;
+        }
+            
+        PrivilegeRouteAttribute? attribute = endpoint.Metadata.GetMetadata<PrivilegeRouteAttribute>();
+        
         if (attribute is null) throw new NullReferenceException(nameof(attribute));
 
         var checkResult = CheckIfNeedCookie(attribute);

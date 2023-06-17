@@ -1,4 +1,4 @@
-namespace OsuDroid.View; 
+namespace OsuDroid.Class; 
 
 public class ViewPlayScoreWithUsername {
     public long PlayScoreId { get; set; }

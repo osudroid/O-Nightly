@@ -2,8 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Model;
+using OsuDroid.Post;
 using OsuDroid.Utils;
-using OsuDroid.View;
+using OsuDroid.Class;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Lib;
@@ -13,9 +14,9 @@ namespace OsuDroid.Controllers.Api2;
 public class Api2Leaderboard : ControllerExtensions {
     [HttpPost("/api2/leaderboard")]
     [PrivilegeRoute(route: "/api2/leaderboard")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetLeaderBoard([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardProp> prop) {
+    public async Task<IActionResult> GetLeaderBoard([FromBody] PostApi.PostApi2GroundNoHeader<PostLeaderBoard> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -45,8 +46,8 @@ public class Api2Leaderboard : ControllerExtensions {
             }
 
             return Ok(rep == EResult.Err
-                ? ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>.NotExist()
-                : ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.Ok()));
+                ? ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.NotExist()
+                : ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.Ok()));
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -60,9 +61,9 @@ public class Api2Leaderboard : ControllerExtensions {
 
     [HttpPost("/api2/leaderboard/user")]
     [PrivilegeRoute(route: "/api2/leaderboard/user")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<ViewLeaderBoardUser>))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewLeaderBoardUser>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardUserProp> prop) {
+    public async Task<IActionResult> GetUserLeaderBoardRank([FromBody] PostApi.PostApi2GroundNoHeader<PostLeaderBoardUser> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -76,8 +77,8 @@ public class Api2Leaderboard : ControllerExtensions {
                 .Map(ViewLeaderBoardUser.FromLeaderBoardUser);
 
             return Ok(rep.IsSet() == false
-                ? ApiTypes.ExistOrFoundInfo<ViewLeaderBoardUser>.NotExist()
-                : ApiTypes.ExistOrFoundInfo<ViewLeaderBoardUser>.Exist(rep.Unwrap()));
+                ? ApiTypes.ViewExistOrFoundInfo<ViewLeaderBoardUser>.NotExist()
+                : ApiTypes.ViewExistOrFoundInfo<ViewLeaderBoardUser>.Exist(rep.Unwrap()));
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -91,9 +92,9 @@ public class Api2Leaderboard : ControllerExtensions {
 
     [HttpPost("/api2/leaderboard/search-user")]
     [PrivilegeRoute(route: "/api2/leaderboard/search-user")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetUserLeaderBoardRank([FromBody] ApiTypes.Api2GroundNoHeader<LeaderBoardSearchUserProp> prop) {
+    public async Task<IActionResult> GetUserLeaderBoardRank([FromBody] PostApi.PostApi2GroundNoHeader<PostLeaderBoardSearchUser> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -113,8 +114,8 @@ public class Api2Leaderboard : ControllerExtensions {
             }).Map(x => x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
 
             return Ok(rep == EResult.Err
-                ? ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>.NotExist()
-                : ApiTypes.ExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.OkOr(new())));
+                ? ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.NotExist()
+                : ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.OkOr(new())));
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -124,108 +125,5 @@ public class Api2Leaderboard : ControllerExtensions {
         finally {
             await dbT.CommitAsync();
         }
-    }
-
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class LeaderBoardUserProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
-        public long UserId { get; set; }
-
-        public string PrintHashOrder() {
-            return ErrorText.HashBodyDataAreFalse(new List<string> {
-                nameof(UserId)
-            });
-        }
-
-        public string ToSingleString() {
-            return Merge.ObjectsToString(new object[] { UserId });
-        }
-
-        public bool ValuesAreGood() {
-            return UserId > -1;
-        }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class LeaderBoardProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
-        private string? _region;
-        public int Limit { get; set; }
-
-        public string? Region {
-            get => _region;
-            set => _region = value == "All" || value == "" ? "all" : value;
-        }
-
-        public string PrintHashOrder() {
-            return ErrorText.HashBodyDataAreFalse(new List<string> {
-                nameof(Limit),
-                nameof(Region)
-            });
-        }
-
-        public string ToSingleString() {
-            return Merge.ObjectsToString(new object[] {
-                Limit,
-                Region??""
-            });
-        }
-
-        public bool ValuesAreGood() {
-            if (Limit <= 0) return false;
-            if (Region == "all") return true;
-            return GetRegionAsCountry().IsSet();
-        }
-
-        public bool IsRegionAll() {
-            return Region == "all";
-        }
-
-        public Option<CountryInfo.Country> GetRegionAsCountry() {
-            return CountryInfo.FindByName(Region ?? "");
-        }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class LeaderBoardSearchUserProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder, ILogRequestJsonPrint {
-        private string? _region;
-        public long Limit { get; set; }
-        public string? Query { get; set; }
-
-        public string Region {
-            get => _region ?? "";
-            set => _region = value == "All" || value == "" ? "all" : value;
-        }
-
-        public string PrintHashOrder() {
-            return ErrorText.HashBodyDataAreFalse(new List<string> {
-                nameof(Limit),
-                nameof(Query),
-                nameof(Region)
-            });
-        }
-
-        public string ToSingleString() {
-            return Merge.ObjectsToString(new object[] {
-                Limit.ToString(),
-                Query ?? "",
-                Region
-            });
-        }
-
-        public bool ValuesAreGood() {
-            return
-                Limit > 0
-                && !string.IsNullOrEmpty(Query);
-        }
-
-        public Option<CountryInfo.Country> GetRegionAsCountry() {
-            return CountryInfo.FindByName(Region ?? "");
-        }
-
-        public bool IsRegionAll() {
-            return Region == "all";
-        }
-
-
     }
 }

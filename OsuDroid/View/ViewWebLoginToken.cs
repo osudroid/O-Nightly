@@ -1,4 +1,4 @@
-namespace OsuDroid.View;
+namespace OsuDroid.Class;
 
 public sealed class ViewWebLoginToken {
     public Guid Token { get; set; }

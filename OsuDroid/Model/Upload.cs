@@ -1,11 +1,11 @@
 using Npgsql;
-using OsuDroid.View;
+using OsuDroid.Class;
 using OsuDroidLib.Query;
 
 namespace OsuDroid.Model;
 
 public static class Upload {
-    public static async Task<Result<ApiTypes.Work, string>> UploadReplayAsync(
+    public static async Task<Result<ApiTypes.ViewWork, string>> UploadReplayAsync(
         NpgsqlConnection db,
         string mapHash,
         long replayId,
@@ -16,12 +16,12 @@ public static class Upload {
         var resultMap = await QueryPlayScore.GetPlayScoreByIdAndUserIdAsync(db, replayId, userId);
 
         if (resultMap == EResult.Err)
-            return Result<ApiTypes.Work, string>.Err(resultMap.Err());
+            return Result<ApiTypes.ViewWork, string>.Err(resultMap.Err());
 
         var optionMap = resultMap.Ok();
         
         if (optionMap.IsSet() == false)
-            return Result<ApiTypes.Work, string>.Err(TraceMsg.WithMessage("Map Not Found"));
+            return Result<ApiTypes.ViewWork, string>.Err(TraceMsg.WithMessage("Map Not Found"));
 
         var map = optionMap.Unwrap();
         
@@ -29,21 +29,21 @@ public static class Upload {
         var resultOldesMap = await QueryPlayScore.GetPlayScoreOldesByUserIdAndHashAsync(db, userId, mapHash);
 
         if (resultOldesMap == EResult.Err)
-            return Result<ApiTypes.Work, string>.Err(resultOldesMap.Err());
+            return Result<ApiTypes.ViewWork, string>.Err(resultOldesMap.Err());
 
         var optionOldesMap = resultOldesMap.Ok();
         
         if (optionOldesMap.IsSet() == false)
-            return Result<ApiTypes.Work, string>.Err(TraceMsg.WithMessage("Map Not Found"));
+            return Result<ApiTypes.ViewWork, string>.Err(TraceMsg.WithMessage("Map Not Found"));
 
         var oldesMap = optionOldesMap.Unwrap();
         
         if (oldesMap.PlayScoreId != map.PlayScoreId)
-            return Result<ApiTypes.Work, string>.Err(TraceMsg.WithMessage("Id Miss Match"));
+            return Result<ApiTypes.ViewWork, string>.Err(TraceMsg.WithMessage("Id Miss Match"));
 
         
         if (File.Exists($"{Setting.ReplayPath}/{oldesMap.PlayScoreId}.odr"))
-            return Result<ApiTypes.Work, string>.Err("Not Allowed");
+            return Result<ApiTypes.ViewWork, string>.Err("Not Allowed");
 
         await using var stream = odrApiStream.OpenReadStream();
         await using var file = File.Create($"{Setting.ReplayPath}/{oldesMap.PlayScoreId}.odr");
@@ -52,6 +52,6 @@ public static class Upload {
         CopyStream.Move(stream, file);
         file.Flush();
 
-        return Result<ApiTypes.Work, string>.Ok(ApiTypes.Work.True);
+        return Result<ApiTypes.ViewWork, string>.Ok(ApiTypes.ViewWork.True);
     }
 }

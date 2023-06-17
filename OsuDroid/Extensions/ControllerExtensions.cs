@@ -19,9 +19,14 @@ public abstract class ControllerExtensions : ControllerBase {
         return username.Trim();
     }
 
-    public async Task<IActionResult> RollbackAndGetInternalServerError(NpgsqlTransaction dbT) {
+    public async Task<IActionResult> RollbackAndGetInternalServerErrorAsync(NpgsqlTransaction dbT) {
         await dbT.RollbackAsync();
         return GetInternalServerError();
+    }
+    
+    public async Task<IActionResult> RollbackAndGetBadRequest(NpgsqlTransaction dbT) {
+        await dbT.RollbackAsync();
+        return BadRequest();
     }
     
     public Result<Option<UserIdAndToken>, string> LoginTokenInfo(NpgsqlConnection db) {
@@ -66,10 +71,6 @@ public abstract class ControllerExtensions : ControllerBase {
     //         return ResultErr<string>.Err(e.ToString());
     //     }
     // }
-
-    public string ToPasswdHash(string passwd) {
-        return Password.Hash(passwd).OkOr("");
-    }
 
     internal Result<Option<IPAddress>, string> GetIpAddress() {
         try {

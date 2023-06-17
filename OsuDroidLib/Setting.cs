@@ -16,6 +16,8 @@ public static class Setting {
     public static SettingDto<int>? GeoIp_UserId { get; private set; }
     public static SettingDto<string>? RequestHash_Keyword { get; private set; }
     public static SettingDto<string>? Password_Seed { get; private set; }
+    public static SettingDto<int>? Password_MinLength { get; private set; }
+    public static SettingDto<int>? Password_BCryptSalt { get; private set; }
     public static SettingDto<string>? Email_NoReplay { get; private set; }
     public static SettingDto<string>? Email_NoReplayPassword { get; private set; }
     public static SettingDto<string>? Email_NoReplaySmtpAddress { get; private set; }
@@ -77,6 +79,8 @@ public static class Setting {
         GeoIp_UserId = settings.First(s => s is { SettingMainKey: ESettingMainKey.GeoIp, SettingSubKey: ESettingSubKey.UserId }).ValueToInt();  
         RequestHash_Keyword = settings.First(s => s is { SettingMainKey: ESettingMainKey.RequestHash, SettingSubKey: ESettingSubKey.Keyword });  
         Password_Seed = settings.First(s => s is { SettingMainKey: ESettingMainKey.Password, SettingSubKey: ESettingSubKey.Seed });  
+        Password_MinLength = settings.First(s => s is { SettingMainKey: ESettingMainKey.Password, SettingSubKey: ESettingSubKey.MinLength }).ValueToInt();  
+        Password_BCryptSalt = settings.First(s => s is { SettingMainKey: ESettingMainKey.Password, SettingSubKey: ESettingSubKey.BCryptSalt }).ValueToInt();  
         Email_NoReplay = settings.First(s => s is { SettingMainKey: ESettingMainKey.Email, SettingSubKey: ESettingSubKey.NoReplay });  
         Email_NoReplayPassword = settings.First(s => s is { SettingMainKey: ESettingMainKey.Email, SettingSubKey: ESettingSubKey.NoReplayPassword });  
         Email_NoReplaySmtpAddress = settings.First(s => s is { SettingMainKey: ESettingMainKey.Email, SettingSubKey: ESettingSubKey.NoReplaySmtpAddress });  

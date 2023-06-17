@@ -2,15 +2,15 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
-using OsuDroid.View;
+using OsuDroid.Class;
 using OsuDroidLib.Query;
 namespace OsuDroid.Controllers.Api;
 
 public sealed class CookieInfo : ControllerExtensions {
     [HttpGet("/api/user-info-by-cookie")]
     [PrivilegeRoute(route: "/api/user-info-by-cookie")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ExistOrFoundInfo<ViewUserInfo>))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ExistOrFoundInfo<ViewUserInfo>))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUserInfo>))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUserInfo>))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUserInfoByCookie() {
         await using var start = await GetStartAsync();
@@ -32,7 +32,7 @@ public sealed class CookieInfo : ControllerExtensions {
             var userInfo = userInfoResult.Ok().Unwrap();
             
             // TODO Check is Supporter
-            return Ok(new ApiTypes.ExistOrFoundInfo<ViewUserInfo> {
+            return Ok(new ApiTypes.ViewExistOrFoundInfo<ViewUserInfo> {
                 ExistOrFound = true,
                 Value = new ViewUserInfo {
                     Active = userInfo.Active,

@@ -1,4 +1,4 @@
-namespace OsuDroid.View; 
+namespace OsuDroid.Class; 
 
 public class ViewLeaderBoardUser {
     public long RankNumber { get; set; }

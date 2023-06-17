@@ -2,8 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Model;
+using OsuDroid.Post;
 using OsuDroid.Utils;
-using OsuDroid.View;
+using OsuDroid.Class;
 using OsuDroidLib;
 using OsuDroidLib.Query;
 
@@ -13,10 +14,10 @@ public class Api2Rank : ControllerExtensions {
     [HttpPost("/api2/rank/map-file")]
     [PrivilegeRoute(route: "/api2/rank/map-file")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ExistOrFoundInfo<IReadOnlyList<ViewMapTopPlays>>))]
+        Type = typeof(ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewMapTopPlays>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> MapFileRank([FromBody] ApiTypes.Api2GroundWithHash<Api2MapFileRankProp> prop) {
+    public async Task<IActionResult> MapFileRank([FromBody] PostApi.PostApi2GroundWithHash<PostApi2MapFileRank> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -41,11 +42,11 @@ public class Api2Rank : ControllerExtensions {
             ));
 
             if (resultRep == EResult.Err)
-                return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<ViewMapTopPlays>> {
+                return Ok(new ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewMapTopPlays>> {
                     Value = null, ExistOrFound = false
                 });
 
-            return Ok(new ApiTypes.ExistOrFoundInfo<IReadOnlyList<ViewMapTopPlays>> {
+            return Ok(new ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewMapTopPlays>> {
                 Value = resultRep
                         .OkOr(Array.Empty<QueryPlayScore.MapTopPlays>()).Select(ViewMapTopPlays.FromMapTopPlays)
                         .ToList(), 
@@ -63,27 +64,3 @@ public class Api2Rank : ControllerExtensions {
     }
 }
 
-public class Api2MapFileRankProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
-    public string? Filename { get; set; }
-    public string? FileHash { get; set; }
-
-    public string PrintHashOrder() {
-        return ErrorText.HashBodyDataAreFalse(new List<string> {
-            nameof(Filename),
-            nameof(FileHash)
-        });
-    }
-
-    public string ToSingleString() {
-        return Merge.ObjectsToString(new object[] {
-            Filename??"",
-            FileHash??""
-        });
-    }
-
-    public bool ValuesAreGood() {
-        return string.IsNullOrEmpty(Filename) != true
-               && string.IsNullOrEmpty(FileHash) != true
-            ;
-    }
-}

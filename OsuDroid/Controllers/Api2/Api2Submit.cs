@@ -4,8 +4,9 @@ using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Model;
+using OsuDroid.Post;
 using OsuDroid.Utils;
-using OsuDroid.View;
+using OsuDroid.Class;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
@@ -16,7 +17,7 @@ public class Api2Submit : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/submit/play-start")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPushPlayStartResult200))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> PushPlayStart([FromBody] ApiTypes.Api2GroundWithHash<PushPlayStartProp> prop) {
+    public async Task<IActionResult> PushPlayStart([FromBody] OsuDroid.Post.Api2.PostApi2GroundWithHash<PostPushPlayStart> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -63,15 +64,17 @@ public class Api2Submit : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPushReplayResult200))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> PushReplay([FromBody] ApiTypes.Api2GroundWithHash<PushPlayProp> prop) {
+    public async Task<IActionResult> PushReplay([FromBody] OsuDroid.Post.Api2.PostApi2GroundWithHash<PostPushPlay> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
 
         try {
-            if (prop.ValuesAreGood() == false)
+            if (prop.ValuesAreGood() == false) {
+                await log.AddLogDebugAsync("Post Prop Are Bad");
                 return BadRequest();
-
+            }
+            
             if (prop.HashValidate() == false)
                 return BadRequest(prop.PrintHashOrder());
 
@@ -107,11 +110,11 @@ public class Api2Submit : ControllerExtensions {
 
     [HttpPost("/api2/submit/replay-file")]
     [PrivilegeRoute(route: "/api2/submit/replay-file")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.Work))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UploadReplayFile([FromForm] Api2UploadReplayFilePropAsFormWrapper form) {
-        ApiTypes.Api2GroundWithHash<Api2UploadReplayFileProp> prop;
+    public async Task<IActionResult> UploadReplayFile([FromForm] PostApi2UploadReplayFilePropAsFormWrapper form) {
+        PostApi.PostApi2GroundWithHash<PostApi2UploadReplayFile> prop;
 
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
@@ -120,7 +123,7 @@ public class Api2Submit : ControllerExtensions {
         try {
             try {
                 var value =
-                    JsonConvert.DeserializeObject<ApiTypes.Api2GroundWithHash<Api2UploadReplayFileProp>>(form.Prop ?? "");
+                    JsonConvert.DeserializeObject<PostApi.PostApi2GroundWithHash<PostApi2UploadReplayFile>>(form.Prop ?? "");
                 if (value is null)
                     return BadRequest("JSON is false");
                 prop = value;
@@ -169,123 +172,6 @@ public class Api2Submit : ControllerExtensions {
         }
         finally {
             await dbT.CommitAsync();
-        }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class Api2UploadReplayFilePropAsFormWrapper {
-        public IFormFile? File { get; set; }
-        public string? Prop { get; set; }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class PushPlayStartProp : Submit.ScoreProp, ApiTypes.IValuesAreGood, ApiTypes.ISingleString,
-        ApiTypes.IPrintHashOrder {
-        public string? Filename { get; set; }
-        public string? FileHash { get; set; }
-
-        public string PrintHashOrder() {
-            return ErrorText.HashBodyDataAreFalse(new List<string> {
-                nameof(Filename),
-                nameof(FileHash)
-            });
-        }
-
-        public string ToSingleString() {
-            return Merge
-                .ObjectsToString(new Object[] {
-                    Filename ?? "",
-                    FileHash ?? ""
-                });
-        }
-
-        public bool ValuesAreGood() {
-            return string.IsNullOrEmpty(Filename) != true
-                   && string.IsNullOrEmpty(FileHash) != true
-                ;
-        }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class PushPlayProp : Submit.ScoreProp, ApiTypes.IValuesAreGood, ApiTypes.ISingleString,
-        ApiTypes.IPrintHashOrder {
-        public string PrintHashOrder() {
-            return ErrorText.HashBodyDataAreFalse(new List<string> {
-                nameof(Mode),
-                nameof(Mark),
-                nameof(Id),
-                nameof(Score),
-                nameof(Combo),
-                nameof(Uid),
-                nameof(Geki),
-                nameof(Perfect),
-                nameof(Katu),
-                nameof(Good),
-                nameof(Bad),
-                nameof(Miss),
-                nameof(Accuracy)
-            });
-        }
-
-        public string ToSingleString() {
-            return Merge.ObjectsToString(new object[] {
-                Mode ?? "",
-                Mark ?? "",
-                Id,
-                Score,
-                Combo,
-                Uid,
-                Geki,
-                Perfect,
-                Katu,
-                Good,
-                Bad,
-                Miss,
-                Accuracy
-            });
-        }
-
-        public bool ValuesAreGood() {
-            return
-                string.IsNullOrEmpty(Mode) != true &&
-                string.IsNullOrEmpty(Mark) != true &&
-                Id != -1 &&
-                Score != -1 &&
-                Combo != -1 &&
-                Uid != -1 &&
-                Geki != -1 &&
-                Perfect != -1 &&
-                Katu != -1 &&
-                Good != -1 &&
-                Bad != -1 &&
-                Miss != -1 &&
-                Accuracy != -1
-                ;
-        }
-    }
-
-    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-    public sealed class Api2UploadReplayFileProp : ApiTypes.IValuesAreGood, ApiTypes.ISingleString, ApiTypes.IPrintHashOrder {
-        public string? MapHash { get; set; }
-        public long ReplayId { get; set; }
-
-        public string PrintHashOrder() {
-            return ErrorText.HashBodyDataAreFalse(new List<string> {
-                nameof(MapHash),
-                nameof(ReplayId)
-            });
-        }
-
-        public string ToSingleString() {
-            return Merge.ListToString(new object[] {
-                MapHash ?? "", ReplayId
-            });
-        }
-
-        public bool ValuesAreGood() {
-            return
-                string.IsNullOrEmpty(MapHash) == false
-                && ReplayId > -1;
         }
     }
 }

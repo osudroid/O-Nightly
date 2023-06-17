@@ -1,4 +1,4 @@
-namespace OsuDroid.View; 
+namespace OsuDroid.Class; 
 
 public class ViewUserStats {
     public long UserId { get; set; }

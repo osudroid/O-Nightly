@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using OsuDroid.View;
+using OsuDroid.Class;
 
 namespace OsuDroid.Post;
 
-public sealed class PostSetNewPasswd : ApiTypes.IValuesAreGood, ApiTypes.ISingleString {
+public sealed class PostSetNewPasswd : PostApi.IValuesAreGood, PostApi.ISingleString {
     [FromBody] public string? NewPasswd { get; set; }
     [FromBody] public string? Token { get; set; }
     [FromBody] public long UserId { get; set; }
@@ -17,6 +17,9 @@ public sealed class PostSetNewPasswd : ApiTypes.IValuesAreGood, ApiTypes.ISingle
     }
 
     public bool ValuesAreGood() {
+        if (!OsuDroidLib.Validation.ValidationPassword.ValidationNewVersion(NewPasswd))
+            return false;
+        
         return !(string.IsNullOrEmpty(NewPasswd)
                  || string.IsNullOrEmpty(Token)
                  || UserId < 0);
