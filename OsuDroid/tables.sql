@@ -444,7 +444,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
+CREATE OR REPLACE FUNCTION setting_update (NewMainKey TEXT, NewSubKey TEXT, NewValue TEXT)
+    RETURNS void
+AS $$
+BEGIN
+    INSERT INTO Setting (MainKey, SubKey, Value)
+    VALUES (NewMainKey, NewSubKey, NewValue)
+    ON CONFLICT (MainKey, SubKey) DO UPDATE
+        SET
+            MainKey = NewMainKey,
+            SubKey = NewSubKey,
+            Value = NewVALUE;
+END;
+$$ LANGUAGE plpgsql;
+                                 
 
 
 SELECT ;
@@ -558,8 +571,26 @@ SELECT router_settings_with_privilege('/api2/submit/replay-file', true, 'BASE');
 SELECT router_settings_with_privilege('/api2/update/{lang}', false, null);
 
 
-
-
-
-INSERT INTO Setting (MainKey, SubKey, Value) VALUES ('UserAvatar', 'SizeLow', '128');
-INSERT INTO Setting (MainKey, SubKey, Value) VALUES ('UserAvatar', 'SizeHigh', '256');
+SELECT setting_update('Domain', 'Name', '');
+SELECT setting_update('APK', 'SignKey', '');
+SELECT setting_update('GeoIp', 'LicenseKey', '');
+SELECT setting_update('GeoIp', 'UserId', '');
+SELECT setting_update('RequestHash', 'Keyword', '');
+SELECT setting_update('Password', 'Seed', '');
+SELECT setting_update('Email', 'NoReplay', '');
+SELECT setting_update('Email', 'NoReplayPassword', '');
+SELECT setting_update('Email', 'NoReplaySmtpAddress', '');
+SELECT setting_update('Email', 'NoReplayUsername', '');
+SELECT setting_update('Patreon', 'ClientId', '');
+SELECT setting_update('Patreon', 'ClientSecret', '');
+SELECT setting_update('Patreon', 'AccessToken', '');
+SELECT setting_update('Patreon', 'RefreshToken', '');
+SELECT setting_update('Patreon', 'CampaignId', '');
+SELECT setting_update('Log', 'DbName', '');
+SELECT setting_update('Log', 'SaveInDb', '');
+SELECT setting_update('Log', 'Ok', '');
+SELECT setting_update('Log', 'Debug', '');
+SELECT setting_update('Log', 'Error', '');
+SELECT setting_update('Log', 'RequestJsonPrint', ''); 
+SELECT setting_update('UserAvatar', 'SizeLow', '');
+SELECT setting_update('UserAvatar', 'SizeHigh', '');
