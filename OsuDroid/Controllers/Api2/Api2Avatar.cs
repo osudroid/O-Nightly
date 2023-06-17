@@ -3,6 +3,7 @@ using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Post;
 using OsuDroid.Class;
+using OsuDroid.Model;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
 using OsuDroidLib.Lib;
@@ -21,7 +22,6 @@ public class Api2Avatar : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            
             var resultUserAvatar = await log.AddResultAndTransformAsync(
                 await UserAvatarHandler.GetByUserIdAsync(db, id, Setting.UserAvatar_SizeLow!.Value >= size));
             
@@ -91,22 +91,19 @@ public class Api2Avatar : ControllerExtensions {
             if (prop.ValuesAreGood() == false)
                 return BadRequest();
             
-            var size = (Setting.UserAvatar_SizeLow!.Value >= prop.Body!.Size) 
-                ? Setting.UserAvatar_SizeLow!.Value 
-                : Setting.UserAvatar_SizeHigh!.Value;
-            var resp = await log.AddResultAndTransformAsync(await db.SafeQueryAsync<UserAvatar>(@$"
-SELECT UserId, Hash
-FROM UserAvatar
-WHERE PixelSize = {size}
-AND UserId in @UserIds
-", new { UserIds = prop.Body.UserIds }));
-
-            if (resp == EResult.Err)
-                return GetInternalServerError();
+            var result = await log.AddResultAndTransformAsync(await ModelApi2Avatar.AvatarHashesByUserIdsAsync(
+                this, db, DtoMapper.AvatarHashesByUserIdsToDto(prop.Body!)));
             
-            return Ok(new ViewAvatarHashes {
-                List = resp.Ok().Select(x => new ViewAvatarHash { Hash = x.Hash, UserId = x.UserId }).ToList()
-            });
+            if (result == EResult.Err) {
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
+            }
+
+            return result.Ok().Mode switch {
+                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
+                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));

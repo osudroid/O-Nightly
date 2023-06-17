@@ -17,12 +17,12 @@ public class Api2JarHasher : ControllerExtensions {
 
         try {
             if (Setting.RequestHash_Keyword!.Value != keyToken)
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT, "Bad RequestHash_Keyword");
         
             var path = $"{Setting.JarPath}/{version}.jar";
             if (System.IO.File.Exists(path) == false) {
                 await log.AddLogDebugAsync($"File Not Found In {path}");
-                return BadRequest("Not Found");
+                return await RollbackAndGetBadRequestAsync(dbT,"Not Found");
             }
             
         
@@ -31,7 +31,7 @@ public class Api2JarHasher : ControllerExtensions {
                 return File(System.IO.File.OpenRead(path), "application/apk");
             }
             catch (Exception) {
-                return GetInternalServerError();
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
         }
         catch (Exception e) {

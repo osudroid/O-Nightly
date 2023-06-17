@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Class;
+using OsuDroid.Model;
 
 namespace OsuDroid.Controllers.Api;
 
@@ -16,30 +17,19 @@ public class Update : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            var dirNameNumber = Directory.GetDirectories(Setting.UpdatePath!).Select(long.Parse).MaxBy(x => x);
-            if (dirNameNumber == 0) return GetInternalServerError();
-
-            var langFiles = Directory.GetFiles($"{Setting.UpdatePath}/{dirNameNumber}/changelog");
-            string? defaultFile = null;
-            string? wantFile = null;
-            foreach (var langFile in langFiles) {
-                if (langFile == "en")
-                    defaultFile = "en";
-                if (langFile != lang)
-                    continue;
-                wantFile = langFile;
-                break;
+            var result = await log.AddResultAndTransformAsync(await ModelApiUpdate.GetUpdateInfoAsync(
+                this, db, lang));
+            
+            if (result == EResult.Err) {
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
 
-            if (wantFile is null && defaultFile is null) return GetInternalServerError();
-
-            wantFile ??= defaultFile;
-
-            return Ok(new ViewApiUpdateInfo {
-                Changelog = await System.IO.File.ReadAllTextAsync($"{Setting.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
-                VersionCode = dirNameNumber,
-                Link = $"https://{Setting.Domain_Name!.Value}/api2/apk/version/{dirNameNumber}.apk"
-            });
+            return result.Ok().Mode switch {
+                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
+                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));

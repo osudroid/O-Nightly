@@ -1,3 +1,4 @@
+using LamLogger;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
@@ -25,29 +26,21 @@ public class Api2Leaderboard : ControllerExtensions {
             if (prop.ValuesAreGood() == false) {
                 return BadRequest();
             }
-                
 
-            var allRegion = prop.Body!.IsRegionAll();
-            Result<List<ViewLeaderBoardUser>, string> rep;
-            switch (allRegion) {
-                case true:
-                    rep = (await LeaderBoard.AnyRegionAsync(db, prop.Body.Limit)).Map(x => x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
-                    break;
-                default: {
-                    var countyRep = prop.Body!.GetRegionAsCountry();
-                    if (countyRep.IsSet() == false) {
-                        await log.AddLogDebugAsync("RegionAsCountry Not Found");
-                        return BadRequest();
-                    }
-
-                    rep = (await LeaderBoard.FilterRegionAsync(db, prop.Body.Limit, countyRep.Unwrap())).Map(x => x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
-                    break;
-                }
+            
+            var result = await log.AddResultAndTransformAsync(await ModelLeaderBoard.GetLeaderBoardAsync(
+                this, db, DtoMapper.LeaderBoardToDto(prop.Body!)));
+            
+            if (result == EResult.Err) {
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
 
-            return Ok(rep == EResult.Err
-                ? ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.NotExist()
-                : ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.Ok()));
+            return result.Ok().Mode switch {
+                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
+                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
@@ -68,6 +61,8 @@ public class Api2Leaderboard : ControllerExtensions {
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
 
+        // TODO Hier weiter
+        
         try {
             if (prop.ValuesAreGood() == false)
                 return BadRequest();
@@ -98,24 +93,26 @@ public class Api2Leaderboard : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+       
         try {
             if (prop.ValuesAreGood() == false)
                 return BadRequest();
 
             ((ILogRequestJsonPrint)prop.Body!).LogRequestJsonPrint();
 
+            var result = await log.AddResultAndTransformAsync(await ModelLeaderBoard.GetUserLeaderBoardRank(
+                this, db, log, DtoMapper.LeaderBoardSearchUserToDto(prop.Body!)));
+            
+            if (result == EResult.Err) {
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
+            }
 
-
-            ResultOk<List<ViewLeaderBoardUser>> rep = (prop.Body!.IsRegionAll() switch {
-                true => await log.AddResultAndTransformAsync(await LeaderBoard.SearchUserAsync(db, prop.Body!.Limit, prop.Body!.Query!)),
-                _ => await log.AddResultAndTransformAsync(await LeaderBoard.SearchUserWithRegionAsync(db, prop.Body!.Limit, prop.Body!.Query!,
-                    prop.Body.GetRegionAsCountry().Unwrap()))
-            }).Map(x => x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
-
-            return Ok(rep == EResult.Err
-                ? ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.NotExist()
-                : ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.OkOr(new())));
+            return result.Ok().Mode switch {
+                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
+                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));

@@ -27,7 +27,7 @@ using OsuDroidLib.Query;
 
 namespace OsuDroid.Model; 
 
-public static class ModelLogin {
+public static class ModelApiLogin {
     private static readonly ConcurrentDictionary<IPAddress, (DateTime LastCall, int Calls)> CallsForResetPasswd = new();
 
     /// <summary> Key Token Value CreateTime </summary>

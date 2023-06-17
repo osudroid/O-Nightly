@@ -33,11 +33,11 @@ public sealed partial class Login : ControllerExtensions {
         try {
             if (!prop.ValuesAreGood()) {
                 await log.AddLogDebugAsync("Post Prop Are Not Valid");
-                return await RollbackAndGetBadRequest(dbT);
+                return await RollbackAndGetBadRequestAsync(dbT);
             }
 
             var result = await log.AddResultAndTransformAsync(
-                await Model.ModelLogin.WebLogin(this, db, DtoMapper.WebLoginToDto(prop)));
+                await Model.ModelApiLogin.WebLogin(this, db, DtoMapper.WebLoginToDto(prop)));
 
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
@@ -45,7 +45,7 @@ public sealed partial class Login : ControllerExtensions {
 
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequest(dbT),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
                 EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
                 _ => throw new ArgumentOutOfRangeException()
             };
@@ -73,10 +73,10 @@ public sealed partial class Login : ControllerExtensions {
 
             if (!prop.ValuesAreGood()) {
                 await log.AddLogDebugAsync("Post Prop Are Not Valid");
-                return await RollbackAndGetBadRequest(dbT);
+                return await RollbackAndGetBadRequestAsync(dbT);
             }
             
-            var result = await log.AddResultAndTransformAsync(await ModelLogin.WebLoginWithUsername(
+            var result = await log.AddResultAndTransformAsync(await ModelApiLogin.WebLoginWithUsername(
                 this,
                 db,
                 DtoMapper.WebLoginWithUsernameToDto(prop)));
@@ -87,7 +87,7 @@ public sealed partial class Login : ControllerExtensions {
 
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequest(dbT),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
                 EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
                 _ => throw new ArgumentOutOfRangeException()
             };
@@ -117,11 +117,11 @@ public sealed partial class Login : ControllerExtensions {
 
             if (!prop.ValuesAreGood()) {
                 await log.AddLogDebugAsync("Post Prop Are Not Valid");
-                return await RollbackAndGetBadRequest(dbT);
+                return await RollbackAndGetBadRequestAsync(dbT);
             }
 
             var result = await log.AddResultAndTransformAsync(
-                await ModelLogin.WebRegisterAsync(this, db, DtoMapper.WebRegisterToDto(prop)));
+                await ModelApiLogin.WebRegisterAsync(this, db, DtoMapper.WebRegisterToDto(prop)));
             
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
@@ -129,7 +129,7 @@ public sealed partial class Login : ControllerExtensions {
 
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequest(dbT),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
                 EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
                 _ => throw new ArgumentOutOfRangeException()
             };
@@ -153,7 +153,7 @@ public sealed partial class Login : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            var result = await log.AddResultAndTransformAsync(await ModelLogin.WebLoginTokenAsync(this, db));
+            var result = await log.AddResultAndTransformAsync(await ModelApiLogin.WebLoginTokenAsync(this, db));
             
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
@@ -161,7 +161,7 @@ public sealed partial class Login : ControllerExtensions {
 
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequest(dbT),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
                 EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
                 _ => throw new ArgumentOutOfRangeException()
             };
@@ -190,7 +190,7 @@ public sealed partial class Login : ControllerExtensions {
 
 
             var result = await log.AddResultAndTransformAsync(
-                await ModelLogin.WebUpdateCookieAsync(this, db, cookieInfo));
+                await ModelApiLogin.WebUpdateCookieAsync(this, db, cookieInfo));
             
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
@@ -198,7 +198,7 @@ public sealed partial class Login : ControllerExtensions {
 
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequest(dbT),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
                 EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
                 _ => throw new ArgumentOutOfRangeException()
             };
@@ -228,7 +228,7 @@ public sealed partial class Login : ControllerExtensions {
         try {
             if (!prop.ValuesAreGood()) {
                 await log.AddLogDebugAsync("Post Prop Are Not Valid");
-                return await RollbackAndGetBadRequest(dbT);
+                return await RollbackAndGetBadRequestAsync(dbT);
             }
 
             Option<IPAddress> optionIpAddress = Option<IPAddress>.Trim(await log.AddResultAndTransformAsync(GetIpAddress()));
@@ -238,7 +238,7 @@ public sealed partial class Login : ControllerExtensions {
                 
             IPAddress ipAddress = optionIpAddress.Unwrap();
 
-            var result = await log.AddResultAndTransformAsync(await ModelLogin.ResetPasswdAndSendEmailAsync(
+            var result = await log.AddResultAndTransformAsync(await ModelApiLogin.ResetPasswdAndSendEmailAsync(
                 this, db, DtoMapper.ResetPasswdAndSendEmailToDto(prop), ipAddress));
             
             if (result == EResult.Err) {
@@ -247,7 +247,7 @@ public sealed partial class Login : ControllerExtensions {
 
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequest(dbT),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
                 EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
                 _ => throw new ArgumentOutOfRangeException()
             };
@@ -275,10 +275,10 @@ public sealed partial class Login : ControllerExtensions {
         try {
             if (!prop.ValuesAreGood()) {
                 await log.AddLogDebugAsync("Post Prop Are Not Valid");
-                return await RollbackAndGetBadRequest(dbT);
+                return await RollbackAndGetBadRequestAsync(dbT);
             }
 
-            var result = await log.AddResultAndTransformAsync(await ModelLogin.SetNewPasswdAsync(
+            var result = await log.AddResultAndTransformAsync(await ModelApiLogin.SetNewPasswdAsync(
                 this, db, DtoMapper.SetNewPasswdToDto(prop.Body!)));
             
             if (result == EResult.Err) {
@@ -287,7 +287,7 @@ public sealed partial class Login : ControllerExtensions {
 
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequest(dbT),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
                 EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
                 _ => throw new ArgumentOutOfRangeException()
             };

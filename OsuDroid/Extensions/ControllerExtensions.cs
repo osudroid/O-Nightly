@@ -24,9 +24,14 @@ public abstract class ControllerExtensions : ControllerBase {
         return GetInternalServerError();
     }
     
-    public async Task<IActionResult> RollbackAndGetBadRequest(NpgsqlTransaction dbT) {
+    public async Task<IActionResult> RollbackAndGetBadRequestAsync(NpgsqlTransaction dbT) {
         await dbT.RollbackAsync();
         return BadRequest();
+    }
+    
+    public async Task<IActionResult> RollbackAndGetBadRequestAsync(NpgsqlTransaction dbT, string msg) {
+        await dbT.RollbackAsync();
+        return BadRequest(msg);
     }
     
     public Result<Option<UserIdAndToken>, string> LoginTokenInfo(NpgsqlConnection db) {

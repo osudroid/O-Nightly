@@ -18,7 +18,7 @@ public class Api2Apk : ControllerExtensions {
             var path = $"{Setting.UpdatePath}/{version}/android.apk";
 
             if (System.IO.File.Exists(path) == false)
-                return BadRequest("Version Number not exist");
+                return await RollbackAndGetBadRequestAsync(dbT, "Version Number not exist");
 
             await using var fileStream = System.IO.File.OpenRead(path);
             return File(fileStream, "application/apk");
