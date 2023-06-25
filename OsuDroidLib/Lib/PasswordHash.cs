@@ -24,8 +24,7 @@ public static class PasswordHash {
             return Result<bool, string>.Ok(BCrypt.Net.BCrypt.Verify(password, hashFromDb));
         }
 
-        return HashWithOldPassword(password)
-            .Map(passHash => passHash == hashFromDb);
+        return Result<bool, string>.Ok(HashWithOldPassword(password) == hashFromDb);
     }
 
     public static Result<bool, string> BCryptNeedRehash(string hashFromDb) {

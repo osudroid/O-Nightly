@@ -6,7 +6,7 @@ namespace OsuDroid.Lib;
 
 internal class PrivilegeRouteAttribute : Attribute
 {
-    public PrivilegeRouteAttribute(string route) => Route = route;
+    public PrivilegeRouteAttribute([StringSyntax("Route")] string route) => Route = route;
 
     public string Route { get; init; }
 }

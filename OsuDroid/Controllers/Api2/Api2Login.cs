@@ -4,6 +4,7 @@ using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Post;
 using OsuDroid.Class;
+using OsuDroid.Model;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Query;
@@ -23,55 +24,26 @@ public class Api2Login : ControllerExtensions {
 
         try {
             if (!prop.ValuesAreGood()) {
-                await log.AddLogDebugAsync("Post Prop Are Bad");
-                return BadRequest();
+                await log.AddLogDebugAsync("Post Prop Are BadRequest");
+                return await RollbackAndGetBadRequestAsync(dbT);
             }
 
-            var body = prop.Body!;
-            
-            var userOption = (await log.AddResultAndTransformAsync(await QueryUserInfo
-                .GetIdUsernamePasswordByLowerUsernameAsync(db, body.Username ?? "")))
-                .OkOr(Option<UserInfo>.Empty);
-            
-            
-            if (userOption.IsNotSet()) {
-                await log.AddLogDebugAsync("User Not Found");
-                return Ok(new ViewCreateApi2TokenResult {
-                    Token = Guid.Empty,
-                    PasswdFalse = false,
-                    UsernameFalse = true
-                });
-            }
-            
-            var user = userOption.Unwrap();
-            if (user.Password != ToPasswdHash(body.Passwd ?? string.Empty)) {
-                await log.AddLogDebugAsync("User Password False");
-                return Ok(new ViewCreateApi2TokenResult {
-                    Token = Guid.Empty,
-                    PasswdFalse = true,
-                    UsernameFalse = false
-                });
-            }
+            var result = await log.AddResultAndTransformAsync(await ModelApi2Login
+                .CreateApi2TokenAsync(this, db, log, DtoMapper.CreateApi2TokenToDto(prop.Body!)));
 
-            var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
-            var optionToken = await log.AddResultAndTransformAsync(
-                await tokenHandler.InsertAsync(db, user.UserId));
+            if (result == EResult.Err)
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
             
-            if (optionToken == EResult.Err) {
-                return this.GetInternalServerError();
-            }
-
-            await log.AddLogDebugAsync("Return Token");
-            return Ok(new ViewCreateApi2TokenResult {
-                Token = optionToken.Ok(),
-                PasswdFalse = false,
-                UsernameFalse = false
-            });
+            return result.Ok().Mode switch {
+                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
+                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -90,30 +62,25 @@ public class Api2Login : ControllerExtensions {
         try {
             if (!prop.ValuesAreGood()) {
                 await log.AddLogDebugAsync("Post Prop Are Bad");
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT);
             }
+            
+            var result = await log.AddResultAndTransformAsync(await ModelApi2Login
+                .RefreshApi2TokenAsync(this, db, log, DtoMapper.SimpleTokenToDto(prop.Body!)));
 
-            var body = prop.Body!;
+            if (result == EResult.Err)
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
             
-            var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
-            var optionExistResult = (await log.AddResultAndTransformAsync(await tokenHandler.TokenExistAsync(db, body.Token)));
-            if (optionExistResult == EResult.Err)
-                return BadRequest();
-            
-            var optionExist = optionExistResult.Ok();
-            if (optionExist == false)
-                return Ok(new ApiTypes.ViewWork { HasWork = false });
-
-            
-            var resultErr = await log.AddResultAndTransformAsync<ResultErr<string>>(await tokenHandler.RefreshAsync(db, body.Token));
-            return Ok(resultErr == EResult.Err 
-                ? new ApiTypes.ViewWork { HasWork = false } 
-                : new ApiTypes.ViewWork { HasWork = true });
+            return result.Ok().Mode switch {
+                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
+                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -131,7 +98,7 @@ public class Api2Login : ControllerExtensions {
         try {
             if (!prop.ValuesAreGood()) {
                 await log.AddLogDebugAsync("Post Prop Are Bad");
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT);
             }
 
             var body = prop.Body!;
@@ -146,8 +113,7 @@ public class Api2Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -166,7 +132,7 @@ public class Api2Login : ControllerExtensions {
         try {
             if (!prop.ValuesAreGood()) {
                 await log.AddLogDebugAsync("Post Prop Are Bad");
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT);
             }
 
             var body = prop.Body!;
@@ -179,8 +145,7 @@ public class Api2Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

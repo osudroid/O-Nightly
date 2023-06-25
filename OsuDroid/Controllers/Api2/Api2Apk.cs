@@ -25,8 +25,7 @@ public class Api2Apk : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

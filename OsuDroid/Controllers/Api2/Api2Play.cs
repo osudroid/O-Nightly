@@ -25,13 +25,13 @@ public class Api2Play : ControllerExtensions {
         try {
             if (prop.ValuesAreGood() == false) {
                 await log.AddLogDebugAsync("Values Are Bad");
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT, "Values Are Bad");
             }
 
 
             if (prop.HashValidate() == false) {
                 await log.AddLogDebugAsync("Hash Not Valid");
-                return BadRequest(prop.PrintHashOrder());
+                return await RollbackAndGetBadRequestAsync(dbT, prop.PrintHashOrder());
             }
 
 
@@ -54,8 +54,7 @@ public class Api2Play : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -73,7 +72,7 @@ public class Api2Play : ControllerExtensions {
 
         try {
             if (prop.ValuesAreGood() == false)
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT, "Post Prop Are Bad");
             
             var repTaskResult = await log.AddResultAndTransformAsync(await PlayRecent.FilterByAsync(
                 db,
@@ -84,7 +83,7 @@ public class Api2Play : ControllerExtensions {
             ));
 
             if (repTaskResult == EResult.Err)
-                return GetInternalServerError();
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
 
             
             return Ok(new ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewPlayScoreWithUsername>> {
@@ -96,8 +95,7 @@ public class Api2Play : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

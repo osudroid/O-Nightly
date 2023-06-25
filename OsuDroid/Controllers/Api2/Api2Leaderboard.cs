@@ -24,7 +24,7 @@ public class Api2Leaderboard : ControllerExtensions {
 
         try {
             if (prop.ValuesAreGood() == false) {
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT);
             }
 
             
@@ -44,8 +44,7 @@ public class Api2Leaderboard : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -65,7 +64,7 @@ public class Api2Leaderboard : ControllerExtensions {
         
         try {
             if (prop.ValuesAreGood() == false)
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT);
 
             var rep = ((await log.AddResultAndTransformAsync(
                 await LeaderBoard.UserAsync(db, prop.Body!.UserId))).OkOr(Option<LeaderBoardUser>.Empty))
@@ -77,8 +76,7 @@ public class Api2Leaderboard : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -96,7 +94,7 @@ public class Api2Leaderboard : ControllerExtensions {
        
         try {
             if (prop.ValuesAreGood() == false)
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT);
 
             ((ILogRequestJsonPrint)prop.Body!).LogRequestJsonPrint();
 
@@ -116,8 +114,7 @@ public class Api2Leaderboard : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

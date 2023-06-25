@@ -21,7 +21,7 @@ namespace OsuDroid.Controllers.Api;
 
 #nullable enable
 
-public sealed partial class Login : ControllerExtensions {
+public sealed class Login : ControllerExtensions {
     [HttpPost("/api/weblogin")]
     [PrivilegeRoute(route: "/api/weblogin")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLogin))]
@@ -52,8 +52,7 @@ public sealed partial class Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -94,8 +93,7 @@ public sealed partial class Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -136,8 +134,7 @@ public sealed partial class Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -168,8 +165,7 @@ public sealed partial class Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -205,8 +201,7 @@ public sealed partial class Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -233,7 +228,7 @@ public sealed partial class Login : ControllerExtensions {
 
             Option<IPAddress> optionIpAddress = Option<IPAddress>.Trim(await log.AddResultAndTransformAsync(GetIpAddress()));
             if (optionIpAddress.IsNotSet()) {
-                return BadRequest("Can Not Get IP IS NEEDED");
+                return await this.RollbackAndGetBadRequestAsync(dbT, "Can Not Get IP IS NEEDED");
             }
                 
             IPAddress ipAddress = optionIpAddress.Unwrap();
@@ -254,8 +249,7 @@ public sealed partial class Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -294,8 +288,7 @@ public sealed partial class Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -313,10 +306,10 @@ public sealed partial class Login : ControllerExtensions {
             // Note: the "provider" parameter corresponds to the external
             // authentication provider choosen by the user agent.
             if (string.IsNullOrWhiteSpace(provider))
-                return BadRequest();
+                return await this.RollbackAndGetBadRequestAsync(dbT, "provider IsNullOrWhiteSpace");
 
             if (await HttpContext.IsProviderSupportedAsync(provider))
-                return BadRequest();
+                return await this.RollbackAndGetBadRequestAsync(dbT);
 
             // Instruct the middleware corresponding to the requested external identity
             // provider to redirect the user agent to its own authorization endpoint.
@@ -325,8 +318,7 @@ public sealed partial class Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -354,8 +346,7 @@ public sealed partial class Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -376,8 +367,7 @@ public sealed partial class Login : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

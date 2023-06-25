@@ -19,21 +19,24 @@ public class Api2Statistic : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            var rep = await log.AddResultAndTransformAsync(await Statistic.ActiveUserAsync(db));
-            if (rep == EResult.Err)
+            var result = await log.AddResultAndTransformAsync(await ModelStatistic.ActiveUserAsync(db));
+            if (result == EResult.Err)
                 return Ok(ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>.NotExist());
 
-            var value = rep.Ok();
-            return Ok(ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>.Exist(new ViewStatisticActiveUser { 
-                RegisterUser = value.Register, 
-                ActiveUserLast1H = value.Last1h, 
-                ActiveUserLast1Day = value.Last1Day
-            }));
+            if (result == EResult.Err) {
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
+            }
+            
+            return result.Ok().Mode switch {
+                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
+                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -49,25 +52,24 @@ public class Api2Statistic : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            var rep = await log.AddResultAndTransformAsync(await Statistic.GetActivePatreonAsync(db));
+            var result = await log.AddResultAndTransformAsync(await ModelStatistic.ActiveUserAsync(db));
+            if (result == EResult.Err)
+                return Ok(ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>.NotExist());
 
-            if (rep == EResult.Err)
-                return Ok(ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>.NotExist());
-
-            var res = new List<ViewUsernameAndId>(rep.Ok().Count);
-
-            foreach (var (username, id) in rep.Ok())
-                res.Add(new ViewUsernameAndId {
-                    Id = id,
-                    Username = username
-                });
-
-            return Ok(ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>.Exist(res));
+            if (result == EResult.Err) {
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
+            }
+            
+            return result.Ok().Mode switch {
+                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
+                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

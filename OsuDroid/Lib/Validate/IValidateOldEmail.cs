@@ -9,7 +9,7 @@ public interface IValidateOldEmail {
     public static bool ValidateOldEmail(string? email) {
         if (string.IsNullOrEmpty(email))
             return false;
-        return Email.ValidateEmail(email);
+        return OsuDroidLib.Validation.ValidationEmail.Validation(email);
     }
 
     public static bool ValidateOldEmail(IValidateOldEmail value) {

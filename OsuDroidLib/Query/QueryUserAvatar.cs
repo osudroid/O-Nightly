@@ -85,4 +85,15 @@ ORDER BY PixelSize DESC
 ";
         return await db.SafeQueryFirstOrDefaultAsync<UserAvatar>(sql);
     }
+
+    public static async Task<Result<IEnumerable<UserAvatar>, string>> GetManyUserIdAndHashByPixelSizeUserIdAsync(
+        NpgsqlConnection db, int pixelSize, IReadOnlyList<long> userIds) {
+        
+        return await db.SafeQueryAsync<UserAvatar>(@$"
+SELECT UserId, Hash
+FROM UserAvatar
+WHERE PixelSize = {pixelSize}
+AND UserId in @UserIds
+", new { UserIds = userIds });
+    } 
 }

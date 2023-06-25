@@ -24,9 +24,9 @@ public class Api2Avatar : ControllerExtensions {
         try {
             var resultUserAvatar = await log.AddResultAndTransformAsync(
                 await UserAvatarHandler.GetByUserIdAsync(db, id, Setting.UserAvatar_SizeLow!.Value >= size));
-            
+
             if (resultUserAvatar == EResult.Err)
-                return GetInternalServerError();
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
             if (resultUserAvatar.Ok().IsNotSet())
                 return NotFound();
 
@@ -37,8 +37,7 @@ public class Api2Avatar : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -59,7 +58,7 @@ public class Api2Avatar : ControllerExtensions {
                 await UserAvatarHandler.GetByHashAsync(db, hash??""));
             
             if (result == EResult.Err)
-                return GetInternalServerError();
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
             
             if (result.Ok().IsNotSet())
                 return NotFound();
@@ -70,8 +69,7 @@ public class Api2Avatar : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -107,8 +105,7 @@ public class Api2Avatar : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

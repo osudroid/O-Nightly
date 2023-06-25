@@ -21,7 +21,7 @@ public abstract class ControllerExtensions : ControllerBase {
 
     public async Task<IActionResult> RollbackAndGetInternalServerErrorAsync(NpgsqlTransaction dbT) {
         await dbT.RollbackAsync();
-        return GetInternalServerError();
+        return new StatusCodeResult(500);
     }
     
     public async Task<IActionResult> RollbackAndGetBadRequestAsync(NpgsqlTransaction dbT) {
@@ -32,6 +32,16 @@ public abstract class ControllerExtensions : ControllerBase {
     public async Task<IActionResult> RollbackAndGetBadRequestAsync(NpgsqlTransaction dbT, string msg) {
         await dbT.RollbackAsync();
         return BadRequest(msg);
+    }
+
+    public async Task<IActionResult> RollbackAndGetNotFound(NpgsqlTransaction dbT) {
+        await dbT.RollbackAsync();
+        return NotFound();
+    }
+    
+    public async Task<IActionResult> RollbackAndGetNotFound(NpgsqlTransaction dbT, string message) {
+        await dbT.RollbackAsync();
+        return NotFound(message);
     }
     
     public Result<Option<UserIdAndToken>, string> LoginTokenInfo(NpgsqlConnection db) {
@@ -154,11 +164,6 @@ public abstract class ControllerExtensions : ControllerBase {
             SameSite = SameSiteMode.Lax
         });
         return ResultErr<string>.Ok();
-    }
-
-    /// <summary> StatusCodes.Status500InternalServerError </summary>
-    public StatusCodeResult GetInternalServerError() {
-        return new StatusCodeResult(500);
     }
 
     public async Task<ConStart> GetStartAsync() {

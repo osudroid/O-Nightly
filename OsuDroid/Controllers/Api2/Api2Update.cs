@@ -17,7 +17,7 @@ public class Api2Update : ControllerExtensions {
 
         try {
             var dirNameNumber = Directory.GetDirectories(Setting.UpdatePath!).Select(long.Parse).MaxBy(x => x);
-            if (dirNameNumber == 0) return GetInternalServerError();
+            if (dirNameNumber == 0) return await RollbackAndGetInternalServerErrorAsync(dbT);
 
             var langFiles = Directory.GetFiles($"{Setting.UpdatePath}/{dirNameNumber}/changelog");
             string? defaultFile = null;
@@ -31,20 +31,20 @@ public class Api2Update : ControllerExtensions {
                 break;
             }
 
-            if (wantFile is null && defaultFile is null) return GetInternalServerError();
+            if (wantFile is null && defaultFile is null) 
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
 
             wantFile ??= defaultFile;
 
             return Ok(new ViewApiUpdateInfoV2 {
-                Changelog = System.IO.File.ReadAllText($"{Setting.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
+                Changelog = await System.IO.File.ReadAllTextAsync($"{Setting.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
                 VersionCode = dirNameNumber,
                 Link = $"https://{Setting.Domain_Name!.Value}/api2/apk/version/{dirNameNumber}.apk"
             });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

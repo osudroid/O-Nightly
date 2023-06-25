@@ -5,6 +5,7 @@ using OsuDroid.Model;
 using OsuDroid.Post;
 using OsuDroid.Utils;
 using OsuDroid.Class;
+using OsuDroid.View;
 using OsuDroidLib;
 using OsuDroidLib.Query;
 
@@ -24,39 +25,28 @@ public class Api2Rank : ControllerExtensions {
 
         try {
             if (prop.ValuesAreGood() == false)
-                return BadRequest("Values Are Bad");
-
-
-            if (prop.HashValidate() == false) {
-                return BadRequest(prop.PrintHashOrder());
+                return await RollbackAndGetBadRequestAsync(dbT, "Values Are Bad");
+            
+            if (prop.HashValidate() == false)
+                return await RollbackAndGetBadRequestAsync(dbT, prop.PrintHashOrder());
+            
+            var result = await log.AddResultAndTransformAsync(await ModelApi2Rank
+                .MapFileRankAsync(this, db, DtoMapper.Api2MapFileRankToDto(prop.Body!)));
+            
+            if (result == EResult.Err) {
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
 
-
-
-            var resultRep = await log.AddResultAndTransformAsync(await Rank
-                .MapTopPlaysByFilenameAndHashAsync(
-                    db,
-                    prop.Body!.Filename!,
-                    prop.Body!.FileHash!,
-                    50
-            ));
-
-            if (resultRep == EResult.Err)
-                return Ok(new ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewMapTopPlays>> {
-                    Value = null, ExistOrFound = false
-                });
-
-            return Ok(new ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewMapTopPlays>> {
-                Value = resultRep
-                        .OkOr(Array.Empty<QueryPlayScore.MapTopPlays>()).Select(ViewMapTopPlays.FromMapTopPlays)
-                        .ToList(), 
-                ExistOrFound = true
-            });
+            return result.Ok().Mode switch {
+                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
+                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

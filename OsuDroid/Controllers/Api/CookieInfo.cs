@@ -24,7 +24,7 @@ public sealed class CookieInfo : ControllerExtensions {
                 await QueryUserInfo.GetByUserIdAsync(db, tokenInfo.UserId));
 
             if (userInfoResult == EResult.Err)
-                return GetInternalServerError();
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
 
             if (userInfoResult.Ok().IsNotSet())
                 return NotFound();
@@ -49,8 +49,7 @@ public sealed class CookieInfo : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

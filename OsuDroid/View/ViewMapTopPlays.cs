@@ -1,6 +1,6 @@
 using OsuDroidLib.Query;
 
-namespace OsuDroid.Class; 
+namespace OsuDroid.View; 
 
 public class ViewMapTopPlays {
     public long PlayScoreId { get; set; }

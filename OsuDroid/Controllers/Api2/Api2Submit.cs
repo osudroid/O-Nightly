@@ -24,10 +24,10 @@ public class Api2Submit : ControllerExtensions {
 
         try {
             if (prop.ValuesAreGood() == false)
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT, "Post Prop Are Bad");
 
             if (prop.HashValidate() == false)
-                return BadRequest(prop.PrintHashOrder());
+                return await RollbackAndGetBadRequestAsync(dbT, prop.PrintHashOrder());
 
 
             var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
@@ -36,23 +36,29 @@ public class Api2Submit : ControllerExtensions {
                 .OkOr(Option<TokenInfo>.Empty);
 
             if (tokenInfoResp.IsSet() == false)
-                return BadRequest("Token Error");
+                return await RollbackAndGetBadRequestAsync(dbT,"Token Error");
 
-            var resp = await log.AddResultAndTransformAsync(await Submit.InsertPreBuildPlayAsync(
-                db,
-                tokenInfoResp.Unwrap().UserId,
-                prop.Body!.Filename!,
-                prop.Body!.FileHash!
-            ));
+            var result = await log.AddResultAndTransformAsync(await ModelApi2Submit
+                .InsertPreBuildPlayAsync(
+                    db,
+                    tokenInfoResp.Unwrap().UserId,
+                    prop.Body!.Filename!,
+                    prop.Body!.FileHash!
+                ));
 
-            return resp == EResult.Err
-                ? GetInternalServerError()
-                : Ok(new ViewPushPlayStartResult200 { PlayId = resp.Ok() });
+            if (result == EResult.Err)
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
+            
+            return result.Ok().Mode switch {
+                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
+                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -72,11 +78,11 @@ public class Api2Submit : ControllerExtensions {
         try {
             if (prop.ValuesAreGood() == false) {
                 await log.AddLogDebugAsync("Post Prop Are Bad");
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT, "Post Prop Are Bad");
             }
             
             if (prop.HashValidate() == false)
-                return BadRequest(prop.PrintHashOrder());
+                return await RollbackAndGetBadRequestAsync(dbT, prop.PrintHashOrder());
 
             var tokenHandlerManager = TokenHandlerManger.GetOrCreateCacheDatabase();
             var tokenInfoResp = (await log
@@ -84,24 +90,24 @@ public class Api2Submit : ControllerExtensions {
                 .OkOr(Option<TokenInfo>.Empty);
 
             if (tokenInfoResp.IsSet() == false)
-                return BadRequest("Token Error");
+                return await RollbackAndGetBadRequestAsync(dbT, "Token Error");
 
-            var resp = (await log
-                    .AddResultAndTransformAsync(await Submit
-                        .InsertFinishPlayAndUpdateUserScoreAsync(db, tokenInfoResp.Unwrap().UserId, prop.Body!)))
-                .OkOr(Option<(UserStats userStats, long BestPlayScoreId)>.Empty);
+            var result = await log.AddResultAndTransformAsync(await ModelApi2Submit
+                .InsertFinishPlayAndUpdateUserScoreAsync(db, tokenInfoResp.Unwrap().UserId, prop.Body!));
 
-            return resp.IsSet() == false
-                ? GetInternalServerError()
-                : Ok(new ViewPushReplayResult200 {
-                    UserStats = ViewUserStats.FromUserStats(resp.Unwrap().userStats),
-                    BestPlayScoreId = resp.Unwrap().BestPlayScoreId
-                });
+            if (result == EResult.Err)
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
+            
+            return result.Ok().Mode switch {
+                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
+                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
+                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
+                _ => throw new ArgumentOutOfRangeException()
+            };
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -125,32 +131,32 @@ public class Api2Submit : ControllerExtensions {
                 var value =
                     JsonConvert.DeserializeObject<PostApi.PostApi2GroundWithHash<PostApi2UploadReplayFile>>(form.Prop ?? "");
                 if (value is null)
-                    return BadRequest("JSON is false");
+                    return await RollbackAndGetBadRequestAsync(dbT, "JSON is false");
                 prop = value;
             }
             catch (Exception e) {
                 await log.AddLogErrorAsync(e.ToString());
-                return BadRequest("JSON is false");
+                return await RollbackAndGetBadRequestAsync(dbT, "JSON is false");
             }
 
             if (prop.ValuesAreGood() == false)
-                return BadRequest("Values Are Values");
+                return await RollbackAndGetBadRequestAsync(dbT, "Values Are Bad");
 
             if (prop.HashValidate() == false)
-                return BadRequest(prop.PrintHashOrder());
+                return await RollbackAndGetBadRequestAsync(dbT, prop.PrintHashOrder());
 
             if (form.File is null)
-                return NotFound("File Not Found In Form");
+                return await RollbackAndGetNotFound(dbT, "File Not Found In Form");
 
             var tokenInfoResult = await log
                 .AddResultAndTransformAsync(await TokenHandlerManger.GetOrCreateCacheDatabase()
                                                                     .GetTokenInfoAsync(db, prop.Header!.Token));
 
             if (tokenInfoResult == EResult.Err)
-                return GetInternalServerError();
+                return await RollbackAndGetInternalServerErrorAsync(dbT);
             
             if (tokenInfoResult.Ok().IsNotSet())
-                return BadRequest("Token Dead Or Error");
+                return await RollbackAndGetBadRequestAsync(dbT, "Token Dead Or Error");
 
             
             var resp = await log.AddResultAndTransformAsync(await Upload.UploadReplayAsync(
@@ -162,13 +168,12 @@ public class Api2Submit : ControllerExtensions {
             );
 
             return resp == EResult.Err 
-                ? GetInternalServerError() 
+                ? await RollbackAndGetInternalServerErrorAsync(dbT) 
                 : Ok(resp.Ok());
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

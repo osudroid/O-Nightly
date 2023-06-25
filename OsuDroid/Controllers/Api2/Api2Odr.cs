@@ -10,7 +10,7 @@ namespace OsuDroid.Controllers.Api2;
 public class Api2Odr : ControllerExtensions {
     [HttpGet("/api2/odr/{replayId}.odr")]
     [PrivilegeRoute(route: "/api2/odr/{replayId}.odr")]
-    public async Task<ActionResult> GetOdrFile([FromRoute(Name = "replayId")] string replayId) {
+    public async Task<IActionResult> GetOdrFile([FromRoute(Name = "replayId")] string replayId) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -18,14 +18,14 @@ public class Api2Odr : ControllerExtensions {
         try {
             var filePath = $"{Setting.ReplayPath}/{replayId}.odr";
 
-            if (System.IO.File.Exists(filePath) == false) return BadRequest("File Not Exist");
+            if (System.IO.File.Exists(filePath) == false)
+                return await RollbackAndGetBadRequestAsync(dbT, "File Not Exist");
 
             return File(System.IO.File.OpenRead(filePath), "Application/octet-stream");
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -34,7 +34,7 @@ public class Api2Odr : ControllerExtensions {
 
     [HttpGet("/api2/odr/{replayId:long}.zip")]
     [PrivilegeRoute(route: "/api2/odr/{replayId:long}.zip")]
-    public async Task<ActionResult> GetOdrZipFileAsync([FromRoute(Name = "replayId")] long replayId) {
+    public async Task<IActionResult> GetOdrZipFileAsync([FromRoute(Name = "replayId")] long replayId) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -43,7 +43,8 @@ public class Api2Odr : ControllerExtensions {
             var res = (await log.AddResultAndTransformAsync(await OdrZip.FactoryAsync(db, replayId)))
                          .OkOr(Option<(FileStream stream, string name)>.Empty);
 
-            if (res.IsSet() == false) return BadRequest();
+            if (res.IsSet() == false)
+                return await RollbackAndGetBadRequestAsync(dbT);
 
             var (stream, name) = res.Unwrap();
 
@@ -51,8 +52,7 @@ public class Api2Odr : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -61,7 +61,7 @@ public class Api2Odr : ControllerExtensions {
 
     [HttpGet("/api2/odr/fullname/{replayId:long}/{fullname}.zip")]
     [PrivilegeRoute(route: "/api2/odr/fullname/{replayId:long}/{fullname}.zip")]
-    public async Task<ActionResult> GetOdrZipFileWithName([FromRoute(Name = "replayId")] long replayId,
+    public async Task<IActionResult> GetOdrZipFileWithName([FromRoute(Name = "replayId")] long replayId,
         [FromRoute(Name = "fullname")] string fullname) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
@@ -72,8 +72,7 @@ public class Api2Odr : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();
@@ -82,7 +81,7 @@ public class Api2Odr : ControllerExtensions {
 
     [HttpGet("/api2/odr/redirect/{replayId:long}.zip")]
     [PrivilegeRoute(route: "/api2/odr/redirect/{replayId:long}.zip")]
-    public async Task<ActionResult> GetOdrZipFileRedHandler([FromRoute(Name = "replayId")] long replayId) {
+    public async Task<IActionResult> GetOdrZipFileRedHandler([FromRoute(Name = "replayId")] long replayId) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -93,7 +92,7 @@ public class Api2Odr : ControllerExtensions {
                 .OkOr(Option<PlayScore>.Empty);
 
             if (bblScoreOption.IsNotSet())
-                return BadRequest();
+                return await RollbackAndGetBadRequestAsync(dbT);
 
             var bblScore = bblScoreOption.Unwrap();
             var fullname = $"{bblScore.Filename!.Replace(".osu", "")} {bblScore.UserId} {bblScore.Date.Ticks}";
@@ -101,8 +100,7 @@ public class Api2Odr : ControllerExtensions {
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            await dbT.RollbackAsync();
-            return GetInternalServerError();
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
             await dbT.CommitAsync();

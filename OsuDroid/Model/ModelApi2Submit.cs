@@ -1,4 +1,7 @@
 using Npgsql;
+using OsuDroid.Class;
+using OsuDroid.Class.Dto;
+using OsuDroid.Extensions;
 using OsuDroid.Utils;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Lib;
@@ -6,18 +9,17 @@ using OsuDroidLib.Query;
 
 namespace OsuDroid.Model;
 
-public static class Submit {
-    public static async Task<Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>> 
+public static class ModelApi2Submit {
+    public static async Task<Result<ModelResult<ViewPushReplayResult200>, string>> 
         InsertFinishPlayAndUpdateUserScoreAsync(NpgsqlConnection db, long userId, ScoreProp prop) {
 
         var resultHistory = await PlayScorePreSubmitHandler.GetByIdAsync(db, prop.Id);
         if (resultHistory == EResult.Err)
-            return resultHistory.ChangeOkType<Option<(UserStats userStats, long BestPlayScoreId)>>();
+            return resultHistory.ChangeOkType<ModelResult<ViewPushReplayResult200>>();
 
         var optionHistory = resultHistory.Ok();
         if (optionHistory.IsSet() == false)
-            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
-                .Ok(Option<(UserStats userStats, long BestPlayScoreId)>.Empty);
+            return Result<ModelResult<ViewPushReplayResult200>, string>.Ok(ModelResult<ViewPushReplayResult200>.BadRequest());
 
         var history = optionHistory.Unwrap();
 
@@ -26,7 +28,7 @@ public static class Submit {
             fixMode = Mode.ModeAsSingleStringToModeArray(prop.Mode);
         }
         catch (Exception e) {
-            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(e.ToString());
+            return Result<ModelResult<ViewPushReplayResult200>, string>.Err(e.ToString());
         }
         PlayScore newScoreInsert = new PlayScore {
             PlayScoreId = history.PlayScoreId,
@@ -55,29 +57,28 @@ public static class Submit {
         
         
         if ((newScoreInsert.Mode??Array.Empty<string>()).Contains("AR"))
-            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
+            return Result<ModelResult<ViewPushReplayResult200>, string>
                 .Err(TraceMsg.WithMessage("FAIL AR In Mode"));
 
         
         var resultErrInsert = await QueryPlayScore.InsertBblScoreAsync(db, newScoreInsert);
         if (resultErrInsert == EResult.Err)
-            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultErrInsert.Err());
+            return Result<ModelResult<ViewPushReplayResult200>, string>.Err(resultErrInsert.Err());
 
         var resultErrDb = await QueryPlayScorePreSubmit.DeleteByIdAsync(db, newScoreInsert.PlayScoreId);
         if (resultErrDb == EResult.Err)
-            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultErrDb.Err());
+            return Result<ModelResult<ViewPushReplayResult200>, string>.Err(resultErrDb.Err());
 
         var resultUserTopScore = await QueryPlayScore.GetUserTopScoreAsync(
             db, history.UserId, history.Filename!, history.Hash!);
 
         if (resultUserTopScore == EResult.Err)
-            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultUserTopScore.Err());
+            return Result<ModelResult<ViewPushReplayResult200>, string>.Err(resultUserTopScore.Err());
 
         var optionUserTopScore = resultUserTopScore.Ok();
         
         if (optionUserTopScore.IsSet() == false)
-            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
-                .Ok(Option<(UserStats userStats, long BestPlayScoreId)>.Empty);
+            return Result<ModelResult<ViewPushReplayResult200>, string>.Ok(ModelResult<ViewPushReplayResult200>.BadRequest());
         
         var newScoreInsertDto = OsuDroidLib.Dto.PlayScoreDto.ToPlayScoreDto(newScoreInsert).Unwrap();
         
@@ -85,14 +86,13 @@ public static class Submit {
             var userTopScore = optionUserTopScore.Unwrap();
             
             if (userTopScore.Score > newScoreInsert.Score)
-                return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
-                    .Ok(Option<(UserStats userStats, long BestPlayScoreId)>
-                        .With((
-                            userStats.Unwrap(),
-                            userTopScore.UserId
-                        )));
-
-
+                return Result<ModelResult<ViewPushReplayResult200>, string>
+                        .Ok(ModelResult<ViewPushReplayResult200>.Ok(new ViewPushReplayResult200() {
+                            BestPlayScoreId = userTopScore.UserId,
+                            UserStats = ViewUserStats.FromUserStats(userStats.Unwrap())
+                        }));
+            
+            
             var result = await QueryUserStats.UpdateStatsFromScoreAsync(
                 db, 
                 newScoreInsert.UserId, 
@@ -101,32 +101,32 @@ public static class Submit {
                 );
             
             if (result == EResult.Err)
-                return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
+                return Result<ModelResult<ViewPushReplayResult200>, string>
                     .Err(result.Err());
             
-            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
-                .Ok(Option<(UserStats userStats, long BestPlayScoreId)>
-                    .With((
-                        (await QueryUserStats.GetBblUserStatsByUserIdAsync(db, userId)).Ok().Unwrap(),
-                        newScoreInsert.PlayScoreId
-                    )));
+            return Result<ModelResult<ViewPushReplayResult200>, string>
+                    .Ok(ModelResult<ViewPushReplayResult200>.Ok(new ViewPushReplayResult200() {
+                        BestPlayScoreId = newScoreInsert.PlayScoreId,
+                        UserStats = ViewUserStats.FromUserStats((await QueryUserStats
+                            .GetBblUserStatsByUserIdAsync(db, userId)).Ok().Unwrap())
+                    }));
         }
 
         var resultErr = await QueryUserStats.UpdateStatsFromScoreAsync(db, newScoreInsert.UserId, newScoreInsertDto);
 
         if (resultErr == EResult.Err)
-            return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
+            return Result<ModelResult<ViewPushReplayResult200>, string>
                 .Err(resultErr.Err());
         
-        return Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>
-            .Ok(Option<(UserStats userStats, long BestPlayScoreId)>
-                .With((
-                    (await QueryUserStats.GetBblUserStatsByUserIdAsync(db, userId)).Ok().Unwrap(),
-                    newScoreInsert.UserId
-                )));
+        return Result<ModelResult<ViewPushReplayResult200>, string>
+            .Ok(ModelResult<ViewPushReplayResult200>
+                .Ok(new ViewPushReplayResult200() {
+                    BestPlayScoreId = newScoreInsert.UserId,
+                    UserStats = ViewUserStats.FromUserStats((await QueryUserStats.GetBblUserStatsByUserIdAsync(db, userId)).Ok().Unwrap())  
+                }));
     }
 
-    public static async Task<Result<long, string>> InsertPreBuildPlayAsync(
+    public static async Task<Result<ModelResult<long>, string>> InsertPreBuildPlayAsync(
         NpgsqlConnection db, long userId, string filename, string fileHash) {
         
         var idBblScorePreSubmit = await QueryPlayScorePreSubmit
@@ -137,11 +137,12 @@ public static class Submit {
                 fileHash);
 
         if (idBblScorePreSubmit == EResult.Err)
-            return idBblScorePreSubmit.ChangeOkType<long>();
+            return idBblScorePreSubmit.ChangeOkType<ModelResult<long>>();
         
-        return Result<long, string>.Ok(idBblScorePreSubmit.Ok().PlayScoreId);
+        return Result<ModelResult<long>, string>.Ok(ModelResult<long>.Ok(idBblScorePreSubmit.Ok().PlayScoreId));
     }
 
+    
     public interface IScoreProp {
         public long Id  { get; }
         public long Uid   { get; }

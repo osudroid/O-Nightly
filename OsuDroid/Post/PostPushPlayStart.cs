@@ -4,7 +4,7 @@ using OsuDroid.Utils;
 namespace OsuDroid.Post;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class PostPushPlayStart : Submit.ScoreProp, OsuDroid.Post.Api2.IValuesAreGood, OsuDroid.Post.Api2.ISingleString,
+public sealed class PostPushPlayStart : ModelApi2Submit.ScoreProp, OsuDroid.Post.Api2.IValuesAreGood, OsuDroid.Post.Api2.ISingleString,
                                         PostApi.IPrintHashOrder {
     public string? Filename { get; set; }
     public string? FileHash { get; set; }

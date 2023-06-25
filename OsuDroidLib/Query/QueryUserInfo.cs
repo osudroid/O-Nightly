@@ -30,6 +30,7 @@ WHERE banned = false
             );        
     }
 
+    /// <summary> SELECT * FROM UserInfo </summary>
     public static async Task<Result<Option<UserInfo>, string>> GetByUserIdAsync(NpgsqlConnection db, long userId) {
         return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@$"
 SELECT * 
