@@ -22,8 +22,8 @@ public class ConvertAndMoveToNewTable {
             await RemoveAllRowsFromNewTables(db);
             WriteLine($"Fetch Old Users");
             WriteLine("Insert Users");
-            // allUserFromOldDb = await GetBblUser();
-            // await InsertAllUsers(db, allUserFromOldDb);
+            allUserFromOldDb = await GetBblUser();
+            await InsertAllUsers(db, allUserFromOldDb);
             await db.QueryAsync("DELETE FROM public.UserStats;");
         }
 
@@ -103,7 +103,6 @@ public class ConvertAndMoveToNewTable {
                     }
 
                     WriteLine($"Bind Score To User Finish, Count: {playScores.Select(f => (long)f.Value.Count).Sum()}");
-                    throw new Exception("STOP");
                 }
 
                 GC.Collect();
