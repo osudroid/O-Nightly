@@ -4,10 +4,11 @@ using OsuDroidLib.Extension;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Dto;
 
-namespace OsuDroidLib.Query; 
+namespace OsuDroidLib.Query;
 
 public static class QueryPlayScore {
-    public static async Task<Result<List<PlayScoreWithUsername>, string>> GetBeatmapTop(NpgsqlConnection db, string filename, string fileHash) {
+    public static async Task<Result<List<PlayScoreWithUsername>, string>> GetBeatmapTop(NpgsqlConnection db,
+        string filename, string fileHash) {
         var sql = "SELECT beatmap_top(@File, @FileHash, @LimitCount)";
 
         return (await db.SafeQueryAsync<PlayScoreWithUsername>(sql, new {
@@ -26,7 +27,6 @@ public static class QueryPlayScore {
 
     public static async Task<Result<Option<PlayScore>, string>> GetUserTopScoreAsync(
         NpgsqlConnection db, long userId, string filename, string fileHash) {
-        
         var sql = @"SELECT * FROM PlayScore WHERE UserId = @UserId AND Filename = @Filename AND Hash = @Hash";
         return await db.SafeQueryFirstOrDefaultAsync<PlayScore>(sql, new {
             UserId = userId,
@@ -38,7 +38,7 @@ public static class QueryPlayScore {
     public static async Task<Result<Option<PlayScore>, string>> GetByIdAsync(NpgsqlConnection db, long playId) {
         return await db.SafeQueryFirstOrDefaultAsync<PlayScore>(
             $"SELECT * FROM PlayScore WHERE UserId = {playId} LIMIT 1"
-            );
+        );
     }
 
 
@@ -52,8 +52,8 @@ WHERE TotalScore.Filename = refer.Filename
   AND TotalScore.Score > refer.Score
 ")).Map(x => x.Value);
     }
-    
-    
+
+
     public static async Task<Result<Option<PlayScore>, string>> GetPlayScoreByIdAsync(NpgsqlConnection db, long id) {
         return await db.SafeQueryFirstOrDefaultAsync<PlayScore>(@$"
 SELECT * FROM PlayScore WHERE PlayScoreId = {id}
@@ -78,7 +78,7 @@ ORDER BY date DESC
 LIMIT 1
 ");
     }
-    
+
     public static async Task<ResultErr<string>> InsertBblScoreAsync(NpgsqlConnection db, PlayScore newPlayScoreInsert) {
         var sql = @$"
 INSERT 
@@ -101,27 +101,27 @@ VALUES
      @Miss,
      @Date,
      @Accuracy
-     "; 
+     ";
         return await db.SafeQueryAsync(sql, new {
-            PlayScoreId = newPlayScoreInsert.PlayScoreId, 
-            UserId = newPlayScoreInsert.UserId, 
-            Filename = newPlayScoreInsert.Filename, 
-            Hash = newPlayScoreInsert.Hash, 
-            Mode = newPlayScoreInsert.Mode, 
-            Score = newPlayScoreInsert.Score, 
-            Combo = newPlayScoreInsert.Combo, 
-            Mark = newPlayScoreInsert.Mark, 
-            Geki = newPlayScoreInsert.Geki, 
-            Perfect = newPlayScoreInsert.Perfect, 
-            Katu = newPlayScoreInsert.Katu, 
-            Good = newPlayScoreInsert.Good, 
-            Bad = newPlayScoreInsert.Bad, 
-            Miss = newPlayScoreInsert.Miss, 
-            Date = newPlayScoreInsert.Date, 
+            PlayScoreId = newPlayScoreInsert.PlayScoreId,
+            UserId = newPlayScoreInsert.UserId,
+            Filename = newPlayScoreInsert.Filename,
+            Hash = newPlayScoreInsert.Hash,
+            Mode = newPlayScoreInsert.Mode,
+            Score = newPlayScoreInsert.Score,
+            Combo = newPlayScoreInsert.Combo,
+            Mark = newPlayScoreInsert.Mark,
+            Geki = newPlayScoreInsert.Geki,
+            Perfect = newPlayScoreInsert.Perfect,
+            Katu = newPlayScoreInsert.Katu,
+            Good = newPlayScoreInsert.Good,
+            Bad = newPlayScoreInsert.Bad,
+            Miss = newPlayScoreInsert.Miss,
+            Date = newPlayScoreInsert.Date,
             Accuracy = newPlayScoreInsert.Accuracy
         });
     }
-    
+
     public class MapTopPlays {
         public long PlayScoreId { get; set; }
         public long UserId { get; set; }
@@ -134,10 +134,9 @@ VALUES
         public string? Username { get; set; }
         public long PlayRank { get; set; }
     }
-    
+
     public static async Task<Result<IReadOnlyList<MapTopPlays>, string>> MapTopPlaysByFilenameAndHashAsync(
         NpgsqlConnection db, string filename, string fileHash, int maxResult) {
-
         var sql = @$"
 SELECT DISTINCT ON (UserId) 
     x.PlayScoreId as PlayScoreId, 
@@ -176,14 +175,16 @@ LIMIT {maxResult}
             return result.ChangeOkType<IReadOnlyList<MapTopPlays>>();
 
         var plays = result.Ok();
-        
+
         for (var i = 0; i < plays.Count; i++) {
             plays[i].PlayRank = i + 1;
         }
+
         return Result<IReadOnlyList<MapTopPlays>, string>.Ok(plays);
     }
-    
-    public static async Task<Result<List<PlayScore>, string>> GetTopScoreFromUserIdAsync(NpgsqlConnection db, long userId) {
+
+    public static async Task<Result<List<PlayScore>, string>> GetTopScoreFromUserIdAsync(NpgsqlConnection db,
+        long userId) {
         return (await db.SafeQueryAsync<PlayScore>(@$"
 SELECT * 
 FROM (
@@ -194,12 +195,10 @@ FROM (
 ORDER BY score DESC 
 LIMIT 50;
 ")).Map(x => x.ToList());
-        
     }
 
     public static async Task<Result<List<PlayScore>, string>> GetLastPlayScoreFilterByUserIdAsync(
         NpgsqlConnection db, long userId, int limit) {
-
         var sql = @$"
 SELECT * 
 FROM PLayScore
@@ -209,10 +208,9 @@ LIMIT {limit};
 ";
         return (await db.SafeQueryAsync<PlayScore>(sql)).Map(x => x.ToList());
     }
-    
+
     public static async Task<Result<List<PlayScore>, string>> GetTopScoreFromUserIdFilterMark(
         NpgsqlConnection db, long userId, long page, int pageSize, PlayScoreDto.EPlayScoreMark mark) {
-        
         var sql = @$"
 SELECT *
 FROM (
@@ -228,10 +226,9 @@ OFFSET {page * pageSize}
         return (await db.SafeQueryAsync<PlayScore>(sql, new { Mark = mark.ToStringFast() }))
             .Map(x => x.ToList());
     }
-    
+
     public static async Task<Result<List<PlayScore>, string>> GetTopScoreFromUserIdWithPageAsync(
         NpgsqlConnection db, long userId, long page, int pageSize) {
-
         var sql = @$"
 SELECT *
 FROM (
@@ -246,7 +243,7 @@ OFFSET {page * pageSize}
 
         return (await db.SafeQueryAsync<PlayScore>(sql)).Map(x => x.ToList());
     }
-    
+
     public static async Task<Result<Dictionary<PlayScoreDto.EPlayScoreMark, long>, string>> CountMarkPlaysByUserIdAsync(
         NpgsqlConnection db, long userId) {
         var sql = @$"
@@ -258,9 +255,9 @@ GROUP BY Mark
         var fetchMarkResult = await db.SafeQueryAsync<CountMarkPlaysByUserIdClass>(sql);
         if (fetchMarkResult == EResult.Err)
             return fetchMarkResult.ChangeOkType<Dictionary<PlayScoreDto.EPlayScoreMark, long>>();
-        
+
         var res = new Dictionary<PlayScoreDto.EPlayScoreMark, long>(12);
-        
+
         foreach (var row in fetchMarkResult.Ok()) {
             if (Enum.TryParse<PlayScoreDto.EPlayScoreMark>(row.Mark, out _) == false)
                 return Result<Dictionary<PlayScoreDto.EPlayScoreMark, long>, string>
@@ -270,7 +267,7 @@ GROUP BY Mark
 
         return Result<Dictionary<PlayScoreDto.EPlayScoreMark, long>, string>.Ok(res);
     }
-    
+
     private class CountMarkPlaysByUserIdClass {
         public long Count { get; set; }
         public string? Mark { get; set; }

@@ -4,7 +4,7 @@ using JsonApiSerializer;
 using JsonApiSerializer.JsonApi;
 using Newtonsoft.Json;
 
-namespace Patreon.NET; 
+namespace Patreon.NET;
 
 public sealed class PatreonClient : IDisposable {
     // ReSharper disable once InconsistentNaming
@@ -128,7 +128,7 @@ public sealed class PatreonClient : IDisposable {
         }
         catch (Exception ex) {
 #if DEBUG
-                Console.WriteLine(ex.ToString());
+            Console.WriteLine(ex.ToString());
 #endif
         }
 

@@ -19,7 +19,7 @@ public sealed class PostSetNewPasswd : PostApi.IValuesAreGood, PostApi.ISingleSt
     public bool ValuesAreGood() {
         if (!OsuDroidLib.Validation.ValidationPassword.ValidationNewVersion(NewPasswd))
             return false;
-        
+
         return !(string.IsNullOrEmpty(NewPasswd)
                  || string.IsNullOrEmpty(Token)
                  || UserId < 0);

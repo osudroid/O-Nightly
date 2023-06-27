@@ -12,9 +12,13 @@ public static class Program {
         var loadResult = (await OsuDroidLib.Setting.LoadAsync());
         if (loadResult == EResult.Err)
             throw new Exception(loadResult.Err());
-        
-        Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+
+        Dapper.DefaultTypeMap.MatchNamesWithUnderscores = false;
         await PrivilegeManager.Update();
+
+        await RunTransferDb();
+        return;
+
 
         if (args.Length == 0) {
             Security.GetSecurity();
@@ -32,12 +36,13 @@ public static class Program {
             WriteLine(console);
             return code;
         }
-        
+
         Environment.Exit(args switch {
             ["--reload-user-stats" or "-s"] => (int)(await ReloadUserStats()),
             ["--transfer"] => (int)(await RunTransferDb()),
             ["--reload-timeline" or "-f"] => (int)(await FullReloadRankingTimeline()),
-            ["--hashpass", var password] => (int)ParseAndPrint(() => OsuDroidLib.Lib.PasswordHash.HashWithBCryptPassword(password)),
+            ["--hashpass", var password] => (int)ParseAndPrint(() =>
+                OsuDroidLib.Lib.PasswordHash.HashWithBCryptPassword(password)),
             _ => (int)ParseAndPrintExistCode(EExitCode.ArgNotExist, "Argument Not Exist")
         });
     }
@@ -46,14 +51,14 @@ public static class Program {
         await (new ConvertAndMoveToNewTable()).RunRecalcStats();
         return EExitCode.Success;
     }
-    
+
     private static async Task<EExitCode> FullReloadRankingTimeline() {
         Option<PlayScore> playScoreOption;
-        
+
         await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
             var result = await db.SafeQueryFirstOrDefaultAsync<PlayScore>(
                 "SELECT * FROM public.PlayScore ORDER BY date LIMIT 1");
-            
+
             if (result == EResult.Err) {
                 Console.WriteLine(result.Err());
                 return EExitCode.UnknownError;
@@ -67,12 +72,12 @@ public static class Program {
             return EExitCode.NoBblScoreFound;
         }
 
-        var playScore = playScoreOption.Unwrap(); 
-        
+        var playScore = playScoreOption.Unwrap();
+
         FullRecalcUserRankingTimeline.Run(new DateTime(playScore.Date.Year, playScore.Date.Month, playScore.Date.Day));
         return EExitCode.Success;
     }
-    
+
     private static async Task<EExitCode> RunTransferDb() {
         await (new OsuDroid.Utils.ConvertAndMoveToNewTable()).OpiRun();
         return EExitCode.Success;
@@ -106,9 +111,8 @@ public static class Program {
                 }
             };
         });
-        
-        
-        
+
+
         services.AddRouting();
         services.AddCors(options => {
             options.AddPolicy("_myAllowSpecificOrigins",
@@ -124,15 +128,15 @@ public static class Program {
         services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
         services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
         services.AddInMemoryRateLimiting();
-        
+
         var app = builder.Build();
-        
+
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment()) {
             app.UseSwagger();
             app.UseSwaggerUI();
         }
-        
+
         app.UseIpRateLimiting();
         app.UseHttpsRedirection();
         // app.UseAuthorization();

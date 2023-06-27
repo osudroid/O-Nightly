@@ -4,6 +4,7 @@ using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Class;
 using OsuDroidLib.Query;
+
 namespace OsuDroid.Controllers.Api;
 
 public sealed class CookieInfo : ControllerExtensions {
@@ -30,7 +31,7 @@ public sealed class CookieInfo : ControllerExtensions {
                 return NotFound();
 
             var userInfo = userInfoResult.Ok().Unwrap();
-            
+
             // TODO Check is Supporter
             return Ok(new ApiTypes.ViewExistOrFoundInfo<ViewUserInfo> {
                 ExistOrFound = true,
@@ -43,7 +44,6 @@ public sealed class CookieInfo : ControllerExtensions {
                     Username = userInfo.Username,
                     RegistTime = userInfo.RegisterTime,
                     RestrictMode = userInfo.RestrictMode,
-                     
                 }
             });
         }

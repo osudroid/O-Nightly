@@ -49,8 +49,8 @@ public static class InputCheckerAndConvert {
     /// <returns></returns>
     public static string TextFix(string str) {
         return str.Replace("\r", string.Empty)
-            .Replace("\n", string.Empty)
-            .Replace("\t", string.Empty);
+                  .Replace("\n", string.Empty)
+                  .Replace("\t", string.Empty);
     }
 
     public static string RemoveMultipleSpaces(string str) {
@@ -59,8 +59,8 @@ public static class InputCheckerAndConvert {
 
     public static string FilterBlankStr(string str) {
         return FilterBlankStrRegex2.Replace(FilterBlankStrRegex1.Replace(str.Trim(), string.Empty), "_")
-            .Replace(' ', '_')
-            .Replace('\'', '_')
-            .Replace('\"', '_');
+                                   .Replace(' ', '_')
+                                   .Replace('\'', '_')
+                                   .Replace('\"', '_');
     }
 }

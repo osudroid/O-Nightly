@@ -11,15 +11,15 @@ public static class Program {
         var loadResult = (await OsuDroidLib.Setting.LoadAsync());
         if (loadResult == EResult.Err)
             throw new Exception(loadResult.Err());
-     
+
         WriteLine("Create RankingTimeline Service");
 
         await ServiceManager<ServiceState>
-            .DefaultStetting()
-            .SetStateBuilder(Service.StateBuilder)
-            .AddFunction(Service.RunRankingTimeline)
-            .ExecuteFunctionAfter(TimeSpan.FromHours(1))
-            .SetFirstLoop(false)
-            .Run();
+              .DefaultStetting()
+              .SetStateBuilder(Service.StateBuilder)
+              .AddFunction(Service.RunRankingTimeline)
+              .ExecuteFunctionAfter(TimeSpan.FromHours(1))
+              .SetFirstLoop(false)
+              .Run();
     }
 }

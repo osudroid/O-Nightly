@@ -3,7 +3,7 @@ using OsuDroidLib.Class;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
 
-namespace OsuDroidLib.Query; 
+namespace OsuDroidLib.Query;
 
 public static class QueryPlayScorePreSubmit {
     /// <summary> INSERT NEW ROW RETURN WITH Id </summary>
@@ -12,7 +12,8 @@ public static class QueryPlayScorePreSubmit {
     /// <param name="filename"></param>
     /// <param name="fileHash"></param>
     /// <returns></returns>
-    public static async Task<Result<PlayScorePreSubmit, string>> PreAddScoreAsync(NpgsqlConnection db, long userId, string filename, string fileHash) {
+    public static async Task<Result<PlayScorePreSubmit, string>> PreAddScoreAsync(NpgsqlConnection db, long userId,
+        string filename, string fileHash) {
         var insert = new PlayScorePreSubmit {
             UserId = userId,
             Filename = filename,
@@ -33,8 +34,8 @@ WHERE UserId = @UserId
   AND Hash = @FileHash
 
 ";
-        
-        return (await db.SafeQuerySingleAsync<BoxLong>(sql, 
+
+        return (await db.SafeQuerySingleAsync<BoxLong>(sql,
                 new { UserId = userId, Filename = filename, FileHash = fileHash }))
             .Map(x => {
                 insert.PlayScoreId = x.Value;
@@ -52,11 +53,12 @@ SELECT * FROM PlayScorePreSubmit WHERE ScorePreSubmitId = @Id
         return await db.SafeQueryAsync(@$"
 DELETE 
 FROM PlayScorePreSubmit
-WHERE ScorePreSubmitId = { id }
+WHERE ScorePreSubmitId = {id}
 ");
     }
-    
-    public static async Task<ResultErr<string>> DeleteAllScoresPreSubmitByUserIdAsync(NpgsqlConnection db, long userId) {
+
+    public static async Task<ResultErr<string>>
+        DeleteAllScoresPreSubmitByUserIdAsync(NpgsqlConnection db, long userId) {
         return await db.SafeQueryAsync(@$"Delete FROM PlayScorePreSubmit WHERE UserId = {userId}");
     }
 }

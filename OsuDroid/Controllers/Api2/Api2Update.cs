@@ -31,13 +31,14 @@ public class Api2Update : ControllerExtensions {
                 break;
             }
 
-            if (wantFile is null && defaultFile is null) 
+            if (wantFile is null && defaultFile is null)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
 
             wantFile ??= defaultFile;
 
             return Ok(new ViewApiUpdateInfoV2 {
-                Changelog = await System.IO.File.ReadAllTextAsync($"{Setting.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
+                Changelog = await System.IO.File.ReadAllTextAsync(
+                    $"{Setting.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
                 VersionCode = dirNameNumber,
                 Link = $"https://{Setting.Domain_Name!.Value}/api2/apk/version/{dirNameNumber}.apk"
             });
@@ -50,6 +51,4 @@ public class Api2Update : ControllerExtensions {
             await dbT.CommitAsync();
         }
     }
-
-
 }

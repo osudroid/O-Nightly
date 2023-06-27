@@ -74,7 +74,7 @@ public sealed class Login : ControllerExtensions {
                 await log.AddLogDebugAsync("Post Prop Are Not Valid");
                 return await RollbackAndGetBadRequestAsync(dbT);
             }
-            
+
             var result = await log.AddResultAndTransformAsync(await ModelApiLogin.WebLoginWithUsername(
                 this,
                 db,
@@ -120,7 +120,7 @@ public sealed class Login : ControllerExtensions {
 
             var result = await log.AddResultAndTransformAsync(
                 await ModelApiLogin.WebRegisterAsync(this, db, DtoMapper.WebRegisterToDto(prop)));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
@@ -144,14 +144,14 @@ public sealed class Login : ControllerExtensions {
     [HttpGet("/api/weblogintoken")]
     [PrivilegeRoute(route: "/api/weblogintoken")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLoginToken))]
-    public async Task<IActionResult> WebLoginToken() { 
+    public async Task<IActionResult> WebLoginToken() {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
 
         try {
             var result = await log.AddResultAndTransformAsync(await ModelApiLogin.WebLoginTokenAsync(this, db));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
@@ -187,7 +187,7 @@ public sealed class Login : ControllerExtensions {
 
             var result = await log.AddResultAndTransformAsync(
                 await ModelApiLogin.WebUpdateCookieAsync(this, db, cookieInfo));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
@@ -209,7 +209,6 @@ public sealed class Login : ControllerExtensions {
     }
 
 
-
     [HttpPost("/api/webresetpasswdandsendemail")]
     [PrivilegeRoute(route: "/api/webresetpasswdandsendemail")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewResetPasswdAndSendEmail))]
@@ -226,16 +225,17 @@ public sealed class Login : ControllerExtensions {
                 return await RollbackAndGetBadRequestAsync(dbT);
             }
 
-            Option<IPAddress> optionIpAddress = Option<IPAddress>.Trim(await log.AddResultAndTransformAsync(GetIpAddress()));
+            Option<IPAddress> optionIpAddress =
+                Option<IPAddress>.Trim(await log.AddResultAndTransformAsync(GetIpAddress()));
             if (optionIpAddress.IsNotSet()) {
                 return await this.RollbackAndGetBadRequestAsync(dbT, "Can Not Get IP IS NEEDED");
             }
-                
+
             IPAddress ipAddress = optionIpAddress.Unwrap();
 
             var result = await log.AddResultAndTransformAsync(await ModelApiLogin.ResetPasswdAndSendEmailAsync(
                 this, db, DtoMapper.ResetPasswdAndSendEmailToDto(prop), ipAddress));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
@@ -274,7 +274,7 @@ public sealed class Login : ControllerExtensions {
 
             var result = await log.AddResultAndTransformAsync(await ModelApiLogin.SetNewPasswdAsync(
                 this, db, DtoMapper.SetNewPasswdToDto(prop.Body!)));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }

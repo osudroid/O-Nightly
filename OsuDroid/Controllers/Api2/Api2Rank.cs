@@ -26,13 +26,13 @@ public class Api2Rank : ControllerExtensions {
         try {
             if (prop.ValuesAreGood() == false)
                 return await RollbackAndGetBadRequestAsync(dbT, "Values Are Bad");
-            
+
             if (prop.HashValidate() == false)
                 return await RollbackAndGetBadRequestAsync(dbT, prop.PrintHashOrder());
-            
+
             var result = await log.AddResultAndTransformAsync(await ModelApi2Rank
                 .MapFileRankAsync(this, db, DtoMapper.Api2MapFileRankToDto(prop.Body!)));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
@@ -53,4 +53,3 @@ public class Api2Rank : ControllerExtensions {
         }
     }
 }
-

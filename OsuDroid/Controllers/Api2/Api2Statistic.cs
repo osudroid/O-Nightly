@@ -26,7 +26,7 @@ public class Api2Statistic : ControllerExtensions {
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
-            
+
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
                 EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
@@ -45,7 +45,8 @@ public class Api2Statistic : ControllerExtensions {
 
     [HttpGet("/api2/statistic/all-patreon")]
     [PrivilegeRoute(route: "/api2/statistic/all-patreon")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>))]
+    [ProducesResponseType(StatusCodes.Status200OK,
+        Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>))]
     public async Task<IActionResult> GetAllPatreon() {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
@@ -59,7 +60,7 @@ public class Api2Statistic : ControllerExtensions {
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
-            
+
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
                 EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),

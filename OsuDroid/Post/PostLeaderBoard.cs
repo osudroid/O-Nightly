@@ -1,4 +1,3 @@
-
 using OsuDroid.Utils;
 using OsuDroidLib.Lib;
 
@@ -24,7 +23,7 @@ public sealed class PostLeaderBoard : PostApi.IValuesAreGood, PostApi.ISingleStr
     public string ToSingleString() {
         return Merge.ObjectsToString(new object[] {
             Limit,
-            Region??""
+            Region ?? ""
         });
     }
 

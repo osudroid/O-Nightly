@@ -12,27 +12,27 @@ public static class Service {
     }
 
     public static Result<ServiceState, string> RunClean(ServiceState state) {
-
         WriteLine("Start Update Patreon");
-        
+
         var adapterPatreon = AdapterPatreon
-            .Adapt(new PatreonClient(Setting.Patreon_AccessToken!.Value))
-            .SetCaching(true)
-            .SetCachingTime(TimeSpan.FromMinutes(4))
-            .SetCanpaignId(Setting.Patreon_CampaignId!.Value.ToString())
-            .Use();
+                             .Adapt(new PatreonClient(Setting.Patreon_AccessToken!.Value))
+                             .SetCaching(true)
+                             .SetCachingTime(TimeSpan.FromMinutes(4))
+                             .SetCanpaignId(Setting.Patreon_CampaignId!.Value.ToString())
+                             .Use();
 
         var task = UpdatePatreonStatusLoop(adapterPatreon, DbBuilder.BuildNpgsqlConnection().GetAwaiter().GetResult());
         task.Wait();
         var resp = task.Result;
         WriteLine($"Finish Update Patreon (Status: Work = {resp == EResult.Ok})");
-        
-        return resp == EResult.Ok 
-            ? Result<ServiceState, string>.Ok(state) 
+
+        return resp == EResult.Ok
+            ? Result<ServiceState, string>.Ok(state)
             : Result<ServiceState, string>.Err(resp.Err());
     }
 
-    private static async Task<ResultErr<string>> UpdatePatreonStatusLoop(IAdapterPatreon adapterPatreon, NpgsqlConnection db) {
+    private static async Task<ResultErr<string>> UpdatePatreonStatusLoop(IAdapterPatreon adapterPatreon,
+        NpgsqlConnection db) {
         var emailsActivePatronEmails = await adapterPatreon.GetOnlyActivePatronEmails();
 
 #if DEBUG

@@ -1,4 +1,4 @@
-namespace OsuDroidLib.Query; 
+namespace OsuDroidLib.Query;
 
 public class BblScoreWithUsernameDto {
     public required long PlayScoreId { get; init; }

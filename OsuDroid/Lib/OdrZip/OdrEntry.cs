@@ -7,7 +7,6 @@ public class OdrEntry {
     public OdrReplay? Replay { get; set; }
 
     public static OdrEntry Factory(PlayScore playScore, string username) {
-        
         return new OdrEntry {
             Version = 1,
             Replay = new OdrReplay {

@@ -10,18 +10,19 @@ public sealed class PostWebRegister : Api2.IValuesAreGood, Api2.ISingleString {
     public string? Region { get; set; }
     public string? Passwd { get; set; }
     public string? Username { get; set; }
+
     public bool ValuesAreGood() {
         throw new NotImplementedException();
     }
 
     public string ToSingleString() {
         return Merge.ListToString(new[] {
-            Email??"",
+            Email ?? "",
             MathRes.ToString(),
             MathToken.ToString(),
-            Region??"",
-            Passwd??"",
-            Username??"",
+            Region ?? "",
+            Passwd ?? "",
+            Username ?? "",
         });
     }
 }

@@ -19,7 +19,6 @@ public static class PlayRecent {
         string orderBy,
         int limit,
         int startAt) {
-
         return (await Query.PlayRecentFilterByAsync(
             db,
             filterPlays,
@@ -27,6 +26,4 @@ public static class PlayRecent {
             limit,
             startAt)).Map(x => x.ToList());
     }
-
-
 }

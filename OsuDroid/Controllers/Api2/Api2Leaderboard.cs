@@ -15,7 +15,8 @@ namespace OsuDroid.Controllers.Api2;
 public class Api2Leaderboard : ControllerExtensions {
     [HttpPost("/api2/leaderboard")]
     [PrivilegeRoute(route: "/api2/leaderboard")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>))]
+    [ProducesResponseType(StatusCodes.Status200OK,
+        Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetLeaderBoard([FromBody] PostApi.PostApi2GroundNoHeader<PostLeaderBoard> prop) {
         await using var start = await GetStartAsync();
@@ -27,10 +28,10 @@ public class Api2Leaderboard : ControllerExtensions {
                 return await RollbackAndGetBadRequestAsync(dbT);
             }
 
-            
+
             var result = await log.AddResultAndTransformAsync(await ModelLeaderBoard.GetLeaderBoardAsync(
                 this, db, DtoMapper.LeaderBoardToDto(prop.Body!)));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
@@ -55,19 +56,20 @@ public class Api2Leaderboard : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/leaderboard/user")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewLeaderBoardUser>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetUserLeaderBoardRank([FromBody] PostApi.PostApi2GroundNoHeader<PostLeaderBoardUser> prop) {
+    public async Task<IActionResult> GetUserLeaderBoardRank(
+        [FromBody] PostApi.PostApi2GroundNoHeader<PostLeaderBoardUser> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
 
         // TODO Hier weiter
-        
+
         try {
             if (prop.ValuesAreGood() == false)
                 return await RollbackAndGetBadRequestAsync(dbT);
 
             var rep = ((await log.AddResultAndTransformAsync(
-                await LeaderBoard.UserAsync(db, prop.Body!.UserId))).OkOr(Option<LeaderBoardUser>.Empty))
+                    await LeaderBoard.UserAsync(db, prop.Body!.UserId))).OkOr(Option<LeaderBoardUser>.Empty))
                 .Map(ViewLeaderBoardUser.FromLeaderBoardUser);
 
             return Ok(rep.IsSet() == false
@@ -85,13 +87,15 @@ public class Api2Leaderboard : ControllerExtensions {
 
     [HttpPost("/api2/leaderboard/search-user")]
     [PrivilegeRoute(route: "/api2/leaderboard/search-user")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>))]
+    [ProducesResponseType(StatusCodes.Status200OK,
+        Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetUserLeaderBoardRank([FromBody] PostApi.PostApi2GroundNoHeader<PostLeaderBoardSearchUser> prop) {
+    public async Task<IActionResult> GetUserLeaderBoardRank(
+        [FromBody] PostApi.PostApi2GroundNoHeader<PostLeaderBoardSearchUser> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-       
+
         try {
             if (prop.ValuesAreGood() == false)
                 return await RollbackAndGetBadRequestAsync(dbT);
@@ -100,7 +104,7 @@ public class Api2Leaderboard : ControllerExtensions {
 
             var result = await log.AddResultAndTransformAsync(await ModelLeaderBoard.GetUserLeaderBoardRank(
                 this, db, log, DtoMapper.LeaderBoardSearchUserToDto(prop.Body!)));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }

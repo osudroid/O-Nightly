@@ -31,7 +31,7 @@ public class Api2Avatar : ControllerExtensions {
                 return NotFound();
 
             var userAvatar = resultUserAvatar.Ok().Unwrap();
-            
+
             var mem = new MemoryStream(userAvatar.Bytes!);
             return File(mem, $"image/{userAvatar.TypeExt}");
         }
@@ -55,16 +55,16 @@ public class Api2Avatar : ControllerExtensions {
 
         try {
             var result = await log.AddResultAndTransformAsync(
-                await UserAvatarHandler.GetByHashAsync(db, hash??""));
-            
+                await UserAvatarHandler.GetByHashAsync(db, hash ?? ""));
+
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
-            
+
             if (result.Ok().IsNotSet())
                 return NotFound();
 
             var avatar = result.Ok().Unwrap();
-            
+
             return File(avatar.Bytes!, $"image/{avatar.TypeExt}");
         }
         catch (Exception e) {
@@ -80,7 +80,8 @@ public class Api2Avatar : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/avatar/hash")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewAvatarHashes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> AvatarHashesByUserIds([FromBody] PostApi.PostApi2GroundNoHeader<PostAvatarHashesByUserIds> prop) {
+    public async Task<IActionResult> AvatarHashesByUserIds(
+        [FromBody] PostApi.PostApi2GroundNoHeader<PostAvatarHashesByUserIds> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -88,10 +89,10 @@ public class Api2Avatar : ControllerExtensions {
         try {
             if (prop.ValuesAreGood() == false)
                 return BadRequest();
-            
+
             var result = await log.AddResultAndTransformAsync(await ModelApi2Avatar.AvatarHashesByUserIdsAsync(
                 this, db, DtoMapper.AvatarHashesByUserIdsToDto(prop.Body!)));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }

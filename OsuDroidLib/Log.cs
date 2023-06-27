@@ -4,14 +4,14 @@ using Npgsql;
 using OsuDroidLib.Database;
 using OsuDroidLib.Extension;
 
-namespace OsuDroidLib; 
+namespace OsuDroidLib;
 
 public static class Log {
     private static bool _settingsSet = false;
+
     public static LamLogger.LamLog GetLog(NpgsqlConnection db) {
-        
         if (_settingsSet == false) {
-            LamLog.Settings = new () {
+            LamLog.Settings = new() {
                 DbTable = Setting.Log_DbName!.Value,
                 LazyDbPrint = true,
                 LazyTextWriterPrint = false,
@@ -33,7 +33,7 @@ INSERT INTO {LamLog.Settings.DbTable}
     (Id, DateTime, Message, Status, Stack, Trigger)
 VALUES ('{log.DateUuid.ToString()}', @DateTime, @Message, @Status, @Stack, @Trigger)
 ";
-                    
+
                     await db.QueryAsync(sql, new {
                         DateTime = DateTime.SpecifyKind(log.DateTime, DateTimeKind.Utc),
                         Message = log.Message ?? "",
@@ -48,7 +48,7 @@ VALUES ('{log.DateUuid.ToString()}', @DateTime, @Message, @Status, @Stack, @Trig
                 }
             }
         }
-        
+
         return new LamLog(Option<Func<LamLogTable[], Task>>.With(InsertAsync));
     }
 }

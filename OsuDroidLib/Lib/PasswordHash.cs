@@ -1,4 +1,4 @@
-namespace OsuDroidLib.Lib; 
+namespace OsuDroidLib.Lib;
 
 public static class PasswordHash {
     public static bool IsBCryptHash(string hash) {
@@ -20,7 +20,7 @@ public static class PasswordHash {
     }
 
     public static Result<bool, string> IsRightPassword(string password, string hashFromDb) {
-        if (IsBCryptHash(hashFromDb)) { 
+        if (IsBCryptHash(hashFromDb)) {
             return Result<bool, string>.Ok(BCrypt.Net.BCrypt.Verify(password, hashFromDb));
         }
 

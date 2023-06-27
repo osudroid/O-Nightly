@@ -5,7 +5,7 @@ using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Dto;
 using OsuDroidLib.Extension;
 
-namespace OsuDroidLib.Query; 
+namespace OsuDroidLib.Query;
 
 public static class QueryUserStats {
     public static async Task<Result<long, string>> GetUserRank(NpgsqlConnection db, long userId) {
@@ -23,13 +23,13 @@ WHERE UserId = {userId};
 
     public static async Task<ResultErr<string>> InsertAsync(NpgsqlConnection db, UserStats userStats) {
         return await db.SafeInsertAsync(userStats);
-    } 
-    
+    }
+
     public static async Task<ResultErr<string>> UpdateStatsFromScoreAsync(
         NpgsqlConnection db, long userId, PlayScoreDto now, PlayScoreDto? old = null) {
         var dif = old is null ? now : now - old;
         var playcount = old is null ? 1 : 0;
-        
+
         return await db.SafeQueryAsync(@$"
 UPDATE UserStats 
 SET
@@ -55,9 +55,8 @@ SET
 WHERE USERID = {userId}
 ");
     }
-    
-    
-    
+
+
     public static async Task<Result<Option<UserStats>, string>> GetBblUserStatsByUserIdAsync(
         NpgsqlConnection db, long userId) {
         return await db.SafeQueryFirstOrDefaultAsync<UserStats>(@$"
@@ -69,7 +68,6 @@ SELECT * FROM UserStats
 
     public static async Task<Result<IEnumerable<LeaderBoardUser>, string>> LeaderBoardFilterCountry(
         NpgsqlConnection db, int limit, string countryNameShort) {
-        
         var sql = @$"
 SELECT rank() OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as RankNumber, 
        bu.UserId as UserId,
@@ -95,7 +93,6 @@ LIMIT {limit};
 
     public static async Task<Result<Option<LeaderBoardUser>, string>> LeaderBoardUserRank(
         NpgsqlConnection db, long userId) {
-        
         var sql = @"
 SELECT UserId,
        RankNumber,
@@ -121,7 +118,6 @@ WHERE xx.UserId = @0
 
     public static async Task<Result<IEnumerable<LeaderBoardUser>, string>> LeaderBoardNoFilter(
         NpgsqlConnection db, int limit) {
-
         var sql = @$"
 SELECT rank() OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as RankNumber, 
        bu.UserId as UserId,
@@ -144,7 +140,6 @@ LIMIT {limit};
 
     public static async Task<Result<IEnumerable<LeaderBoardUser>, string>> LeaderBoardSearchUser(
         NpgsqlConnection db, long limit, string query) {
-
         var sql = @$"
 SELECT RankNumber,
        bu.UserId as UserId,
@@ -169,10 +164,9 @@ LIMIT {limit}
 ";
         return await db.SafeQueryAsync<LeaderBoardUser>(sql, new { Query = query });
     }
-    
+
     public static async Task<Result<IEnumerable<LeaderBoardUser>, string>> LeaderBoardSearchUser(
         NpgsqlConnection db, long limit, string query, string countryNameShortInfo) {
-
         var sql = @$"
 SELECT RankNumber,
        bu.UserId as UserId,

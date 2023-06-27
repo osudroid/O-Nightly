@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Patreon.NET; 
+namespace Patreon.NET;
 
 public sealed class Tier {
     [JsonProperty(PropertyName = "type")] public string? Type { get; set; }

@@ -4,18 +4,18 @@ using OsuDroid.Class;
 using OsuDroid.Class.Dto;
 using OsuDroid.Extensions;
 
-namespace OsuDroid.Model; 
+namespace OsuDroid.Model;
 
 public static class ModelLeaderBoard {
-    public static async Task<Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>, string>> 
+    public static async Task<Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>, string>>
         GetLeaderBoardAsync(ControllerExtensions controller, NpgsqlConnection db, LeaderBoardDto leaderBoard) {
-        
         var allRegion = leaderBoard.IsRegionAll();
         Result<List<ViewLeaderBoardUser>, string> rep;
-        
+
         switch (allRegion) {
             case true:
-                rep = (await LeaderBoard.AnyRegionAsync(db, leaderBoard.Limit)).Map(x => x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
+                rep = (await LeaderBoard.AnyRegionAsync(db, leaderBoard.Limit)).Map(x =>
+                    x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
                 break;
             default: {
                 var countyRep = leaderBoard.GetRegionAsCountry();
@@ -24,7 +24,8 @@ public static class ModelLeaderBoard {
                         .Ok(ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>.BadRequest());
                 }
 
-                rep = (await LeaderBoard.FilterRegionAsync(db, leaderBoard.Limit, countyRep.Unwrap())).Map(x => x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
+                rep = (await LeaderBoard.FilterRegionAsync(db, leaderBoard.Limit, countyRep.Unwrap())).Map(x =>
+                    x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
                 break;
             }
         }
@@ -36,15 +37,14 @@ public static class ModelLeaderBoard {
                     : ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.Ok())));
     }
 
-    public static async Task<Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>, string>> 
+    public static async Task<Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>, string>>
         GetUserLeaderBoardRank(
-            ControllerExtensions controller, 
-            NpgsqlConnection db, 
+            ControllerExtensions controller,
+            NpgsqlConnection db,
             LamLog log,
             LeaderBoardSearchUserDto leaderBoardSearch) {
-
         var search = leaderBoardSearch;
-        
+
         ResultOk<List<ViewLeaderBoardUser>> rep = (leaderBoardSearch.IsRegionAll() switch {
             true => await log.AddResultAndTransformAsync(await LeaderBoard
                 .SearchUserAsync(db, search.Limit, search.Query)),

@@ -8,32 +8,32 @@
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
-        <PackageReference Include="Dapper" Version="2.0.123" />
-        <PackageReference Include="Dapper.Contrib" Version="2.0.78" />
-        <PackageReference Include="Enums.NET" Version="4.0.1" />
-        <PackageReference Include="LamLibAllOver" Version="2.13.0" />
-        <PackageReference Include="LamLogger" Version="1.1.3" />
-        <PackageReference Include="MaxMind.GeoIP2" Version="5.1.0" />
-        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0-preview.5.23280.8" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0-preview.5.23280.8" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0-preview.5.23280.8" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="8.0.0-preview.5.23280.8" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0-preview.5.23280.8" />
-        <PackageReference Include="NetEscapades.EnumGenerators" Version="1.0.0-beta07" />
-        <PackageReference Include="Npgsql" Version="8.0.0-preview.4" />
-        <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1" />
+        <PackageReference Include="BCrypt.Net-Next" Version="4.0.3"/>
+        <PackageReference Include="Dapper" Version="2.0.123"/>
+        <PackageReference Include="Dapper.Contrib" Version="2.0.78"/>
+        <PackageReference Include="Enums.NET" Version="4.0.1"/>
+        <PackageReference Include="LamLibAllOver" Version="2.13.0"/>
+        <PackageReference Include="LamLogger" Version="1.1.3"/>
+        <PackageReference Include="MaxMind.GeoIP2" Version="5.1.0"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0-preview.5.23280.8"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0-preview.5.23280.8"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0-preview.5.23280.8"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="8.0.0-preview.5.23280.8"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0-preview.5.23280.8"/>
+        <PackageReference Include="NetEscapades.EnumGenerators" Version="1.0.0-beta07"/>
+        <PackageReference Include="Npgsql" Version="8.0.0-preview.4"/>
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Patreon.NET\Patreon.NET.csproj" />
+        <ProjectReference Include="..\Patreon.NET\Patreon.NET.csproj"/>
     </ItemGroup>
 </Project>

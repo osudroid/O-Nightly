@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Patreon.NET; 
+namespace Patreon.NET;
 
 public sealed class Links {
     [JsonProperty(PropertyName = "first")] public string? First { get; set; }

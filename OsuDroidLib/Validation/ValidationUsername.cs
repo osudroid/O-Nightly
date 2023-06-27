@@ -1,4 +1,4 @@
-namespace OsuDroidLib.Validation; 
+namespace OsuDroidLib.Validation;
 
 public class ValidationUsername {
     public static bool Validation(string? username) {

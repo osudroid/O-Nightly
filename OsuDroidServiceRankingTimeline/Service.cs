@@ -16,14 +16,13 @@ public static class Service {
             throw new NullReferenceException(nameof(db));
         WriteLine("Finish Calc New Ranking Timeline");
         ResultErr<string> resultErr = Run(db).GetAwaiter().GetResult();
-        
-        return resultErr == EResult.Err 
-            ? Result<ServiceState, string>.Err(resultErr.Err()) 
+
+        return resultErr == EResult.Err
+            ? Result<ServiceState, string>.Err(resultErr.Err())
             : Result<ServiceState, string>.Ok(state);
     }
 
     private static async Task<List<DateTime>> GetCalcDays(NpgsqlConnection db) {
-        
         var lastTimeVResult = await db.SafeQueryFirstOrDefaultAsync<GlobalRankingTimeline>(
             "SELECT * FROM GlobalRankingTimeline ORDER BY date DESC LIMIT 1");
         var firstScoreResult = await db.SafeQueryFirstOrDefaultAsync<PlayScore>(
@@ -33,7 +32,7 @@ public static class Service {
             WriteLine(lastTimeVResult.Err());
             return new List<DateTime>(0);
         }
-        
+
         if (firstScoreResult == EResult.Err) {
             WriteLine(lastTimeVResult.Err());
             return new List<DateTime>(0);
@@ -41,9 +40,9 @@ public static class Service {
 
         var lastTimeVOption = lastTimeVResult.Ok();
         var firstScoreOption = firstScoreResult.Ok();
-        
+
         if (lastTimeVOption.IsNotSet() && firstScoreOption.IsNotSet()) return new List<DateTime>(0);
-        
+
         DateTime startDate;
 
         if (lastTimeVOption.IsNotSet()) {
@@ -78,8 +77,9 @@ public static class Service {
             WriteLine("( END   ) ADD New GlobalTimeLine For: " + Time.ToScyllaString(dateTime));
             WriteLine($"Response Ok: {response == EResult.Err}");
             if (response == EResult.Err) {
-                WriteLine($"Response Message: " +response.Err() );
+                WriteLine($"Response Message: " + response.Err());
             }
+
             return response;
         }
 

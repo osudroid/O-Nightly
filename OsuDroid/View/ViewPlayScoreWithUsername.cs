@@ -1,4 +1,4 @@
-namespace OsuDroid.Class; 
+namespace OsuDroid.Class;
 
 public class ViewPlayScoreWithUsername {
     public long PlayScoreId { get; set; }
@@ -15,11 +15,12 @@ public class ViewPlayScoreWithUsername {
     public long Good { get; set; }
     public long Bad { get; set; }
     public long Miss { get; set; }
-    public DateTime Date { get; set; } 
+    public DateTime Date { get; set; }
     public long Accuracy { get; set; }
     public string? Username { get; set; }
 
-    public static ViewPlayScoreWithUsername FromPlayScoreWithUsername(Entities.PlayScoreWithUsername playScoreWithUsername) {
+    public static ViewPlayScoreWithUsername FromPlayScoreWithUsername(
+        Entities.PlayScoreWithUsername playScoreWithUsername) {
         return new() {
             PlayScoreId = playScoreWithUsername.PlayScoreId,
             UserId = playScoreWithUsername.UserId,

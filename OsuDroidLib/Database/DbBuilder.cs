@@ -5,15 +5,15 @@ namespace OsuDroidLib.Database;
 
 public static class DbBuilder {
     public static string? NpgsqlConnectionString;
-    
+
     public static async Task<NpgsqlConnection> BuildNpgsqlConnection() {
         NpgsqlConnectionString ??= CreateNpgsqlConnectionString();
-        
+
         var con = new NpgsqlConnection(NpgsqlConnectionString);
         await con.OpenAsync();
         return con;
     }
-    
+
     private static string CreateNpgsqlConnectionString() {
         var ip = Setting.CrDbIpv4;
         var port = Convert.ToInt32(Setting.CrDbPortStr);

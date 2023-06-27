@@ -4,7 +4,8 @@ using OsuDroidLib.Lib;
 namespace OsuDroid.Post;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class PostLeaderBoardSearchUser : PostApi.IValuesAreGood, PostApi.ISingleString, PostApi.IPrintHashOrder, ILogRequestJsonPrint {
+public sealed class PostLeaderBoardSearchUser : PostApi.IValuesAreGood, PostApi.ISingleString, PostApi.IPrintHashOrder,
+                                                ILogRequestJsonPrint {
     private string? _region;
     public long Limit { get; set; }
     public string? Query { get; set; }
@@ -43,6 +44,4 @@ public sealed class PostLeaderBoardSearchUser : PostApi.IValuesAreGood, PostApi.
     public bool IsRegionAll() {
         return Region == "all";
     }
-
-
 }

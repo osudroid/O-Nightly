@@ -17,7 +17,8 @@ public class Api2Login : ControllerExtensions {
     [HttpPost("/api2/token-create")]
     [PrivilegeRoute(route: "/api2/token-create")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewCreateApi2TokenResult))]
-    public async Task<IActionResult> CreateApi2TokenAsync([FromBody] PostApi.PostApi2GroundNoHeader<PostCreateApi2Token> prop) {
+    public async Task<IActionResult> CreateApi2TokenAsync(
+        [FromBody] PostApi.PostApi2GroundNoHeader<PostCreateApi2Token> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -33,7 +34,7 @@ public class Api2Login : ControllerExtensions {
 
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
-            
+
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
                 EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
@@ -54,7 +55,8 @@ public class Api2Login : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/token-refresh")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> RefreshApi2TokenAsync([FromBody] PostApi.PostApi2GroundNoHeader<PostSimpleToken> prop) {
+    public async Task<IActionResult> RefreshApi2TokenAsync(
+        [FromBody] PostApi.PostApi2GroundNoHeader<PostSimpleToken> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -64,13 +66,13 @@ public class Api2Login : ControllerExtensions {
                 await log.AddLogDebugAsync("Post Prop Are Bad");
                 return await RollbackAndGetBadRequestAsync(dbT);
             }
-            
+
             var result = await log.AddResultAndTransformAsync(await ModelApi2Login
                 .RefreshApi2TokenAsync(this, db, log, DtoMapper.SimpleTokenToDto(prop.Body!)));
 
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
-            
+
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
                 EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
@@ -102,13 +104,13 @@ public class Api2Login : ControllerExtensions {
             }
 
             var body = prop.Body!;
-            
+
             var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
             var resultErr = await log.AddResultAndTransformAsync<ResultErr<string>>(await tokenHandler
                 .RemoveTokenAsync(db, body.Token));
 
-            return Ok(resultErr == EResult.Err 
-                ? new ApiTypes.ViewWork { HasWork = false } 
+            return Ok(resultErr == EResult.Err
+                ? new ApiTypes.ViewWork { HasWork = false }
                 : new ApiTypes.ViewWork { HasWork = true });
         }
         catch (Exception e) {
@@ -136,12 +138,15 @@ public class Api2Login : ControllerExtensions {
             }
 
             var body = prop.Body!;
-            
+
             var tokenHandler = TokenHandlerManger.GetOrCreateCacheDatabase();
-            var optionResp = (await log.AddResultAndTransformAsync(await tokenHandler.GetTokenInfoAsync(db, body.Token))).OkOr(Option<TokenInfo>.Empty);
+            var optionResp =
+                (await log.AddResultAndTransformAsync(await tokenHandler.GetTokenInfoAsync(db, body.Token))).OkOr(
+                    Option<TokenInfo>.Empty);
             return optionResp.IsSet() == false
                 ? Ok(new ApiTypes.ViewExistOrFoundInfo<long> { Value = -1, ExistOrFound = false })
-                : Ok(new ApiTypes.ViewExistOrFoundInfo<long> { Value = optionResp.Unwrap().UserId, ExistOrFound = true });
+                : Ok(new ApiTypes.ViewExistOrFoundInfo<long>
+                    { Value = optionResp.Unwrap().UserId, ExistOrFound = true });
         }
         catch (Exception e) {
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));

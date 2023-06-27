@@ -1,4 +1,3 @@
-
 using OsuDroid.Lib.Validate;
 using OsuDroidLib.Validation;
 
@@ -9,18 +8,19 @@ public sealed class PostUpdatePatreonEmail : Api2.IValuesAreGood, Api2.ISingleSt
     public string? Email { get; set; }
     public string? Passwd { get; set; }
     public string? Username { get; set; }
+
     public bool ValuesAreGood() {
-        return ValidationEmail.Validation(Email) 
-               && ValidationPassword.ValidationOldVersion(Passwd) 
+        return ValidationEmail.Validation(Email)
+               && ValidationPassword.ValidationOldVersion(Passwd)
                && ValidationUsername.Validation(Username)
             ;
     }
 
     public string ToSingleString() {
         return Merge.ListToString(new string[] {
-            Email??"",
-            Passwd??"",
-            Username??"",
+            Email ?? "",
+            Passwd ?? "",
+            Username ?? "",
         });
     }
 }

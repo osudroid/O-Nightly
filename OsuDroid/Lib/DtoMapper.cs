@@ -2,14 +2,17 @@ using OsuDroid.Class.Dto;
 using OsuDroid.Post;
 using Riok.Mapperly.Abstractions;
 
-namespace OsuDroid.Lib; 
+namespace OsuDroid.Lib;
 
 [Mapper]
 public static partial class DtoMapper {
     public static partial Api2MapFileRankDto Api2MapFileRankToDto(PostApi2MapFileRank post);
     public static partial Api2PlayByIdDto Api2PlayByIdToDto(PostApi2PlayById post);
     public static partial Api2UploadReplayFileDto Api2UploadReplayFileToDto(PostApi2UploadReplayFile post);
-    public static partial Api2UploadReplayFilePropAsFormWrapperDto Api2UploadReplayFilePropAsFormWrapperToDto(PostApi2UploadReplayFilePropAsFormWrapper post);
+
+    public static partial Api2UploadReplayFilePropAsFormWrapperDto Api2UploadReplayFilePropAsFormWrapperToDto(
+        PostApi2UploadReplayFilePropAsFormWrapper post);
+
     public static partial AvatarHashesByUserIdsDto AvatarHashesByUserIdsToDto(PostAvatarHashesByUserIds post);
     public static partial CreateApi2TokenDto CreateApi2TokenToDto(PostCreateApi2Token post);
     public static partial CreateDropAccountTokenDto CreateDropAccountTokenToDto(PostCreateDropAccountToken post);
@@ -30,11 +33,14 @@ public static partial class DtoMapper {
     public static partial WebLoginDto WebLoginToDto(PostWebLogin post);
     public static partial WebLoginWithUsernameDto WebLoginWithUsernameToDto(PostWebLoginWithUsername post);
     public static partial WebRegisterDto WebRegisterToDto(PostWebRegister post);
-    
+
     public static partial Api2MapFileRankDto Api2MapFileRankToPost(Api2MapFileRankDto dto);
     public static partial Api2PlayByIdDto Api2PlayByIdToPost(Api2PlayByIdDto dto);
     public static partial Api2UploadReplayFileDto Api2UploadReplayFileToPost(Api2UploadReplayFileDto dto);
-    public static partial Api2UploadReplayFilePropAsFormWrapperDto Api2UploadReplayFilePropAsFormWrapperToPost(Api2UploadReplayFilePropAsFormWrapperDto dto);
+
+    public static partial Api2UploadReplayFilePropAsFormWrapperDto Api2UploadReplayFilePropAsFormWrapperToPost(
+        Api2UploadReplayFilePropAsFormWrapperDto dto);
+
     public static partial AvatarHashesByUserIdsDto AvatarHashesByUserIdsToPost(AvatarHashesByUserIdsDto dto);
     public static partial CreateApi2TokenDto CreateApi2TokenToPost(CreateApi2TokenDto dto);
     public static partial CreateDropAccountTokenDto CreateDropAccountTokenToPost(CreateDropAccountTokenDto dto);

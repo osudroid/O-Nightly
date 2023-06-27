@@ -17,7 +17,7 @@ public static class FullRecalcUserRankingTimeline {
         UserInfo[] userList;
 
         await using var mainDb = await DbBuilder.BuildNpgsqlConnection();
-        
+
         WriteLine("Start FullRecalcUserRankingTimeline");
         WriteLine("DELETE Old Values");
         var dateStr = $"{startDate.Year}-{startDate.Month}-{startDate.Day}";
@@ -25,13 +25,12 @@ public static class FullRecalcUserRankingTimeline {
 DELETE FROM public.GlobalRankingTimeline
 WHERE date >= '{dateStr}' 
 ");
-        
-        
+
+
         WriteLine("Get ALl User");
         userList = (await mainDb.SafeQueryAsync<UserInfo>(
             "SELECT UserId, RegisterTime FROM UserInfo ORDER BY RegisterTime ASC")).Ok().ToArray();
 
-            
 
         foreach (var bblUser in userList) scoreMapKeyUser.Add(bblUser.UserId, new List<PlayScore>(128));
 
@@ -45,14 +44,13 @@ WHERE date >= '{dateStr}'
         GC.Collect();
 
         var now = DateTime.UtcNow;
-        var endDate = new DateTime(now.Year, now.Month, now.Day, 0,0,0, System.DateTimeKind.Utc);
-        
+        var endDate = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, System.DateTimeKind.Utc);
+
         while (iter <= endDate) {
             dates.Add(iter.Date);
             iter = iter.AddDays(1);
         }
 
-      
 
         StrongBox<long> countCountBox = new(0);
 
@@ -66,11 +64,12 @@ WHERE date >= '{dateStr}'
                     $"FROM: {dates.Count} AT: {count} | Insert Values For: Y{i.Year} M{i.Month} D{i.Day} Start");
                 using var db = DbBuilder.BuildNpgsqlConnection().GetAwaiter().GetResult();
 
-                
+
                 var lines = String.Join(
                     ", ",
-                    timeLineArr.Select(x => $"({x.UserId}, {Time.ToScyllaString(x.Date)}, {x.GlobalRanking}, {x.Score})")
-                    );
+                    timeLineArr.Select(
+                        x => $"({x.UserId}, {Time.ToScyllaString(x.Date)}, {x.GlobalRanking}, {x.Score})")
+                );
                 db.QueryAsync(@$"
 INSERT INTO GlobalRankingTimeline
 (Userid, Date, Globalranking, Score) 
@@ -83,8 +82,9 @@ VALUES
                 throw;
             }
         }
-        
-        Parallel.For(0, dates.Count, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount + 2 }, MultiIter);
+
+        Parallel.For(0, dates.Count, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount + 2 },
+            MultiIter);
     }
 
     private static GlobalRankingTimeline[] GetFullRecalcUserRankingTimelineForThisDay(

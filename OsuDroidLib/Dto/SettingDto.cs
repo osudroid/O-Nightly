@@ -12,17 +12,16 @@ public record SettingDto<T>(ESettingMainKey SettingMainKey, ESettingSubKey Setti
     }
 
 
-
     public static Result<SettingDto<string>, string> FromSetting(Database.Entities.Setting setting) {
-        if (ESettingMainKeyExtensions.TryParse(setting.MainKey, out var mainKey) == false) 
+        if (ESettingMainKeyExtensions.TryParse(setting.MainKey, out var mainKey) == false)
             return Result<SettingDto<string>, string>.Err(
                 TraceMsg.WithMessage($"TryParse MainKey: '{setting.MainKey}'"));
-        if (ESettingSubKeyExtensions.TryParse(setting.SubKey, out var subKey) == false) 
+        if (ESettingSubKeyExtensions.TryParse(setting.SubKey, out var subKey) == false)
             return Result<SettingDto<string>, string>.Err(
                 TraceMsg.WithMessage($"TryParse SubKey: '{setting.SubKey}'"));
         if (setting.Value is null)
             return Result<SettingDto<string>, string>.Err(TraceMsg.WithMessage($"TryParse Value is null"));
-        
+
         return Result<SettingDto<string>, string>.Ok(new SettingDto<string>(mainKey, subKey, setting.Value));
     }
 }

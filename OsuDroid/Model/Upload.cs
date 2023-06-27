@@ -12,36 +12,35 @@ public static class Upload {
         long userId,
         IFormFile odrApiStream
     ) {
-        
         var resultMap = await QueryPlayScore.GetPlayScoreByIdAndUserIdAsync(db, replayId, userId);
 
         if (resultMap == EResult.Err)
             return Result<ApiTypes.ViewWork, string>.Err(resultMap.Err());
 
         var optionMap = resultMap.Ok();
-        
+
         if (optionMap.IsSet() == false)
             return Result<ApiTypes.ViewWork, string>.Err(TraceMsg.WithMessage("Map Not Found"));
 
         var map = optionMap.Unwrap();
-        
-        
+
+
         var resultOldesMap = await QueryPlayScore.GetPlayScoreOldesByUserIdAndHashAsync(db, userId, mapHash);
 
         if (resultOldesMap == EResult.Err)
             return Result<ApiTypes.ViewWork, string>.Err(resultOldesMap.Err());
 
         var optionOldesMap = resultOldesMap.Ok();
-        
+
         if (optionOldesMap.IsSet() == false)
             return Result<ApiTypes.ViewWork, string>.Err(TraceMsg.WithMessage("Map Not Found"));
 
         var oldesMap = optionOldesMap.Unwrap();
-        
+
         if (oldesMap.PlayScoreId != map.PlayScoreId)
             return Result<ApiTypes.ViewWork, string>.Err(TraceMsg.WithMessage("Id Miss Match"));
 
-        
+
         if (File.Exists($"{Setting.ReplayPath}/{oldesMap.PlayScoreId}.odr"))
             return Result<ApiTypes.ViewWork, string>.Err("Not Allowed");
 

@@ -1,28 +1,29 @@
 using System.Numerics;
 using NetEscapades.EnumGenerators;
 using OsuDroidLib.Database.Entities;
+
 // ReSharper disable All
 
-namespace OsuDroidLib.Dto; 
+namespace OsuDroidLib.Dto;
 
 public class PlayScoreDto {
-    public required long PlayScoreId  { get; init; }
-    public required long UserId   { get; init; }
+    public required long PlayScoreId { get; init; }
+    public required long UserId { get; init; }
     public required string Filename { get; init; }
-    public required string Hash     { get; init; }
-    public required string[] Mode     { get; init; }
-    public required long Score    { get; init; }
-    public required long Combo    { get; init; }
+    public required string Hash { get; init; }
+    public required string[] Mode { get; init; }
+    public required long Score { get; init; }
+    public required long Combo { get; init; }
     public required EPlayScoreMark Mark { get; init; }
-    public required long Geki     { get; init; }
-    public required long Perfect  { get; init; }
-    public required long Katu     { get; init; }
-    public required long Good     { get; init; }
-    public required long Bad      { get; init; }
-    public required long Miss     { get; init; }
-    public required DateTime Date     { get; init; } 
+    public required long Geki { get; init; }
+    public required long Perfect { get; init; }
+    public required long Katu { get; init; }
+    public required long Good { get; init; }
+    public required long Bad { get; init; }
+    public required long Miss { get; init; }
+    public required DateTime Date { get; init; }
     public required long Accuracy { get; init; }
-    
+
     [EnumExtensions]
     public enum EPlayScore {
         Geki,
@@ -67,7 +68,6 @@ public class PlayScoreDto {
             _ => throw new ArgumentOutOfRangeException(nameof(ePlayScore), ePlayScore, null)
         };
     }
-
 
 
     public static PlayScoreDto operator -(PlayScoreDto newVal, PlayScoreDto oldVal) {
@@ -123,18 +123,17 @@ public class PlayScoreDto {
             _ => null
         };
     }
-    
+
     public static Option<PlayScoreDto> ToPlayScoreDto(PlayScore playScore) {
-        
-        if (EPlayScoreMarkExtensions.TryParse(OldMarkOrMarkToMark(playScore.Mark??""), out var mark)) 
+        if (EPlayScoreMarkExtensions.TryParse(OldMarkOrMarkToMark(playScore.Mark ?? ""), out var mark) == false)
             return Option<PlayScoreDto>.Empty;
-        
+
         return Option<PlayScoreDto>.With(new() {
             PlayScoreId = playScore.PlayScoreId,
             UserId = playScore.UserId,
-            Filename = playScore.Filename??"",
-            Hash = playScore.Hash??"",
-            Mode = playScore.Mode??Array.Empty<string>(),
+            Filename = playScore.Filename ?? "",
+            Hash = playScore.Hash ?? "",
+            Mode = playScore.Mode ?? Array.Empty<string>(),
             Score = playScore.Score,
             Combo = playScore.Combo,
             Mark = mark,

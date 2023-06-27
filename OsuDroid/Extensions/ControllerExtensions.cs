@@ -14,7 +14,7 @@ public abstract class ControllerExtensions : ControllerBase {
     public enum ECookie {
         LoginCookie
     }
-    
+
     public string FixUsername(string username) {
         return username.Trim();
     }
@@ -23,12 +23,12 @@ public abstract class ControllerExtensions : ControllerBase {
         await dbT.RollbackAsync();
         return new StatusCodeResult(500);
     }
-    
+
     public async Task<IActionResult> RollbackAndGetBadRequestAsync(NpgsqlTransaction dbT) {
         await dbT.RollbackAsync();
         return BadRequest();
     }
-    
+
     public async Task<IActionResult> RollbackAndGetBadRequestAsync(NpgsqlTransaction dbT, string msg) {
         await dbT.RollbackAsync();
         return BadRequest(msg);
@@ -38,19 +38,19 @@ public abstract class ControllerExtensions : ControllerBase {
         await dbT.RollbackAsync();
         return NotFound();
     }
-    
+
     public async Task<IActionResult> RollbackAndGetNotFound(NpgsqlTransaction dbT, string message) {
         await dbT.RollbackAsync();
         return NotFound(message);
     }
-    
+
     public Result<Option<UserIdAndToken>, string> LoginTokenInfo(NpgsqlConnection db) {
-        if (!HttpContext.Items.TryGetValue(PrivilegeMiddleware.ItemName, out var data)) 
+        if (!HttpContext.Items.TryGetValue(PrivilegeMiddleware.ItemName, out var data))
             return Result<Option<UserIdAndToken>, string>.Ok(Option<UserIdAndToken>.Empty);
-            
-        if (data is not UserIdAndToken @userIdAndToken) 
+
+        if (data is not UserIdAndToken @userIdAndToken)
             return Result<Option<UserIdAndToken>, string>.Err(TraceMsg.WithMessage("data is not UserIdAndToken"));
-            
+
         return Result<Option<UserIdAndToken>, string>.Ok(Option<UserIdAndToken>.With(userIdAndToken));
     }
 
@@ -58,8 +58,8 @@ public abstract class ControllerExtensions : ControllerBase {
         var cookies = GetCookies();
         if (cookies.TryGetValue(ECookie.LoginCookie, out var cookie) == false)
             return Result<Option<Guid>, string>.Ok(Option<Guid>.Empty);
-        
-        if (Guid.TryParse(cookie, out var guid) == false) 
+
+        if (Guid.TryParse(cookie, out var guid) == false)
             return Result<Option<Guid>, string>.Err("cookie Is Not Valid Guid");
 
         return Result<Option<Guid>, string>.Ok(Option<Guid>.With(guid));
@@ -117,7 +117,7 @@ public abstract class ControllerExtensions : ControllerBase {
         try {
             var request = Request;
             var stringValues = request.Headers["Cookie"];
-            if (stringValues.Count == 0) 
+            if (stringValues.Count == 0)
                 return new Dictionary<ECookie, string>(0);
 
             var res = new Dictionary<ECookie, string>(10);
@@ -158,7 +158,7 @@ public abstract class ControllerExtensions : ControllerBase {
         var cookieToString = ECookieToString(eCookie);
         if (cookieToString.IsSet() == false)
             return ResultErr<string>.Err("Can Not Convert Cookie To String");
-        
+
         Response.Cookies.Delete(cookieToString.Unwrap(), new CookieOptions {
             Domain = Setting.Domain_Name!.Value,
             SameSite = SameSiteMode.Lax
@@ -172,15 +172,17 @@ public abstract class ControllerExtensions : ControllerBase {
     }
 }
 
-public record ConStart(NpgsqlConnection DbNormal, NpgsqlTransaction DbTransaction, LamLog LamLog): IAsyncDisposable, IDisposable {
+public record ConStart
+    (NpgsqlConnection DbNormal, NpgsqlTransaction DbTransaction, LamLog LamLog) : IAsyncDisposable, IDisposable {
     public async ValueTask DisposeAsync() {
         LamLog.Dispose();
         await DbTransaction.DisposeAsync();
         await DbNormal.DisposeAsync();
     }
 
-    public (NpgsqlTransaction dbT, NpgsqlConnection db, LamLog Log) Unpack() => (DbTransaction, DbTransaction.Connection!, LamLog);
-    
+    public (NpgsqlTransaction dbT, NpgsqlConnection db, LamLog Log) Unpack() =>
+        (DbTransaction, DbTransaction.Connection!, LamLog);
+
     public void Dispose() {
         DisposeAsync().AsTask().Wait();
     }

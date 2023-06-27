@@ -1,14 +1,13 @@
 using Npgsql;
 using OsuDroid.Lib.TokenHandler;
 
-namespace OsuDroid.Lib; 
+namespace OsuDroid.Lib;
 
-public class CookieHandlerBasic: ICookieHandler {
+public class CookieHandlerBasic : ICookieHandler {
     public string Name { get; } = "BASIC";
-    
+
     public async Task<Result<(bool IsOk, long UserId, Guid Token), string>> HandleCookieAsync(
         NpgsqlConnection db, IRequestCookieCollection requestCookie, IResponseCookies responseCookies) {
-
         var cookieOption = GetCookie(requestCookie);
         if (cookieOption.IsSet() == false) {
             return Result<(bool IsOk, long UserId, Guid Token), string>.Ok((false, -1, default));
@@ -23,29 +22,29 @@ public class CookieHandlerBasic: ICookieHandler {
             return result.ChangeOkType<(bool IsOk, long UserId, Guid Token)>();
         if (result.Ok().IsNotSet())
             return Result<(bool IsOk, long UserId, Guid Token), string>.Ok((false, -1, default));
-        
+
         var tokenInfo = result.Ok().Unwrap();
 
         if (tokenInfo.CreateDay.AddDays(1) < DateTime.UtcNow)
             await manger.SetOverwriteAsync(db, new() { Token = token, TokenInfo = tokenInfo });
-        
+
         responseCookies.Append(
-            Name, 
-            token.ToString(), 
-            new () {
-                Expires = new DateTimeOffset(DateTime.UtcNow, new TimeSpan(30, 0,0,0))
+            Name,
+            token.ToString(),
+            new() {
+                Expires = new DateTimeOffset(DateTime.UtcNow, new TimeSpan(30, 0, 0, 0))
             });
 
         return Result<(bool IsOk, long UserId, Guid Token), string>.Ok((true, tokenInfo.UserId, token));
     }
-    
+
     public Option<string> GetCookie(IRequestCookieCollection requestCookie) {
         var request = requestCookie;
 
-        return request.TryGetValue(LoginCookie, out var value) 
-            ? new Option<string>(value) 
+        return request.TryGetValue(LoginCookie, out var value)
+            ? new Option<string>(value)
             : default;
     }
-    
+
     private const string LoginCookie = "LoginCookie";
 }

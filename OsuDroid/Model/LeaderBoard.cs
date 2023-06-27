@@ -14,9 +14,8 @@ public static class LeaderBoard {
 
     public static async Task<Result<List<LeaderBoardUser>, string>> FilterRegionAsync(
         NpgsqlConnection db, int limit, CountryInfo.Country country) {
-        
         return (await QueryUserStats.LeaderBoardFilterCountry(
-            db, limit > 100 ? 100 : limit < 1 ? 50 : limit, country.NameShort.ToUpper()))
+                db, limit > 100 ? 100 : limit < 1 ? 50 : limit, country.NameShort.ToUpper()))
             .Map(x => x.ToList());
     }
 
@@ -24,17 +23,15 @@ public static class LeaderBoard {
         return await QueryUserStats.LeaderBoardUserRank(db, userId);
     }
 
-    public static async Task<Result<List<LeaderBoardUser>, string>> SearchUserWithRegionAsync(NpgsqlConnection db, 
+    public static async Task<Result<List<LeaderBoardUser>, string>> SearchUserWithRegionAsync(NpgsqlConnection db,
         long limit, string query, CountryInfo.Country country) {
-        
         return (await QueryUserStats.LeaderBoardSearchUser(
-            db, limit > 100 ? 100 : limit < 1 ? 50 : limit, query, country.NameShort.ToUpper()))
+                db, limit > 100 ? 100 : limit < 1 ? 50 : limit, query, country.NameShort.ToUpper()))
             .Map(x => x.ToList());
     }
 
     public static async Task<Result<List<LeaderBoardUser>, string>> SearchUserAsync(
         NpgsqlConnection db, long limit, string query) {
-        
         return (await QueryUserStats.LeaderBoardSearchUser(db, limit > 100 ? 100 : limit < 1 ? 50 : limit, query))
             .Map(x => x.ToList());
     }

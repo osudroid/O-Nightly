@@ -10,5 +10,5 @@ public sealed class PostCreateDropAccountToken : PostApi.IValuesAreGood, PostApi
         return OsuDroidLib.Validation.ValidationPassword.ValidationOldVersion(Password);
     }
 
-    public string ToSingleString() => Password??"";
+    public string ToSingleString() => Password ?? "";
 }

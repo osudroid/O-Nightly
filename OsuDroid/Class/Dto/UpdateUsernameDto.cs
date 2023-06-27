@@ -8,5 +8,4 @@ public sealed class UpdateUsernameDto {
     public required string NewUsername { get; init; }
     public required string OldUsername { get; init; }
     public required string Passwd { get; init; }
-    
 }

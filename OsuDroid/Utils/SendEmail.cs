@@ -9,7 +9,7 @@ public static class SendEmail {
         var domain = Setting.Domain_Name!.Value;
         var emailNoReplayUsername = Setting.Email_NoReplayUsername!.Value;
         var emailNoReplay = Setting.Email_NoReplay!.Value;
-        
+
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(emailNoReplayUsername, emailNoReplay));
         message.To.Add(new MailboxAddress(username, email));
@@ -38,7 +38,7 @@ Someone has requested a password reset from your '{username}' osu!droid Account.
         var domain = Setting.Domain_Name!.Value;
         var emailNoReplayUsername = Setting.Email_NoReplayUsername!.Value;
         var emailNoReplay = Setting.Email_NoReplay!.Value;
-        
+
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(emailNoReplayUsername, emailNoReplay));
         message.To.Add(new MailboxAddress(username, email));
@@ -63,7 +63,7 @@ This e-mail is sent by the system, do not reply.
         var domain = Setting.Domain_Name!.Value;
         var emailNoReplayUsername = Setting.Email_NoReplayUsername!.Value;
         var emailNoReplay = Setting.Email_NoReplay!.Value;
-        
+
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(emailNoReplayUsername, emailNoReplay));
         message.To.Add(new MailboxAddress(username, email));
@@ -87,12 +87,12 @@ This e-mail is sent by the system, do not reply.
 
         Send(message);
     }
-    
+
     private static void Send(MimeMessage message) {
         var domain = Setting.Domain_Name!.Value;
         var emailNoReplayUsername = Setting.Email_NoReplayUsername!.Value;
         var emailNoReplay = Setting.Email_NoReplay!.Value;
-        
+
         using var client = new SmtpClient();
         client.Connect(Setting.Email_NoReplaySmtpAddress!.Value, 587);
         client.Authenticate(Setting.Email_NoReplay!.Value, Setting.Email_NoReplayPassword!.Value);

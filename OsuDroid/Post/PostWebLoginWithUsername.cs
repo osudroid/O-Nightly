@@ -15,16 +15,14 @@ public sealed class PostWebLoginWithUsername : Api2.IValuesAreGood, Api2.ISingle
                && ValidationUsername.Validation(Username)
                && ValidationPassword.ValidationOldVersion(Passwd)
             ;
-
-
     }
 
     public string ToSingleString() {
         return Merge.ListToString(new[] {
             Math.ToString(),
             Token.ToString(),
-            Username??"",
-            Passwd??"",
+            Username ?? "",
+            Passwd ?? "",
         });
     }
 }

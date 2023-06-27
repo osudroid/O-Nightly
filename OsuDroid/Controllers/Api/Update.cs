@@ -19,7 +19,7 @@ public class Update : ControllerExtensions {
         try {
             var result = await log.AddResultAndTransformAsync(await ModelApiUpdate.GetUpdateInfoAsync(
                 this, db, lang));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }

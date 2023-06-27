@@ -1,4 +1,4 @@
-namespace OsuDroid.Class; 
+namespace OsuDroid.Class;
 
 public sealed class ViewPlayScore {
     public long PlayScoreId { get; set; }
@@ -15,7 +15,7 @@ public sealed class ViewPlayScore {
     public long Good { get; set; }
     public long Bad { get; set; }
     public long Miss { get; set; }
-    public DateTime Date { get; set; } 
+    public DateTime Date { get; set; }
     public long Accuracy { get; set; }
 
     public static ViewPlayScore FromPlayScore(Entities.PlayScore playScore) {

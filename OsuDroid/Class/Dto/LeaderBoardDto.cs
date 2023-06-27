@@ -1,4 +1,3 @@
-
 using OsuDroid.Utils;
 using OsuDroidLib.Lib;
 
@@ -12,7 +11,7 @@ public sealed class LeaderBoardDto {
     public Option<CountryInfo.Country> GetRegionAsCountry() {
         return CountryInfo.FindByName(Region ?? "");
     }
-    
+
     public bool IsRegionAll() {
         return Region == "all";
     }

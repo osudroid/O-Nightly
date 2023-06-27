@@ -1,4 +1,3 @@
-
 using Patreon.NET;
 
 namespace OsuDroid.Class.Dto;

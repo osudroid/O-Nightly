@@ -1,7 +1,6 @@
 using Npgsql;
 
-namespace OsuDroid.Database.TableFn; 
+namespace OsuDroid.Database.TableFn;
 
 public static class BblScorePreSubmit {
-    
 }

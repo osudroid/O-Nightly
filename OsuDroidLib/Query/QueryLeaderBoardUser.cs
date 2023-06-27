@@ -1,5 +1,4 @@
-namespace OsuDroidLib.Query; 
+namespace OsuDroidLib.Query;
 
 public class QueryLeaderBoardUser {
-    
 }

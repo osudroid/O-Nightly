@@ -12,8 +12,6 @@ namespace OsuDroid.Controllers.Api2;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 public sealed class Api2Profile : ControllerExtensions {
-
-
     [HttpGet("/api2/profile/stats/{id:long}")]
     [PrivilegeRoute(route: "/api2/profile/stats/{id:long}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewProfileStats))]
@@ -33,10 +31,10 @@ public sealed class Api2Profile : ControllerExtensions {
             if (optionUserAndStatsResult.Ok().IsNotSet())
                 return Ok(new ViewProfileStats { Found = false });
 
-            
+
             var result = await log.AddResultAndTransformAsync(
                 await ModelApi2Profile.WebProfileStatsAsync(this, db, log, userId));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
@@ -72,7 +70,7 @@ public sealed class Api2Profile : ControllerExtensions {
 
             var result = await log.AddResultAndTransformAsync(
                 await ModelApi2Profile.WebProfileStatsTimeLineAsync(this, db, userId));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
@@ -104,10 +102,11 @@ public sealed class Api2Profile : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            var result = await log.AddResultAndTransformAsync(await QueryPlayScore.GetTopScoreFromUserIdAsync(db, userId));
+            var result =
+                await log.AddResultAndTransformAsync(await QueryPlayScore.GetTopScoreFromUserIdAsync(db, userId));
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
-            
+
             return Ok(new ViewPlays {
                 Found = true,
                 Scores = result.Ok()
@@ -136,7 +135,7 @@ public sealed class Api2Profile : ControllerExtensions {
                 return await RollbackAndGetBadRequestAsync(dbT, "userid Is Negative");
             if (int.IsNegative(page))
                 return await RollbackAndGetBadRequestAsync(dbT, "page Is Negative");
-            
+
             var fetchResult = await log.AddResultAndTransformAsync(
                 await QueryPlayScore.GetTopScoreFromUserIdWithPageAsync(db, userId, page, 50));
             if (fetchResult == EResult.Err)
@@ -208,7 +207,7 @@ public sealed class Api2Profile : ControllerExtensions {
 
             var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
                 .UpdateEmailAsync(this, db, log, DtoMapper.UpdateEmailToDto(body), cookieToken));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
@@ -244,10 +243,10 @@ public sealed class Api2Profile : ControllerExtensions {
                 return Ok(new ApiTypes.ViewWork { HasWork = false });
 
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-            
+
             var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
                 .UpdatePasswdAsync(this, db, DtoMapper.UpdatePasswdToDto(prop.Body!), cookieInfo));
-            
+
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
@@ -273,7 +272,8 @@ public sealed class Api2Profile : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUpdateUsernameRes))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewUpdateUsernameRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateUsername([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdateUsername> prop) {
+    public async Task<IActionResult>
+        UpdateUsername([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdateUsername> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -281,16 +281,16 @@ public sealed class Api2Profile : ControllerExtensions {
         try {
             if (prop.Body is null || prop.Body.NewUsername is null)
                 return await this.RollbackAndGetBadRequestAsync(dbT, "Post Body Is Bad");
-            
+
             prop.Body.NewUsername = prop.Body.NewUsername.Trim();
             if (!prop.ValuesAreGood())
                 return await this.RollbackAndGetBadRequestAsync(dbT, "Post Body Is Bad");
-            
+
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-            
+
             var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
                 .UpdateUsernameAsync(this, db, DtoMapper.UpdateUsernameToDto(prop.Body!), cookieInfo));
-            
+
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
 
@@ -323,12 +323,12 @@ public sealed class Api2Profile : ControllerExtensions {
         try {
             if (!prop.ValuesAreGood())
                 return await this.RollbackAndGetBadRequestAsync(dbT, "Post Body Is Bad");
-            
+
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-            
+
             var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
                 .UpdateAvatarAsync(this, db, DtoMapper.UpdateAvatarToDto(prop.Body!), cookieInfo));
-            
+
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
 
@@ -353,7 +353,8 @@ public sealed class Api2Profile : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdatePatreonEmail([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdatePatreonEmail> prop) {
+    public async Task<IActionResult> UpdatePatreonEmail(
+        [FromBody] PostApi.PostApi2GroundNoHeader<PostUpdatePatreonEmail> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -361,12 +362,12 @@ public sealed class Api2Profile : ControllerExtensions {
         try {
             if (!prop.ValuesAreGood())
                 return await this.RollbackAndGetBadRequestAsync(dbT, "Post Body Is Bad");
-            
+
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-            
+
             var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
                 .UpdatePatreonEmailAsync(this, db, DtoMapper.UpdatePatreonEmailToDto(prop.Body!), cookieInfo));
-            
+
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
 
@@ -402,7 +403,7 @@ public sealed class Api2Profile : ControllerExtensions {
 
             var result = await log.AddResultAndTransformAsync(
                 await ModelApi2Profile.AcceptPatreonEmailAsync(this, db, token));
-            
+
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
 
@@ -426,7 +427,8 @@ public sealed class Api2Profile : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/profile/drop-account/sendMail}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewCreateDropAccountTokenRes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CreateDropAccountToken([FromBody] PostApi.PostApi2GroundNoHeader<PostCreateDropAccountToken> prop) {
+    public async Task<IActionResult> CreateDropAccountToken(
+        [FromBody] PostApi.PostApi2GroundNoHeader<PostCreateDropAccountToken> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -436,10 +438,10 @@ public sealed class Api2Profile : ControllerExtensions {
                 return Ok(ViewCreateDropAccountTokenRes.HasElseError());
 
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-            
+
             var result = await log.AddResultAndTransformAsync(await ModelApi2Profile.CreateDropAccountTokenAsync(
                 this, db, DtoMapper.CreateDropAccountTokenToDto(prop.Body!), cookieInfo));
-            
+
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
 
@@ -472,12 +474,12 @@ public sealed class Api2Profile : ControllerExtensions {
         try {
             if (token == Guid.Empty)
                 return await this.RollbackAndGetBadRequestAsync(dbT, "Token Is Empty");
-            
+
             var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
 
             var result = await log.AddResultAndTransformAsync(await ModelApi2Profile.DropAccountWithTokenAsync(
                 this, db, token, cookieInfo));
-            
+
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
 
@@ -509,13 +511,13 @@ public sealed class Api2Profile : ControllerExtensions {
         await log.AddLogDebugStartAsync();
 
         try {
-            if (long.IsNegative(userId)) 
-                return await RollbackAndGetBadRequestAsync(dbT,"UserId < 0");
+            if (long.IsNegative(userId))
+                return await RollbackAndGetBadRequestAsync(dbT, "UserId < 0");
 
-            
+
             var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
                 .WebProfileTopPlaysByMarksLengthAsync(this, db, userId));
-            
+
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
 
@@ -536,7 +538,8 @@ public sealed class Api2Profile : ControllerExtensions {
     }
 
     [HttpGet("/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
-    [PrivilegeRoute(route: "/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
+    [PrivilegeRoute(
+        route: "/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
     public async Task<IActionResult> WebProfileTopPlaysByMark(
         [FromRoute] long userId, [FromRoute] string markString, [FromRoute] int page) {
@@ -552,11 +555,11 @@ public sealed class Api2Profile : ControllerExtensions {
             if (int.IsNegative(page))
                 return await RollbackAndGetBadRequestAsync(dbT, "page Is Negative");
 
-            
-            if (EPlayScoreMarkExtensions.TryParse(markString, out var mark)) 
+
+            if (EPlayScoreMarkExtensions.TryParse(markString, out var mark))
                 return await RollbackAndGetBadRequestAsync(dbT, "markString Case Not Exist");
 
-            
+
             var fetchResult = await log.AddResultAndTransformAsync(
                 await QueryPlayScore.GetTopScoreFromUserIdFilterMark(db, userId, page, 50, mark));
             if (fetchResult == EResult.Err)
@@ -573,8 +576,4 @@ public sealed class Api2Profile : ControllerExtensions {
             await dbT.CommitAsync();
         }
     }
-
-
-
-
 }

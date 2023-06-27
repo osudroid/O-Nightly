@@ -1,9 +1,9 @@
 using OsuDroid.Lib;
 
-namespace OsuDroid.Post; 
+namespace OsuDroid.Post;
 
 public static class Api2 {
-        public class PostApi2GroundNoHeader<T> : IValuesAreGood where T : IValuesAreGood, ISingleString {
+    public class PostApi2GroundNoHeader<T> : IValuesAreGood where T : IValuesAreGood, ISingleString {
         public T? Body { get; set; }
 
         public bool ValuesAreGood() {
@@ -48,7 +48,7 @@ public static class Api2 {
         public bool HashValidate() {
             if (Header is null) return false;
             if (Body is null) return false;
-            
+
             return Security.GetSecurity().Api2HashValidate(
                 Header.HashBodyData ?? "",
                 Body.ToSingleString(),

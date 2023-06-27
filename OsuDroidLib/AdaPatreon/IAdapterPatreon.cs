@@ -1,6 +1,6 @@
 using Patreon.NET;
 
-namespace OsuDroidLib.AdaPatreon; 
+namespace OsuDroidLib.AdaPatreon;
 
 public interface IAdapterPatreon : IDisposable {
     public void Close();

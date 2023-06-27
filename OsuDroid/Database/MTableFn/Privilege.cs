@@ -1,5 +1,4 @@
-namespace OsuDroid.Database.MTableFn; 
+namespace OsuDroid.Database.MTableFn;
 
 public static class Privilege {
-    
 }

@@ -1,6 +1,6 @@
 using NetEscapades.EnumGenerators;
 
-namespace OsuDroidLib.Class; 
+namespace OsuDroidLib.Class;
 
 [EnumExtensions]
 public enum ESettingSubKey {

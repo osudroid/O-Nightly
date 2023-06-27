@@ -1,4 +1,4 @@
-namespace OsuDroid.Class; 
+namespace OsuDroid.Class;
 
 public class ViewUserStats {
     public long UserId { get; set; }
@@ -47,5 +47,5 @@ public class ViewUserStats {
             OverallKatu = userStats.OverallKatu,
             OverallMiss = userStats.OverallMiss,
         };
-    } 
+    }
 }

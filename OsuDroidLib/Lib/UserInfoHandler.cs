@@ -5,12 +5,13 @@ using MaxMind.GeoIP2.Responses;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Query;
 
-namespace OsuDroidLib.Lib; 
+namespace OsuDroidLib.Lib;
 
 public static class UserInfoHandler {
-    public static async Task<ResultErr<string>> UpdateIpAndRegionByIpAsync(NpgsqlConnection db, UserInfo userInfo, IPAddress address) {
+    public static async Task<ResultErr<string>> UpdateIpAndRegionByIpAsync(NpgsqlConnection db, UserInfo userInfo,
+        IPAddress address) {
         CountryResponse? countryResponse = IpInfo.Country(address);
-        if (countryResponse is null || countryResponse.RegisteredCountry.Name is null) 
+        if (countryResponse is null || countryResponse.RegisteredCountry.Name is null)
             return ResultErr<string>.Err("County Not Found By IpAddress");
         var countryName = countryResponse.RegisteredCountry.Name;
 

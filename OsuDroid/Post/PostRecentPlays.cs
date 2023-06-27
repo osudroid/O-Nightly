@@ -21,8 +21,8 @@ public sealed class PostRecentPlays : PostApi.IValuesAreGood, PostApi.ISingleStr
 
     public string ToSingleString() {
         return Merge.ObjectsToString(new object[] {
-            FilterPlays??"",
-            OrderBy??"",
+            FilterPlays ?? "",
+            OrderBy ?? "",
             Limit,
             StartAt
         });

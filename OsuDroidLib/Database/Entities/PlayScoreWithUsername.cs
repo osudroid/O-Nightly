@@ -1,5 +1,5 @@
-namespace OsuDroidLib.Database.Entities; 
+namespace OsuDroidLib.Database.Entities;
 
-public class PlayScoreWithUsername: PlayScore {
+public class PlayScoreWithUsername : PlayScore {
     public string? Username { get; set; }
 }

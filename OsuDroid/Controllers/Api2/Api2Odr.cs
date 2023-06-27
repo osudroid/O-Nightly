@@ -41,7 +41,7 @@ public class Api2Odr : ControllerExtensions {
 
         try {
             var res = (await log.AddResultAndTransformAsync(await OdrZip.FactoryAsync(db, replayId)))
-                         .OkOr(Option<(FileStream stream, string name)>.Empty);
+                .OkOr(Option<(FileStream stream, string name)>.Empty);
 
             if (res.IsSet() == false)
                 return await RollbackAndGetBadRequestAsync(dbT);
@@ -88,7 +88,7 @@ public class Api2Odr : ControllerExtensions {
 
         try {
             var bblScoreOption = (await log.AddResultAndTransformAsync(await QueryPlayScore
-                .GetByIdAsync(db, replayId)))
+                    .GetByIdAsync(db, replayId)))
                 .OkOr(Option<PlayScore>.Empty);
 
             if (bblScoreOption.IsNotSet())

@@ -7,6 +7,7 @@ namespace OsuDroid.Post;
 public sealed class PostResetPasswdAndSendEmail : Api2.IValuesAreGood, Api2.ISingleString {
     public string? Email { get; set; }
     public string? Username { get; set; }
+
     public bool ValuesAreGood() {
         if (!OsuDroidLib.Validation.ValidationUsername.Validation(Username))
             this.Username = "";
@@ -15,14 +16,14 @@ public sealed class PostResetPasswdAndSendEmail : Api2.IValuesAreGood, Api2.ISin
 
         if (this is { Username: "", Email: "" })
             return false;
-        
+
         return true;
     }
 
     public string ToSingleString() {
         return Merge.ListToString(new string[] {
-            Email??"",
-            Username??"",
+            Email ?? "",
+            Username ?? "",
         });
     }
 }

@@ -12,9 +12,8 @@ public static class TokenHandlerManger {
                 try {
                     {
                         await Task.Delay(TimeSpan.FromMinutes(1));
-                        foreach (var (key, o) in TokenHandlerDic) 
+                        foreach (var (key, o) in TokenHandlerDic)
                             o.RefreshAutoAsync();
-
                     }
                 }
                 catch (Exception) {

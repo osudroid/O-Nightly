@@ -8,6 +8,7 @@ public sealed class PostUpdateUsername : Api2.IValuesAreGood, Api2.ISingleString
     public string? NewUsername { get; set; }
     public string? OldUsername { get; set; }
     public string? Passwd { get; set; }
+
     public bool ValuesAreGood() {
         return ValidationUsername.Validation(NewUsername)
                && ValidationUsername.Validation(OldUsername)
@@ -17,9 +18,9 @@ public sealed class PostUpdateUsername : Api2.IValuesAreGood, Api2.ISingleString
 
     public string ToSingleString() {
         return Merge.ListToString(new string[] {
-            NewUsername??"",
-            OldUsername??"",
-            Passwd??"",
+            NewUsername ?? "",
+            OldUsername ?? "",
+            Passwd ?? "",
         });
     }
 }

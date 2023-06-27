@@ -1,6 +1,6 @@
 using Dapper.Contrib.Extensions;
 
-namespace OsuDroidLib.Database.Entities; 
+namespace OsuDroidLib.Database.Entities;
 
 [Table("Setting")]
 public class Setting {

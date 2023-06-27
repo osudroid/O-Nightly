@@ -28,20 +28,21 @@ public class TokenHandlerDatabase : ITokenHandlerDb {
 
     public async Task<ResultErr<string>> SetOverwriteAsync(NpgsqlConnection db, TokenInfoWithGuid tokenInfoWithGuid) {
         return await QueryTokenUser.CreateOrUpdateAsync(
-            db: db, 
+            db: db,
             createDay: tokenInfoWithGuid.TokenInfo.CreateDay,
             userId: tokenInfoWithGuid.TokenInfo.UserId,
             token: tokenInfoWithGuid.Token
         );
     }
 
-    public async Task<ResultErr<string>> SetOverwriteManyAsync(NpgsqlConnection db, IEnumerable<TokenInfoWithGuid> iter) {
+    public async Task<ResultErr<string>>
+        SetOverwriteManyAsync(NpgsqlConnection db, IEnumerable<TokenInfoWithGuid> iter) {
         foreach (var tokenInfoWithGuid in iter) {
             var result = await SetOverwriteAsync(db, tokenInfoWithGuid);
             if (result == EResult.Err)
-                return result;    
+                return result;
         }
-        
+
         return ResultErr<string>.Ok();
     }
 
@@ -59,7 +60,7 @@ public class TokenHandlerDatabase : ITokenHandlerDb {
         var result = await QueryTokenUser.GetByTokenAsync(db, token);
         if (result == EResult.Err)
             return result.ChangeOkType<bool>();
-        
+
         if (result.Ok().IsNotSet())
             return Result<bool, string>.Ok(false);
 
@@ -117,16 +118,16 @@ public class TokenHandlerDatabase : ITokenHandlerDb {
         return tokenUser.CreateDate.Add(LifeSpanToken) < DateTime.UtcNow;
     }
 
-    private async Task<Result<(bool Delete, TokenInfo tokenInfo), string>> ReturnOrDeleteIfDead(NpgsqlConnection db, TokenUser tokenUser) {
+    private async Task<Result<(bool Delete, TokenInfo tokenInfo), string>> ReturnOrDeleteIfDead(NpgsqlConnection db,
+        TokenUser tokenUser) {
         if (IsDead(tokenUser) == false)
             return Result<(bool Delete, TokenInfo tokenInfo), string>.Ok((false, (TokenInfo)tokenUser));
-        
-        
+
+
         var result = await QueryTokenUser.DeleteByTokenIdAsync(db, tokenUser.TokenId);
-            
+
         if (result == EResult.Err)
             return Result<(bool Delete, TokenInfo tokenInfo), string>.Err(result.Err());
         return Result<(bool Delete, TokenInfo tokenInfo), string>.Ok((true, (TokenInfo)tokenUser));
-
     }
 }

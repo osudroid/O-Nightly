@@ -1,4 +1,3 @@
-
 namespace OsuDroid.Database.OldEntities;
 
 public sealed class bbl_score_banned {

@@ -1,4 +1,4 @@
-namespace OsuDroid.Class; 
+namespace OsuDroid.Class;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 public sealed class ViewPlayInfoById {

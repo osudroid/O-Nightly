@@ -6,8 +6,8 @@ namespace OsuDroid.Post;
 public sealed class PostUpdateAvatar : Api2.IValuesAreGood, Api2.ISingleString {
     public string? ImageBase64 { get; set; }
     public string? Passwd { get; set; }
-    
-    
+
+
     public bool ValuesAreGood() {
         if (!OsuDroidLib.Validation.ValidationPassword.ValidationOldVersion(Passwd))
             return false;
@@ -18,8 +18,8 @@ public sealed class PostUpdateAvatar : Api2.IValuesAreGood, Api2.ISingleString {
 
     public string ToSingleString() {
         return Merge.ListToString(new string[] {
-            ImageBase64??"",
-            Passwd??""
+            ImageBase64 ?? "",
+            Passwd ?? ""
         });
     }
 }

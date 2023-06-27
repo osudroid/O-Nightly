@@ -9,21 +9,20 @@ public sealed class PostWebLogin : Api2.IValuesAreGood, Api2.ISingleString {
     public Guid Token { get; set; }
     public string? Email { get; set; }
     public string? Passwd { get; set; }
+
     public bool ValuesAreGood() {
         return Token != default
                && ValidationUsername.Validation(Email)
                && ValidationPassword.ValidationOldVersion(Passwd)
-               ;
-
-
+            ;
     }
 
     public string ToSingleString() {
         return Merge.ListToString(new[] {
             Math.ToString(),
             Token.ToString(),
-            Email??"",
-            Passwd??"",
+            Email ?? "",
+            Passwd ?? "",
         });
     }
 }

@@ -1,5 +1,6 @@
 using BCrypt.Net;
-namespace OsuDroidLib.Validation; 
+
+namespace OsuDroidLib.Validation;
 
 public static class ValidationPassword {
     public static bool ValidationOldVersion(string? password) {
@@ -7,10 +8,10 @@ public static class ValidationPassword {
             return false;
         if (password.IndexOf(' ') != -1)
             return false;
-        
+
         return true;
     }
-    
+
     public static bool ValidationNewVersion(string? password) {
         if (String.IsNullOrEmpty(password))
             return false;

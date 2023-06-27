@@ -40,7 +40,7 @@ public class Api2Play : ControllerExtensions {
                     .GetByPlayIdAsync(db, prop.Body!.PlayId)))
                 .OkOr(Option<(PlayScore Score, string Username, string Region)>.Empty);
 
-            await (optionRep.IsSet() 
+            await (optionRep.IsSet()
                 ? log.AddLogDebugAsync("PlayId Found")
                 : log.AddLogDebugAsync("PlayId Not Found"));
 
@@ -73,7 +73,7 @@ public class Api2Play : ControllerExtensions {
         try {
             if (prop.ValuesAreGood() == false)
                 return await RollbackAndGetBadRequestAsync(dbT, "Post Prop Are Bad");
-            
+
             var repTaskResult = await log.AddResultAndTransformAsync(await PlayRecent.FilterByAsync(
                 db,
                 prop.Body!.FilterPlays!,
@@ -85,7 +85,7 @@ public class Api2Play : ControllerExtensions {
             if (repTaskResult == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
 
-            
+
             return Ok(new ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewPlayScoreWithUsername>> {
                 Value = repTaskResult
                         .Ok()

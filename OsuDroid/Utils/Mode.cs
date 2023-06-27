@@ -1,5 +1,4 @@
-
-namespace OsuDroid.Utils; 
+namespace OsuDroid.Utils;
 
 public static class Mode {
     /// <exception cref="Exception"></exception>
@@ -15,15 +14,15 @@ public static class Mode {
                 pipePosi = i + 1;
                 break;
             }
-                    
+
             res.Add(c.ToString());
         }
 
-        if (!hasPipe || mode.Slice(pipePosi).Length == 0) 
+        if (!hasPipe || mode.Slice(pipePosi).Length == 0)
             return res.ToArray();
-        
+
         var slice = mode.Slice(pipePosi);
-        
+
         if (slice[0] != 'x')
             throw new Exception("Must be start with 'x'");
         res.Add(new String(slice));
@@ -35,14 +34,14 @@ public static class Mode {
     public static Option<string> ModeArrayToModeAsSingleString(IEnumerable<string>? modes) {
         if (modes is null)
             return Option<string>.With("|");
-        
+
         StringBuilder builder = new StringBuilder(2);
         string end = "";
 
         foreach (var mode in modes) {
             if (mode.Length == 0)
                 continue;
-            
+
             if (mode.Length == 1) {
                 builder.Append(mode);
                 continue;
@@ -50,7 +49,7 @@ public static class Mode {
 
             if (end.Length == 0)
                 return Option<string>.Empty;
-            
+
             if (mode[0] != 'x')
                 return Option<string>.Empty;
 
@@ -59,7 +58,7 @@ public static class Mode {
 
         builder.Append('|');
         builder.Append(end);
-        
+
         return Option<string>.With(builder.ToString());
     }
 }

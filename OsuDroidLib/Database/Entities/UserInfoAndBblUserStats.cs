@@ -17,8 +17,8 @@ public class UserInfoAndBblUserStats {
     public string? LatestIp { get; set; }
     public string? PatronEmail { get; set; }
     public bool PatronEmailAccept { get; set; }
-    
-    
+
+
     public long OverallPlaycount { get; set; }
     public long OverallScore { get; set; }
     public long OverallAccuracy { get; set; }

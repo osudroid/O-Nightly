@@ -17,7 +17,8 @@ public class Api2Submit : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/submit/play-start")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPushPlayStartResult200))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> PushPlayStart([FromBody] OsuDroid.Post.Api2.PostApi2GroundWithHash<PostPushPlayStart> prop) {
+    public async Task<IActionResult> PushPlayStart(
+        [FromBody] OsuDroid.Post.Api2.PostApi2GroundWithHash<PostPushPlayStart> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -36,7 +37,7 @@ public class Api2Submit : ControllerExtensions {
                 .OkOr(Option<TokenInfo>.Empty);
 
             if (tokenInfoResp.IsSet() == false)
-                return await RollbackAndGetBadRequestAsync(dbT,"Token Error");
+                return await RollbackAndGetBadRequestAsync(dbT, "Token Error");
 
             var result = await log.AddResultAndTransformAsync(await ModelApi2Submit
                 .InsertPreBuildPlayAsync(
@@ -48,7 +49,7 @@ public class Api2Submit : ControllerExtensions {
 
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
-            
+
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
                 EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
@@ -70,7 +71,8 @@ public class Api2Submit : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPushReplayResult200))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> PushReplay([FromBody] OsuDroid.Post.Api2.PostApi2GroundWithHash<PostPushPlay> prop) {
+    public async Task<IActionResult>
+        PushReplay([FromBody] OsuDroid.Post.Api2.PostApi2GroundWithHash<PostPushPlay> prop) {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
@@ -80,7 +82,7 @@ public class Api2Submit : ControllerExtensions {
                 await log.AddLogDebugAsync("Post Prop Are Bad");
                 return await RollbackAndGetBadRequestAsync(dbT, "Post Prop Are Bad");
             }
-            
+
             if (prop.HashValidate() == false)
                 return await RollbackAndGetBadRequestAsync(dbT, prop.PrintHashOrder());
 
@@ -97,7 +99,7 @@ public class Api2Submit : ControllerExtensions {
 
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
-            
+
             return result.Ok().Mode switch {
                 EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
                 EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
@@ -129,7 +131,8 @@ public class Api2Submit : ControllerExtensions {
         try {
             try {
                 var value =
-                    JsonConvert.DeserializeObject<PostApi.PostApi2GroundWithHash<PostApi2UploadReplayFile>>(form.Prop ?? "");
+                    JsonConvert.DeserializeObject<PostApi.PostApi2GroundWithHash<PostApi2UploadReplayFile>>(form.Prop ??
+                        "");
                 if (value is null)
                     return await RollbackAndGetBadRequestAsync(dbT, "JSON is false");
                 prop = value;
@@ -154,11 +157,11 @@ public class Api2Submit : ControllerExtensions {
 
             if (tokenInfoResult == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
-            
+
             if (tokenInfoResult.Ok().IsNotSet())
                 return await RollbackAndGetBadRequestAsync(dbT, "Token Dead Or Error");
 
-            
+
             var resp = await log.AddResultAndTransformAsync(await Upload.UploadReplayAsync(
                 db,
                 prop.Body!.MapHash ?? "",
@@ -167,8 +170,8 @@ public class Api2Submit : ControllerExtensions {
                 form.File)
             );
 
-            return resp == EResult.Err 
-                ? await RollbackAndGetInternalServerErrorAsync(dbT) 
+            return resp == EResult.Err
+                ? await RollbackAndGetInternalServerErrorAsync(dbT)
                 : Ok(resp.Ok());
         }
         catch (Exception e) {

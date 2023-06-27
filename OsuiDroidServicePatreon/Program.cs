@@ -14,11 +14,11 @@ public static class Program {
         WriteLine("Create Patreon Service");
 
         await ServiceManager<ServiceState>
-            .DefaultStetting()
-            .SetStateBuilder(Service.StateBuilder)
-            .AddFunction(Service.RunClean)
-            .ExecuteFunctionAfter(TimeSpan.FromHours(1))
-            .SetFirstLoop(false)
-            .Run();
+              .DefaultStetting()
+              .SetStateBuilder(Service.StateBuilder)
+              .AddFunction(Service.RunClean)
+              .ExecuteFunctionAfter(TimeSpan.FromHours(1))
+              .SetFirstLoop(false)
+              .Run();
     }
 }

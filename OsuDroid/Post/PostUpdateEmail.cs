@@ -8,10 +8,11 @@ public sealed class PostUpdateEmail : Api2.IValuesAreGood, Api2.ISingleString {
     public string? NewEmail { get; set; }
     public string? OldEmail { get; set; }
     public string? Passwd { get; set; }
+
     public bool ValuesAreGood() {
         return ValidationEmail.Validation(NewEmail)
-            && ValidationEmail.Validation(OldEmail)
-            && ValidationPassword.ValidationOldVersion(Passwd)
+               && ValidationEmail.Validation(OldEmail)
+               && ValidationPassword.ValidationOldVersion(Passwd)
             ;
     }
 

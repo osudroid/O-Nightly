@@ -1,6 +1,6 @@
 using OsuDroidLib.Query;
 
-namespace OsuDroid.Class; 
+namespace OsuDroid.Class;
 
 public class ViewStatisticActiveUser {
     public long ActiveUserLast1H { get; set; }
@@ -9,7 +9,6 @@ public class ViewStatisticActiveUser {
 
     public static ViewStatisticActiveUser
         FromStatisticActiveUser(QueryUserInfo.StatisticActiveUser statisticActiveUser) {
-
         return new() {
             ActiveUserLast1H = statisticActiveUser.ActiveUserLast1H,
             ActiveUserLast1Day = statisticActiveUser.ActiveUserLast1Day,
