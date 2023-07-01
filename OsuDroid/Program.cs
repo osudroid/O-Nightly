@@ -1,6 +1,7 @@
 using AspNetCoreRateLimit;
 using Npgsql;
 using OsuDroid.Lib;
+using OsuDroid.Lib.DbTransfer;
 using OsuDroid.Utils;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
@@ -16,7 +17,12 @@ public static class Program {
         Dapper.DefaultTypeMap.MatchNamesWithUnderscores = false;
         await PrivilegeManager.Update();
 
-        await RunTransferDb();
+        await new DbTransfer()
+            .UseCleanDb()
+            .UseInsertScore()
+            .UseInsertUser()
+            .UseCalcUserScore()
+            .Run();
         return;
 
 

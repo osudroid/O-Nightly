@@ -17,7 +17,6 @@ namespace OsuDroid.Lib.DbTransfer;
 
 public static class InsertUserHandler {
     public static async Task Run() {
-        
         await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
             WriteLine($"Fetch Old Users; Filter; Convert");
             var allUserFromOldDb = await GetAllBllUserAsUserInfoAsync();
@@ -29,10 +28,13 @@ public static class InsertUserHandler {
     public static async Task<Entities.UserInfo[]> GetAllBllUserAsUserInfoAsync() {
         await using var db = await DbBuilder.BuildNpgsqlConnection();
 
+        WriteLine($"Fetch Old Users");
         var bblUsersOld = (await db.QueryAsync<bbl_user>(
             $"SELECT * FROM {Setting.OldDatabase}.bbl_user"))
             .ToList();
+        WriteLine($"Fetch Old Users Count: " + bblUsersOld.Count);
         
+        WriteLine("Fix Strings");
         for (var i = bblUsersOld.Count - 1; i >= 0; i--) {
             var singleUser = bblUsersOld[i];
 
@@ -49,7 +51,7 @@ public static class InsertUserHandler {
             singleUser.email = singleUser.email!.Trim();
         }
 
-  
+        WriteLine("Convert To UserInfo");
         var userInfoList = new List<UserInfo>(bblUsersOld.Count);
         foreach (var bblUser in bblUsersOld) {
             userInfoList.Add(new Entities.UserInfo {
@@ -70,7 +72,8 @@ public static class InsertUserHandler {
                 UsernameLastChange = DateTime.SpecifyKind(bblUser.regist_time, DateTimeKind.Utc)
             });
         }
-
+        
+        WriteLine("Remove Equals");
         return RemoveAllEqUsername(RemoveAllEqEmails(userInfoList.ToArray()));
     }
     

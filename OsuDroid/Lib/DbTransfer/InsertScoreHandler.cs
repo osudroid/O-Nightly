@@ -2,41 +2,39 @@ using OsuDroid.Database.OldEntities;
 using System.Collections.Concurrent;
 using OsuDroidLib.Database.Entities;
 using Dapper;
+using OsuDroidLib.Dto;
 
 namespace OsuDroid.Lib.DbTransfer; 
 
 internal static class InsertScoreHandler {
     public static async Task Run() {
         var playScoreArr = await GetAllOldScoresAsPlayScore();
+        WriteLine("Fix PlayScore playScoreArr Count: " + playScoreArr.Length);
         await InsertPlayScore(playScoreArr);
     }
 
     private static async Task<PlayScore[]> GetAllOldScoresAsPlayScore() {
-        HashSet<long> userIds = new HashSet<long>(100_000);
         List<bbl_score> oldScore = new List<bbl_score>(30_000_000);
         ConcurrentBag<PlayScore> newScore = new ConcurrentBag<PlayScore>();
         GC.Collect();
         await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
-            foreach (var bblUser in await db.QueryAsync<UserInfo>("SELECT UserId FROM public.UserInfo")) {
-                userIds.Add(bblUser.UserId);
-            }
-            
-            WriteLine($"User Count: {userIds.Count}");
-            
-            foreach (var bblScore in await db.QueryAsync<bbl_score>("SELECT * FROM old_osu.bbl_score")) {
-                oldScore.Add(bblScore);
-            }
+            oldScore = (await db.QueryAsync<bbl_score>(@"
+SELECT * 
+FROM old_osu.bbl_score
+JOIN userinfo ON userinfo.userid = old_osu.bbl_score.uid
+WHERE score > 0
+AND hash != ''
+AND hash is not null
+AND false = (mode Like '%|AR%')
+")).ToList();
 
             WriteLine($"oldScore Count: {oldScore.Count}");
         }
         
         GC.Collect();
         void ConvertToNewPlayScore(bbl_score score) {
-            if (userIds.Contains(score.uid) == false)
-                return;
-            
             score.mode ??= "|";
-            score.mark = IsNullOrEmptyOrNULLOrNullOrWhitespace(score.mark) ? "-" : score.mark;
+            score.mode = score.mode == "-" ? "|" : score.mode;
 
             if (score.mode.IndexOf("AR", StringComparison.Ordinal) != -1
                 || score.score <= 0
@@ -55,7 +53,7 @@ internal static class InsertScoreHandler {
 
             var playScore = new PlayScore {
                 PlayScoreId = score.id,
-                UserId = score.id,
+                UserId = score.uid,
                 Filename = score.filename ??
                            throw new NullReferenceException($"score.filename score.id: {score.id}"),
                 Hash = score.hash ?? throw new NullReferenceException($"score.hash score.id: {score.id}"),
@@ -73,6 +71,11 @@ internal static class InsertScoreHandler {
                 Accuracy = score.accuracy
             };
 
+            // Test Convert
+            if (PlayScoreDto.ToPlayScoreDto(playScore).IsNotSet()) {
+                throw new Exception($"Can Not Convert To PlayScoreDto PlayScoreId {playScore.PlayScoreId}");
+            }
+            
             newScore.Add(playScore);
         }
         
@@ -86,23 +89,45 @@ internal static class InsertScoreHandler {
     }
     
     private static async Task InsertPlayScore(PlayScore[] playScoreArr) {
-        var chunks = SplitIntoChunks(playScoreArr, 100_000);
-     
+        var chunks = SplitIntoChunks(playScoreArr, 10_000);
+        var count = chunks.Count;
+        var icChunks = new List<(int i, int count, PlayScore[] arr)>(chunks.Count);
+
+        for (int i = 0; i < chunks.Count; i++) {
+            icChunks.Add((i, count, chunks[i]));
+        }
+        
         await Parallel.ForEachAsync(
-            chunks,
-            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, 
+            icChunks,
+            new ParallelOptions { MaxDegreeOfParallelism = 16 }, 
             InsertPlayScoreChunk
         );
     }
 
-    private static async ValueTask InsertPlayScoreChunk(PlayScore[] playScoreArr, CancellationToken cancellationToken) {
+    private static async ValueTask InsertPlayScoreChunk((int i, int count, PlayScore[] arr) val, CancellationToken cancellationToken) {
         await using var db = await DbBuilder.BuildNpgsqlConnection();
-        
-        var query = @"
+
+        var id = Guid.NewGuid();
+        try {
+            Console.WriteLine($"Inserting PlayScore Chunk from {val.i} of {val.count} id: {id}");
+            try
+            {
+                var query = @"
 INSERT INTO PlayScore (PlayScoreId, UserId, Filename, Hash, Mode, Score, Combo, Mark, Geki, Perfect, Katu, Good, Bad, Miss, Date, Accuracy) 
 VALUES                (@PlayScoreId, @UserId, @Filename, @Hash, @Mode, @Score, @Combo, @Mark, @Geki, @Perfect, @Katu, @Good, @Bad, @Miss, @Date, @Accuracy) 
 ";
-        await db.ExecuteAsync(query, playScoreArr);
+                await db.ExecuteAsync(query, val.arr);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }   
+        }
+        catch (Exception e) {
+            Console.WriteLine($"Inserting PlayScore Chunk Error from {val.i} of {val.count} id: {id} \n Error: {e}");
+            throw;
+        }
     }
     
     private static bool IsNullOrEmptyOrNULLOrNullOrWhitespace(string? value)

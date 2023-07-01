@@ -37,9 +37,15 @@ public class DbTransfer {
     }
 
     public async Task Run() {
-        if (_cleanDb) await CleanDbHandler.Run(); 
-        if (_insertUser) await InsertUserHandler.Run(); 
-        if (_insertScore) await InsertScoreHandler.Run(); 
-        if (_calcUserScore) await CalcUserScoreHandler.Run(); 
+        try {
+            // if (_cleanDb) await CleanDbHandler.Run(); 
+            // if (_insertUser) await InsertUserHandler.Run(); 
+            // if (_insertScore) await InsertScoreHandler.Run(); 
+            if (_calcUserScore) await CalcUserScoreHandler.Run(); 
+        }
+        catch (Exception e) {
+            WriteLine(e);
+            System.Environment.Exit(1);
+        }
     }
 }

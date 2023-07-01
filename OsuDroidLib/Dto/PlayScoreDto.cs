@@ -1,10 +1,34 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Text;
 using NetEscapades.EnumGenerators;
 using OsuDroidLib.Database.Entities;
 
 // ReSharper disable All
 
 namespace OsuDroidLib.Dto;
+
+public record A(bool B);
+
+
+public record PlayScoreDtoE(
+    long PlayScoreId,
+    long UserId,
+    string Filename,
+    string Hash,
+    string[] Mode,
+    long Score,
+    long Combo,
+    string Mark,
+    long Geki,
+    long Perfect,
+    long Katu,
+    long Good,
+    long Bad,
+    long Miss,
+    DateTime Date,
+    long Accuracy
+);
 
 public class PlayScoreDto {
     public required long PlayScoreId { get; init; }
@@ -146,5 +170,56 @@ public class PlayScoreDto {
             Date = playScore.Date,
             Accuracy = playScore.Accuracy,
         });
+    }
+    
+    public override string ToString()
+    {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.Append("PlayScoreDto");
+        stringBuilder.Append(" { ");
+        if (PrintMembers(stringBuilder))
+        {
+            stringBuilder.Append(' ');
+        }
+        stringBuilder.Append('}');
+        return stringBuilder.ToString();
+    }
+
+    protected virtual bool PrintMembers(StringBuilder builder)
+    {
+        RuntimeHelpers.EnsureSufficientExecutionStack();
+        builder.Append("PlayScoreId = ");
+        builder.Append(PlayScoreId.ToString());
+        builder.Append(", UserId = ");
+        builder.Append(UserId.ToString());
+        builder.Append(", Filename = ");
+        builder.Append((object)Filename);
+        builder.Append(", Hash = ");
+        builder.Append((object)Hash);
+        builder.Append(", Mode = ");
+        builder.Append(Mode);
+        builder.Append(", Score = ");
+        builder.Append(Score.ToString());
+        builder.Append(", Combo = ");
+        builder.Append(Combo.ToString());
+        builder.Append(", Mark = ");
+        builder.Append(Mark.ToStringFast());
+        builder.Append(", Geki = ");
+        builder.Append(Geki.ToString());
+        builder.Append(", Perfect = ");
+        builder.Append(Perfect.ToString());
+        builder.Append(", Katu = ");
+        builder.Append(Katu.ToString());
+        builder.Append(", Good = ");
+        builder.Append(Good.ToString());
+        builder.Append(", Bad = ");
+        builder.Append(Bad.ToString());
+        builder.Append(", Miss = ");
+        builder.Append(Miss.ToString());
+        builder.Append(", Date = ");
+        builder.Append(Date.ToString());
+        builder.Append(", Accuracy = ");
+        builder.Append(Accuracy.ToString());
+        return true;
     }
 }
