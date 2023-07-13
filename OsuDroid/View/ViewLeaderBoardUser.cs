@@ -1,6 +1,6 @@
-namespace OsuDroid.Class;
+namespace OsuDroid.View;
 
-public class ViewLeaderBoardUser {
+public class ViewLeaderBoardUser : IView{
     public long RankNumber { get; set; }
     public long UserId { get; set; }
     public string? Username { get; set; }

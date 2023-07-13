@@ -85,21 +85,26 @@ public class PrivilegeMiddleware {
         if (attribute is null) throw new NullReferenceException(nameof(attribute));
 
         var checkResult = CheckIfNeedCookie(attribute);
-        if (checkResult.routeInfo.IsSet() == false) {
+        if (checkResult.RouteInfo.IsNotSet()) {
             context.Response.StatusCode = 403;
             return;
         }
 
-        if (checkResult.needCookie == false) {
+        if (checkResult.Found == false) {
             await _next.Invoke(context);
             return;
         }
 
-        RouteInfo routeInfo = checkResult.routeInfo.Unwrap();
+        RouteInfo routeInfo = checkResult.RouteInfo.Unwrap();
 
-        if (routeInfo.CookieHandler.IsSet())
-            throw new NullReferenceException("CookieHandler Not Set");
-
+        if (routeInfo.NeedCookie == false) {
+            await _next.Invoke(context);
+            return;
+        }
+        
+        if (routeInfo.CookieHandler.IsNotSet())
+            throw new Exception("routeInfo.CookieHandler.IsNotSet() == true");
+        
         await InvokeAsyncWithCookie(context, routeInfo);
     }
 
@@ -141,10 +146,12 @@ public class PrivilegeMiddleware {
         await _next(context);
     }
 
-    private static (bool needCookie, Option<RouteInfo> routeInfo) CheckIfNeedCookie(PrivilegeRouteAttribute attribute) {
+    private record struct CheckIfNeedCookieResult(bool Found, Option<RouteInfo> RouteInfo);
+    
+    private static CheckIfNeedCookieResult CheckIfNeedCookie(PrivilegeRouteAttribute attribute) {
         return NeedPrivilegeDic.TryGetValue(attribute.Route, out RouteInfo? routeInfo) == false
-            ? (false, Option<RouteInfo>.Empty)
-            : (true, Option<RouteInfo>.With(routeInfo));
+            ? default
+            : new CheckIfNeedCookieResult(true, Option<RouteInfo>.With(routeInfo));
     }
 }
 

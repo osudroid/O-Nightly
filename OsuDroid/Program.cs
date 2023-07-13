@@ -17,15 +17,6 @@ public static class Program {
         Dapper.DefaultTypeMap.MatchNamesWithUnderscores = false;
         await PrivilegeManager.Update();
 
-        await new DbTransfer()
-            .UseCleanDb()
-            .UseInsertScore()
-            .UseInsertUser()
-            .UseCalcUserScore()
-            .Run();
-        return;
-
-
         if (args.Length == 0) {
             Security.GetSecurity();
             RunWebsite();
@@ -143,7 +134,7 @@ public static class Program {
             app.UseSwaggerUI();
         }
 
-        app.UseIpRateLimiting();
+        // app.UseIpRateLimiting();
         app.UseHttpsRedirection();
         // app.UseAuthorization();
         app.UsePrivilege(new List<ICookieHandler>() {

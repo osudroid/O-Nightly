@@ -1,8 +1,8 @@
 using OsuDroidLib.Query;
 
-namespace OsuDroid.Class;
+namespace OsuDroid.View;
 
-public class ViewStatisticActiveUser {
+public class ViewStatisticActiveUser: IView {
     public long ActiveUserLast1H { get; set; }
     public long ActiveUserLast1Day { get; set; }
     public long RegisterUser { get; set; }

@@ -1,9 +1,17 @@
+using System.Transactions;
 using Microsoft.AspNetCore.Mvc;
+using Npgsql;
+using OsuDroid.Class;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
-using OsuDroid.Lib.TokenHandler;
-using OsuDroid.Class;
+using OsuDroid.View;
 using OsuDroidLib.Query;
+using OsuDroidMediator.Command.Response;
+using OsuDroidMediator.Domain.Interface;
+using OsuDroidMediator.Domain.Model;
+using OsuDroidMediator.Domain.Model.Dto;
+using DtoMapper = OsuDroidMediator.DtoMapper;
+using EModelResult = OsuDroidMediator.Domain.Model.EModelResult;
 
 namespace OsuDroid.Controllers.Api;
 
@@ -14,45 +22,18 @@ public sealed class CookieInfo : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUserInfo>))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUserInfoByCookie() {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
+        ITransaction<OptionResponse<CookieCookieUserInfoDto>> transaction = await OsuDroidMediator.Application.Service
+            .CookieInfoService.GetUserInfoByCookieHandlerAsync(this.ControllerHandlerBuild());
 
-        try {
-            var tokenInfo = this.LoginTokenInfo(db).Ok().Unwrap();
+        return HandelResultData(transaction, value => {
+            if (value.Data.IsNotSet()) {
+                return ApiTypes.ViewExistOrFoundInfo<ViewUserInfo>.NotExist();
+            }
 
-            var userInfoResult = await log.AddResultAndTransformAsync(
-                await QueryUserInfo.GetByUserIdAsync(db, tokenInfo.UserId));
-
-            if (userInfoResult == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-
-            if (userInfoResult.Ok().IsNotSet())
-                return NotFound();
-
-            var userInfo = userInfoResult.Ok().Unwrap();
-
-            // TODO Check is Supporter
-            return Ok(new ApiTypes.ViewExistOrFoundInfo<ViewUserInfo> {
-                ExistOrFound = true,
-                Value = new ViewUserInfo {
-                    Active = userInfo.Active,
-                    Banned = userInfo.Banned,
-                    Email = userInfo.Email,
-                    Id = userInfo.UserId,
-                    Region = userInfo.Region,
-                    Username = userInfo.Username,
-                    RegistTime = userInfo.RegisterTime,
-                    RestrictMode = userInfo.RestrictMode,
-                }
-            });
-        }
-        catch (Exception e) {
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            await dbT.CommitAsync();
-        }
+            var dto = value.Data.Unwrap();
+                
+            return ApiTypes.ViewExistOrFoundInfo<ViewUserInfo>.Exist(
+                OsuDroid.Lib.DtoMapper.ToViewUserInfo(dto));
+        });
     }
 }

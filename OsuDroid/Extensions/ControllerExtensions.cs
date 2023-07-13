@@ -1,10 +1,13 @@
 using System.Net;
-using LamLogger;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using OsuDroid.Class;
 using OsuDroid.Lib;
-using OsuDroid.Lib.TokenHandler;
-using OsuDroid.Utils;
+using OsuDroid.View;
+using OsuDroidMediator.Domain.Interface;
+using OsuDroidMediator.Domain.Model;
+using OsuDroidMediator.Domain.Model.Dto;
+using EModelResult = OsuDroidMediator.Domain.Model.EModelResult;
 
 #pragma warning disable CA2252
 
@@ -166,24 +169,19 @@ public abstract class ControllerExtensions : ControllerBase {
         return ResultErr<string>.Ok();
     }
 
-    public async Task<ConStart> GetStartAsync() {
-        var con = await DbBuilder.BuildNpgsqlConnection();
-        return new ConStart(con, await con.BeginTransactionAsync(), Log.GetLog(con));
-    }
-}
+    public UserCookieControllerHandler ControllerHandlerBuild() => new UserCookieControllerHandler(this);
 
-public record ConStart
-    (NpgsqlConnection DbNormal, NpgsqlTransaction DbTransaction, LamLog LamLog) : IAsyncDisposable, IDisposable {
-    public async ValueTask DisposeAsync() {
-        LamLog.Dispose();
-        await DbTransaction.DisposeAsync();
-        await DbNormal.DisposeAsync();
-    }
-
-    public (NpgsqlTransaction dbT, NpgsqlConnection db, LamLog Log) Unpack() =>
-        (DbTransaction, DbTransaction.Connection!, LamLog);
-
-    public void Dispose() {
-        DisposeAsync().AsTask().Wait();
+    public IActionResult HandelResultData<T, E>(
+        ITransaction<T> transaction, Func<T, E> toView) 
+        where T : IResponse
+        where E : IView {
+        
+        return transaction.Result switch {
+            EModelResult.Ok => Ok(toView(transaction.OptionResponse.Unwrap())),
+            EModelResult.BadRequest => BadRequest(""),
+            EModelResult.InternalServerError => StatusCode(500),
+            EModelResult.BadRequestWithMessage => BadRequest(transaction.UserErrorMessage),
+            _ => throw new ArgumentOutOfRangeException()
+        };
     }
 }

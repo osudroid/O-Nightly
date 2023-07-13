@@ -15,7 +15,8 @@ public class Api2JarHasher : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             if (Setting.RequestHash_Keyword!.Value != keyToken)
                 return await RollbackAndGetBadRequestAsync(dbT, "Bad RequestHash_Keyword");
@@ -36,11 +37,14 @@ public class Api2JarHasher : ControllerExtensions {
             }
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }

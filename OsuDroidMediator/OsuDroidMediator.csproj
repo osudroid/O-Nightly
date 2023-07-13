@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>preview</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Folder Include="Application\Interface\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BCrypt.Net-Next" Version="4.0.3"/>
+        <PackageReference Include="Mediator.Abstractions" Version="2.1.5" />
+        <PackageReference Include="Mediator.SourceGenerator" Version="2.1.5">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
+        <PackageReference Include="Riok.Mapperly" Version="2.9.0-next.2"/>
+
+        <PackageReference Include="LamLibAllOver" Version="2.13.0"/>
+        <PackageReference Include="MailKit" Version="4.0.0"/>
+        <PackageReference Include="MaxMind.GeoIP2" Version="5.1.0"/>
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.0.1"/>
+        <PackageReference Include="System.Threading.Channels" Version="6.0.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\OsuDroidExtraInterface\OsuDroidExtraInterface.csproj"/>
+        <ProjectReference Include="..\OsuDroidLib\OsuDroidLib.csproj"/>
+        <ProjectReference Include="..\Patreon.NET\Patreon.NET.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="Mediator">
+        <HintPath>..\..\..\..\home\chaosmac\.nuget\packages\mediator.abstractions\2.1.5\lib\netstandard2.1\Mediator.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+</Project>

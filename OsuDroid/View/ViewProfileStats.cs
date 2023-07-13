@@ -1,7 +1,7 @@
-namespace OsuDroid.Class;
+namespace OsuDroid.View;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class ViewProfileStats {
+public sealed class ViewProfileStats: IView {
     public long Id { get; set; }
     public string? Username { get; set; }
     public bool Found { get; set; }

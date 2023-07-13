@@ -26,15 +26,18 @@ public static class Log {
         }
 
         async Task InsertAsync(LamLogTable[] tables) {
-            foreach (var log in tables) {
+            for (var index = 0; index < tables.Length; index++) {
+                var log = tables[index];
                 try {
                     var sql = @$"
 INSERT INTO {LamLog.Settings.DbTable} 
-    (Id, DateTime, Message, Status, Stack, Trigger)
-VALUES ('{log.DateUuid.ToString()}', @DateTime, @Message, @Status, @Stack, @Trigger)
+    (Id, Number, DateTime, Message, Status, Stack, Trigger)
+VALUES (@Id, @Number, @DateTime, @Message, @Status, @Stack, @Trigger)
 ";
 
                     await db.QueryAsync(sql, new {
+                        Id = log.DateUuid.ToGuild(),
+                        Number = index,
                         DateTime = DateTime.SpecifyKind(log.DateTime, DateTimeKind.Utc),
                         Message = log.Message ?? "",
                         Status = log.Status.ToString(),

@@ -1,10 +1,9 @@
 using OsuDroid.Model;
-using OsuDroid.Utils;
 
 namespace OsuDroid.Class.Dto;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class PushPlayDto : ModelApi2Submit.IScoreProp {
+public sealed class PushPlayDto : IDto, ModelApi2Submit.IScoreProp {
     public required long Id { get; init; }
     public required long Uid { get; init; }
     public required string Filename { get; init; }

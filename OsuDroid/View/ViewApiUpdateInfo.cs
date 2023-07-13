@@ -1,10 +1,10 @@
 using System.Text.Json.Serialization;
 using Newtonsoft.Json;
 
-namespace OsuDroid.Class;
+namespace OsuDroid.View;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public class ViewApiUpdateInfo {
+public class ViewApiUpdateInfo: IView {
     [JsonProperty]
     [JsonPropertyName("version_code")]
     public long VersionCode { get; set; }

@@ -1,7 +1,7 @@
-namespace OsuDroid.Class;
+namespace OsuDroid.View;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public class ViewAvatarHash {
+public class ViewAvatarHash: IView {
     public long UserId { get; set; }
     public string? Hash { get; set; }
 }

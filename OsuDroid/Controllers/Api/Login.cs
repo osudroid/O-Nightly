@@ -9,7 +9,7 @@ using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Lib.Validate;
 using OsuDroid.Post;
 using OsuDroid.Utils;
-using OsuDroid.Class;
+using OsuDroid.View;
 using OsuDroid.Model;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
@@ -29,10 +29,12 @@ public sealed class Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (!prop.ValuesAreGood()) {
                 await log.AddLogDebugAsync("Post Prop Are Not Valid");
+                isComplete = true;
                 return await RollbackAndGetBadRequestAsync(dbT);
             }
 
@@ -51,11 +53,14 @@ public sealed class Login : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -66,11 +71,13 @@ public sealed class Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             prop.Username = this.FixUsername(prop.Username ?? string.Empty);
 
             if (!prop.ValuesAreGood()) {
+                isComplete = true;
                 await log.AddLogDebugAsync("Post Prop Are Not Valid");
                 return await RollbackAndGetBadRequestAsync(dbT);
             }
@@ -81,6 +88,7 @@ public sealed class Login : ControllerExtensions {
                 DtoMapper.WebLoginWithUsernameToDto(prop)));
 
             if (result == EResult.Err) {
+                isComplete = true;
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
 
@@ -92,11 +100,14 @@ public sealed class Login : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -109,11 +120,13 @@ public sealed class Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             prop.Username = this.FixUsername(prop.Username ?? string.Empty);
 
             if (!prop.ValuesAreGood()) {
+                isComplete = true;
                 await log.AddLogDebugAsync("Post Prop Are Not Valid");
                 return await RollbackAndGetBadRequestAsync(dbT);
             }
@@ -122,6 +135,7 @@ public sealed class Login : ControllerExtensions {
                 await ModelApiLogin.WebRegisterAsync(this, db, DtoMapper.WebRegisterToDto(prop)));
 
             if (result == EResult.Err) {
+                isComplete = true;
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
 
@@ -133,11 +147,14 @@ public sealed class Login : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -148,11 +165,13 @@ public sealed class Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             var result = await log.AddResultAndTransformAsync(await ModelApiLogin.WebLoginTokenAsync(this, db));
 
             if (result == EResult.Err) {
+                isComplete = true;
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
 
@@ -164,11 +183,14 @@ public sealed class Login : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -179,6 +201,7 @@ public sealed class Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             UserIdAndToken cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
@@ -189,6 +212,7 @@ public sealed class Login : ControllerExtensions {
                 await ModelApiLogin.WebUpdateCookieAsync(this, db, cookieInfo));
 
             if (result == EResult.Err) {
+                isComplete = true;
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
 
@@ -200,11 +224,14 @@ public sealed class Login : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -218,9 +245,11 @@ public sealed class Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (!prop.ValuesAreGood()) {
+                isComplete = true;
                 await log.AddLogDebugAsync("Post Prop Are Not Valid");
                 return await RollbackAndGetBadRequestAsync(dbT);
             }
@@ -228,6 +257,7 @@ public sealed class Login : ControllerExtensions {
             Option<IPAddress> optionIpAddress =
                 Option<IPAddress>.Trim(await log.AddResultAndTransformAsync(GetIpAddress()));
             if (optionIpAddress.IsNotSet()) {
+                isComplete = true;
                 return await this.RollbackAndGetBadRequestAsync(dbT, "Can Not Get IP IS NEEDED");
             }
 
@@ -237,6 +267,7 @@ public sealed class Login : ControllerExtensions {
                 this, db, DtoMapper.ResetPasswdAndSendEmailToDto(prop), ipAddress));
 
             if (result == EResult.Err) {
+                isComplete = true;
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
 
@@ -248,11 +279,14 @@ public sealed class Login : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -265,9 +299,11 @@ public sealed class Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (!prop.ValuesAreGood()) {
+                isComplete = true;
                 await log.AddLogDebugAsync("Post Prop Are Not Valid");
                 return await RollbackAndGetBadRequestAsync(dbT);
             }
@@ -276,6 +312,7 @@ public sealed class Login : ControllerExtensions {
                 this, db, DtoMapper.SetNewPasswdToDto(prop.Body!)));
 
             if (result == EResult.Err) {
+                isComplete = true;
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
             }
 
@@ -287,11 +324,14 @@ public sealed class Login : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -301,6 +341,7 @@ public sealed class Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             // Note: the "provider" parameter corresponds to the external
@@ -317,11 +358,14 @@ public sealed class Login : ControllerExtensions {
             return Challenge(new AuthenticationProperties { RedirectUri = "/" }, provider);
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -334,6 +378,7 @@ public sealed class Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             // TODO PatreonSignout
@@ -345,11 +390,14 @@ public sealed class Login : ControllerExtensions {
             return Ok();
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -360,17 +408,31 @@ public sealed class Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             RemoveCookieByEName(ECookie.LoginCookie);
             return Ok();
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }
+
+
+
+
+
+
+
+
+
+

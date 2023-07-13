@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
-using OsuDroid.Class;
+using OsuDroid.View;
 
 namespace OsuDroid.Controllers.Api2;
 
@@ -14,7 +14,8 @@ public class Api2Update : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             var dirNameNumber = Directory.GetDirectories(Setting.UpdatePath!).Select(long.Parse).MaxBy(x => x);
             if (dirNameNumber == 0) return await RollbackAndGetInternalServerErrorAsync(dbT);
@@ -44,11 +45,14 @@ public class Api2Update : ControllerExtensions {
             });
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }

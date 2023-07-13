@@ -13,7 +13,8 @@ public class Api2Apk : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             var path = $"{Setting.UpdatePath}/{version}/android.apk";
 
@@ -24,11 +25,14 @@ public class Api2Apk : ControllerExtensions {
             return File(fileStream, "application/apk");
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }

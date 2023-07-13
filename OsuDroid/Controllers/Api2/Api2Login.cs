@@ -3,7 +3,7 @@ using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Post;
-using OsuDroid.Class;
+using OsuDroid.View;
 using OsuDroid.Model;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
@@ -22,6 +22,7 @@ public class Api2Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (!prop.ValuesAreGood()) {
@@ -43,11 +44,14 @@ public class Api2Login : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -60,6 +64,7 @@ public class Api2Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (!prop.ValuesAreGood()) {
@@ -81,11 +86,14 @@ public class Api2Login : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -97,6 +105,8 @@ public class Api2Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
+
         try {
             if (!prop.ValuesAreGood()) {
                 await log.AddLogDebugAsync("Post Prop Are Bad");
@@ -114,11 +124,14 @@ public class Api2Login : ControllerExtensions {
                 : new ApiTypes.ViewWork { HasWork = true });
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -130,7 +143,8 @@ public class Api2Login : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             if (!prop.ValuesAreGood()) {
                 await log.AddLogDebugAsync("Post Prop Are Bad");
@@ -149,11 +163,14 @@ public class Api2Login : ControllerExtensions {
                     { Value = optionResp.Unwrap().UserId, ExistOrFound = true });
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }

@@ -3,7 +3,7 @@ using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Post;
 using OsuDroid.Utils;
-using OsuDroid.Class;
+using OsuDroid.View;
 using OsuDroid.Model;
 using OsuDroidLib.Dto;
 using OsuDroidLib.Query;
@@ -21,7 +21,8 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             var optionUserAndStatsResult = await log.AddResultAndTransformAsync(
                 await Query.GetUserInfoAndBblUserStatsByUserIdAsync(db, userId));
@@ -47,11 +48,14 @@ public sealed class Api2Profile : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -63,6 +67,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (userId < 0)
@@ -83,11 +88,14 @@ public sealed class Api2Profile : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -100,24 +108,29 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             var result =
                 await log.AddResultAndTransformAsync(await QueryPlayScore.GetTopScoreFromUserIdAsync(db, userId));
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
-
+            
+            
             return Ok(new ViewPlays {
                 Found = true,
-                Scores = result.Ok()
+                Scores = result.Ok().Select(ViewPlayScore.FromPlayScore).ToList()
             });
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -129,6 +142,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (long.IsNegative(userId))
@@ -141,15 +155,17 @@ public sealed class Api2Profile : ControllerExtensions {
             if (fetchResult == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
 
-            var scores = fetchResult.Ok();
-            return Ok(new ViewPlays() { Found = true, Scores = scores });
+            return Ok(new ViewPlays() { Found = true, Scores = fetchResult.Ok().Select(ViewPlayScore.FromPlayScore).ToList() });
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -162,6 +178,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             var result = await log.AddResultAndTransformAsync(
@@ -169,18 +186,21 @@ public sealed class Api2Profile : ControllerExtensions {
 
             if (result == EResult.Err)
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
-
+            
             return Ok(new ViewPlays {
                 Found = true,
-                Scores = result.Ok()
+                Scores = result.Ok().Select(ViewPlayScore.FromPlayScore).ToList()
             });
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -193,6 +213,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (prop.ValuesAreGood() == false) {
@@ -220,11 +241,14 @@ public sealed class Api2Profile : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -237,6 +261,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (!prop.ValuesAreGood())
@@ -259,11 +284,14 @@ public sealed class Api2Profile : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -277,6 +305,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (prop.Body is null || prop.Body.NewUsername is null)
@@ -302,11 +331,14 @@ public sealed class Api2Profile : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -319,6 +351,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (!prop.ValuesAreGood())
@@ -340,11 +373,14 @@ public sealed class Api2Profile : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -358,6 +394,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (!prop.ValuesAreGood())
@@ -379,11 +416,14 @@ public sealed class Api2Profile : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -396,6 +436,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (token == Guid.Empty)
@@ -415,11 +456,14 @@ public sealed class Api2Profile : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -432,6 +476,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (prop.ValuesAreGood() == false)
@@ -453,11 +498,14 @@ public sealed class Api2Profile : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -470,6 +518,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (token == Guid.Empty)
@@ -491,11 +540,14 @@ public sealed class Api2Profile : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -509,6 +561,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (long.IsNegative(userId))
@@ -529,11 +582,14 @@ public sealed class Api2Profile : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -546,6 +602,7 @@ public sealed class Api2Profile : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (long.IsNegative(userId))
@@ -565,15 +622,41 @@ public sealed class Api2Profile : ControllerExtensions {
             if (fetchResult == EResult.Err)
                 return await RollbackAndGetBadRequestAsync(dbT);
 
-            var scores = fetchResult.Ok();
+            var scores = fetchResult.Ok().Select(ViewPlayScore.FromPlayScore).ToList();;
             return Ok(new ViewPlays() { Found = true, Scores = scores });
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetBadRequestAsync(dbT);
+            return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

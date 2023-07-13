@@ -1,4 +1,4 @@
-using OsuDroid.Class;
+using OsuDroid.View;
 
 namespace OsuDroid.Post;
 

@@ -1,5 +1,5 @@
 using Npgsql;
-using OsuDroid.Class;
+using OsuDroid.View;
 using OsuDroidLib.Query;
 
 namespace OsuDroid.Model;

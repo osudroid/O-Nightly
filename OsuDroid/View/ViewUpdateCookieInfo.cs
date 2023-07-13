@@ -1,7 +1,7 @@
-namespace OsuDroid.Class;
+namespace OsuDroid.View;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class ViewUpdateCookieInfo {
+public sealed class ViewUpdateCookieInfo: IView {
     public string? Username { get; set; }
     public string? Email { get; set; }
 }

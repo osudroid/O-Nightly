@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
-using OsuDroid.Class;
+using OsuDroid.View;
 using OsuDroid.Model;
 
 namespace OsuDroid.Controllers.Api;
@@ -15,7 +15,8 @@ public class Update : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             var result = await log.AddResultAndTransformAsync(await ModelApiUpdate.GetUpdateInfoAsync(
                 this, db, lang));
@@ -32,11 +33,14 @@ public class Update : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }

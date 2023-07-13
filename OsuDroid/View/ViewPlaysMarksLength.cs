@@ -1,9 +1,9 @@
 using OsuDroidLib.Dto;
 
-namespace OsuDroid.Class;
+namespace OsuDroid.View;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class ViewPlaysMarksLength {
+public sealed class ViewPlaysMarksLength: IView {
     public long PlaysXSS { get; set; }
     public long PlaysSS { get; set; }
     public long PlaysXS { get; set; }

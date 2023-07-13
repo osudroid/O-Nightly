@@ -1,9 +1,7 @@
-using OsuDroid.Lib.Validate;
-
 namespace OsuDroid.Class.Dto;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class WebRegisterDto {
+public sealed class WebRegisterDto: IDto {
     public required string Email { get; init; }
     public required int MathRes { get; init; }
     public required Guid MathToken { get; init; }

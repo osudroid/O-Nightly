@@ -14,6 +14,7 @@ public class Api2Odr : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             var filePath = $"{Setting.ReplayPath}/{replayId}.odr";
@@ -24,11 +25,14 @@ public class Api2Odr : ControllerExtensions {
             return File(System.IO.File.OpenRead(filePath), "Application/octet-stream");
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -38,6 +42,7 @@ public class Api2Odr : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             var res = (await log.AddResultAndTransformAsync(await OdrZip.FactoryAsync(db, replayId)))
@@ -51,11 +56,14 @@ public class Api2Odr : ControllerExtensions {
             return File(stream, "Application/octet-stream");
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -66,16 +74,20 @@ public class Api2Odr : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             return await GetOdrZipFileAsync(replayId);
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -85,7 +97,8 @@ public class Api2Odr : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             var bblScoreOption = (await log.AddResultAndTransformAsync(await QueryPlayScore
                     .GetByIdAsync(db, replayId)))
@@ -99,11 +112,14 @@ public class Api2Odr : ControllerExtensions {
             return RedirectPermanent($"/api/upload/fullname/{replayId}/{fullname}.zip");
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }

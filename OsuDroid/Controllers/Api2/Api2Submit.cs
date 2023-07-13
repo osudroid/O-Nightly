@@ -6,7 +6,7 @@ using OsuDroid.Lib.TokenHandler;
 using OsuDroid.Model;
 using OsuDroid.Post;
 using OsuDroid.Utils;
-using OsuDroid.Class;
+using OsuDroid.View;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
@@ -22,6 +22,7 @@ public class Api2Submit : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (prop.ValuesAreGood() == false)
@@ -58,11 +59,14 @@ public class Api2Submit : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -76,6 +80,7 @@ public class Api2Submit : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (prop.ValuesAreGood() == false) {
@@ -108,11 +113,14 @@ public class Api2Submit : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -127,7 +135,8 @@ public class Api2Submit : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             try {
                 var value =
@@ -175,11 +184,14 @@ public class Api2Submit : ControllerExtensions {
                 : Ok(resp.Ok());
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }

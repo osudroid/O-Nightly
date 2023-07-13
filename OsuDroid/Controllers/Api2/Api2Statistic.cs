@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Model;
-using OsuDroid.Class;
+using OsuDroid.View;
 using OsuDroidLib;
 using OsuDroidLib.Query;
 
@@ -17,7 +17,8 @@ public class Api2Statistic : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             var result = await log.AddResultAndTransformAsync(await ModelStatistic.ActiveUserAsync(db));
             if (result == EResult.Err)
@@ -35,11 +36,14 @@ public class Api2Statistic : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -51,11 +55,12 @@ public class Api2Statistic : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
-            var result = await log.AddResultAndTransformAsync(await ModelStatistic.ActiveUserAsync(db));
+            var result = await log.AddResultAndTransformAsync(await ModelStatistic.GetActivePatreonAsync(db));
             if (result == EResult.Err)
-                return Ok(ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>.NotExist());
+                return Ok(ApiTypes.ViewExistOrFoundInfo<ViewUsernameAndId>.NotExist());
 
             if (result == EResult.Err) {
                 return await RollbackAndGetInternalServerErrorAsync(dbT);
@@ -69,11 +74,14 @@ public class Api2Statistic : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }

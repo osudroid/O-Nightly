@@ -1,7 +1,7 @@
-namespace OsuDroid.Class;
+namespace OsuDroid.View;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class ViewUserRankTimeLine {
+public sealed class ViewUserRankTimeLine: IView {
     public long UserId { get; set; }
     public IReadOnlyList<RankTimeLineValue>? List { get; set; }
 

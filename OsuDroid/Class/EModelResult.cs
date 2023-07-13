@@ -1,6 +1,6 @@
 using NetEscapades.EnumGenerators;
 
-namespace OsuDroid.Class;
+namespace OsuDroid.View;
 
 [EnumExtensions]
 public enum EModelResult {

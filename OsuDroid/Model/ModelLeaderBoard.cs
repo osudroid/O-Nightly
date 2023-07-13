@@ -2,6 +2,7 @@ using LamLogger;
 using Npgsql;
 using OsuDroid.Class;
 using OsuDroid.Class.Dto;
+using OsuDroid.View;
 using OsuDroid.Extensions;
 
 namespace OsuDroid.Model;

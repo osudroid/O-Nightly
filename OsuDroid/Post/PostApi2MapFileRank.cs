@@ -1,5 +1,5 @@
 using OsuDroid.Utils;
-using OsuDroid.Class;
+using OsuDroid.View;
 
 namespace OsuDroid.Post;
 

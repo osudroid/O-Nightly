@@ -4,7 +4,7 @@ using OsuDroid.Lib;
 using OsuDroid.Model;
 using OsuDroid.Post;
 using OsuDroid.Utils;
-using OsuDroid.Class;
+using OsuDroid.View;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
@@ -21,6 +21,7 @@ public class Api2Play : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             if (prop.ValuesAreGood() == false) {
@@ -53,11 +54,14 @@ public class Api2Play : ControllerExtensions {
                 });
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -69,7 +73,8 @@ public class Api2Play : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             if (prop.ValuesAreGood() == false)
                 return await RollbackAndGetBadRequestAsync(dbT, "Post Prop Are Bad");
@@ -94,11 +99,14 @@ public class Api2Play : ControllerExtensions {
             });
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }

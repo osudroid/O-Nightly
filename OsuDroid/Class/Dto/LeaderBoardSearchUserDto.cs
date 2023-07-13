@@ -1,10 +1,9 @@
-using OsuDroid.Utils;
 using OsuDroidLib.Lib;
 
 namespace OsuDroid.Class.Dto;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class LeaderBoardSearchUserDto {
+public sealed class LeaderBoardSearchUserDto: IDto {
     public required string Region { get; init; }
     public required long Limit { get; init; }
     public required string Query { get; init; }

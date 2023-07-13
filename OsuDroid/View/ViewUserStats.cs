@@ -1,6 +1,6 @@
-namespace OsuDroid.Class;
+namespace OsuDroid.View;
 
-public class ViewUserStats {
+public class ViewUserStats: IView {
     public long UserId { get; set; }
     public long OverallPlaycount { get; set; }
     public long OverallScore { get; set; }

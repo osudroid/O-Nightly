@@ -1,7 +1,7 @@
-namespace OsuDroid.Class;
+namespace OsuDroid.View;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class ViewCreateDropAccountTokenRes {
+public sealed class ViewCreateDropAccountTokenRes: IView {
     public bool Work { get; set; }
     public bool PasswordFalse { get; set; }
     public bool CookieDead { get; set; }

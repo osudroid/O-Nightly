@@ -2,7 +2,7 @@ using OsuDroidLib.Query;
 
 namespace OsuDroid.View;
 
-public class ViewMapTopPlays {
+public class ViewMapTopPlays: IView {
     public long PlayScoreId { get; set; }
     public long UserId { get; set; }
     public string? Mode { get; set; }

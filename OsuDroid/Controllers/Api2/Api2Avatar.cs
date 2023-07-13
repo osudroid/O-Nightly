@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Post;
-using OsuDroid.Class;
+using OsuDroid.View;
 using OsuDroid.Model;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
@@ -20,6 +20,7 @@ public class Api2Avatar : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             var resultUserAvatar = await log.AddResultAndTransformAsync(
@@ -36,11 +37,14 @@ public class Api2Avatar : ControllerExtensions {
             return File(mem, $"image/{userAvatar.TypeExt}");
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -52,6 +56,7 @@ public class Api2Avatar : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
+        var isComplete = false;
 
         try {
             var result = await log.AddResultAndTransformAsync(
@@ -68,11 +73,14 @@ public class Api2Avatar : ControllerExtensions {
             return File(avatar.Bytes!, $"image/{avatar.TypeExt}");
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 
@@ -85,7 +93,8 @@ public class Api2Avatar : ControllerExtensions {
         await using var start = await GetStartAsync();
         var (dbT, db, log) = start.Unpack();
         await log.AddLogDebugStartAsync();
-
+        var isComplete = false;
+        
         try {
             if (prop.ValuesAreGood() == false)
                 return BadRequest();
@@ -105,11 +114,14 @@ public class Api2Avatar : ControllerExtensions {
             };
         }
         catch (Exception e) {
+            isComplete = true;
             await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
             return await RollbackAndGetInternalServerErrorAsync(dbT);
         }
         finally {
-            await dbT.CommitAsync();
+            if (!isComplete) {
+                await dbT.CommitAsync();
+            }
         }
     }
 }

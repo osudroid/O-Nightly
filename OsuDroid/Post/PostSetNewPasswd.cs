@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using OsuDroid.Class;
+using OsuDroid.View;
 
 namespace OsuDroid.Post;
 

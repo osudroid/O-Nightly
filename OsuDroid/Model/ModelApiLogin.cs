@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Class;
 using OsuDroid.Class.Dto;
+using OsuDroid.View;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Lib.TokenHandler;
