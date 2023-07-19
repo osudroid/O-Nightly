@@ -70,6 +70,8 @@ public static partial class DtoMapper {
     public static partial WebLoginDto WebLoginToPost(WebLoginDto dto);
     public static partial WebLoginWithUsernameDto WebLoginWithUsernameToPost(WebLoginWithUsernameDto dto);
     public static partial WebRegisterDto WebRegisterToPost(WebRegisterDto dto);
+
+    public static partial ViewWebLogin ToViewWebLogin(WebLoginResponseDto dto);
     
     public static partial ViewUserInfo ToViewUserInfo(ICookieUserInfo dto);
 }

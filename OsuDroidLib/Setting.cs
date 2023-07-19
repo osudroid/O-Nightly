@@ -35,6 +35,8 @@ public static class Setting {
     public static SettingDto<bool>? Log_RequestJsonPrint { get; private set; }
     public static SettingDto<int>? UserAvatar_SizeLow { get; private set; }
     public static SettingDto<int>? UserAvatar_SizeHigh { get; private set; }
+    public static SettingDto<int>? LoginToken_ValidTimeInMin { get; private set; }
+    public static SettingDto<int>? LoginToken_TokenSize { get; private set; }
 
     #endregion
 
@@ -128,7 +130,10 @@ public static class Setting {
             { SettingMainKey: ESettingMainKey.UserAvatar, SettingSubKey: ESettingSubKey.SizeLow }).ValueToInt();
         UserAvatar_SizeHigh = settings.First(s => s is
             { SettingMainKey: ESettingMainKey.UserAvatar, SettingSubKey: ESettingSubKey.SizeHigh }).ValueToInt();
-
+        LoginToken_ValidTimeInMin = settings.First(s => s is
+            { SettingMainKey: ESettingMainKey.LoginToken, SettingSubKey: ESettingSubKey.ValidTimeInMin }).ValueToInt();
+        LoginToken_TokenSize = settings.First(s => s is
+            { SettingMainKey: ESettingMainKey.LoginToken, SettingSubKey: ESettingSubKey.TokenSize }).ValueToInt();
         return ResultErr<string>.Ok();
     }
 

@@ -1,21 +1,15 @@
-using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
+using OsuDroid.Class;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
-using OsuDroid.Lib.TokenHandler;
-using OsuDroid.Lib.Validate;
 using OsuDroid.Post;
-using OsuDroid.Utils;
 using OsuDroid.View;
 using OsuDroid.Model;
-using OsuDroidLib;
-using OsuDroidLib.Database.Entities;
-using OsuDroidLib.Extension;
-using OsuDroidLib.Lib;
-using OsuDroidLib.Query;
+using OsuDroidMediator.Domain.Model;
+using OsuDroidMediator.Domain.Model.Dto;
+using EModelResult = OsuDroid.View.EModelResult;
 
 namespace OsuDroid.Controllers.Api;
 
@@ -26,42 +20,22 @@ public sealed class Login : ControllerExtensions {
     [PrivilegeRoute(route: "/api/weblogin")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLogin))]
     public async Task<IActionResult> WebLogin([FromBody] PostWebLogin prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
+        var transaction = await OsuDroidMediator.Application.Service.LoginService.WebLoginAsync(new WebLogin() {
+            Password = prop.Passwd,
+            Token = prop.Token,
+            Email = prop.Email,
+            Math = prop.Math
+        }, new UserCookieControllerHandler(this));
 
-        try {
-            if (!prop.ValuesAreGood()) {
-                await log.AddLogDebugAsync("Post Prop Are Not Valid");
-                isComplete = true;
-                return await RollbackAndGetBadRequestAsync(dbT);
+        return this.HandelResultData(transaction, value => {
+            if (value.Data.IsNotSet()) {
+                return new ViewWebLogin() { Work = false };
             }
 
-            var result = await log.AddResultAndTransformAsync(
-                await Model.ModelApiLogin.WebLogin(this, db, DtoMapper.WebLoginToDto(prop)));
+            WebLoginResponseDto dto = value.Data.Unwrap();
 
-            if (result == EResult.Err) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+            return DtoMapper.ToViewWebLogin(dto);
+        });
     }
 
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLogin))]

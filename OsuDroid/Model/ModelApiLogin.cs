@@ -181,8 +181,8 @@ public static class ModelApiLogin {
             .Ok(ModelResult<ViewWebLogin>
                 .Ok(new ViewWebLogin {
                     Work = true,
-                    EmailExist = true,
-                    UsernameExist = true,
+                    EmailFalse = true,
+                    UsernameFalse = true,
                     UserOrPasswdOrMathIsFalse = false
                 }));
     }
@@ -217,11 +217,11 @@ public static class ModelApiLogin {
             if (find.Unwrap().Username == webRegister.Username)
                 return Result<ModelResult<ViewWebLogin>, string>
                     .Ok(ModelResult<ViewWebLogin>
-                        .Ok(new ViewWebLogin { UsernameExist = true }));
+                        .Ok(new ViewWebLogin { UsernameFalse = true }));
             if (find.Unwrap().Email == webRegister.Email)
                 return Result<ModelResult<ViewWebLogin>, string>
                     .Ok(ModelResult<ViewWebLogin>
-                        .Ok(new ViewWebLogin { EmailExist = true }));
+                        .Ok(new ViewWebLogin { EmailFalse = true }));
         }
 
         var optionIp = controller.GetIpAddress().OkOr(Option<IPAddress>.Empty);

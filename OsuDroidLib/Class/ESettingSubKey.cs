@@ -29,4 +29,6 @@ public enum ESettingSubKey {
     SizeHigh,
     MinLength,
     BCryptSalt,
+    ValidTimeInMin,
+    TokenSize,
 }

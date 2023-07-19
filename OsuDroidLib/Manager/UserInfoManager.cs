@@ -84,4 +84,8 @@ public static class UserInfoManager {
         NpgsqlConnection db, long userId, string username) {
         return await QueryUserInfo.UpdateUsernameByUserIdAsync(db, userId, username);
     }
+
+    public static async ValueTask<Result<Option<UserInfo>, string>> GetByEmailAsync(NpgsqlConnection db, string email) {
+        return await QueryUserInfo.GetByEmailAsync(db, email);
+    }
 }

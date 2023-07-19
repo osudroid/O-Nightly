@@ -13,4 +13,5 @@ public enum ESettingMainKey {
     Patreon,
     Log,
     UserAvatar,
+    LoginToken
 }
