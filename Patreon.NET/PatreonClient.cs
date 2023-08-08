@@ -172,8 +172,8 @@ public sealed class PatreonClient : IDisposable {
 
             list.AddRange(document.Data);
 
-            if (document.Links != null && document.Links.ContainsKey("next"))
-                next = document.Links["next"].Href;
+            if (document.Links != null && document.Links.TryGetValue("next", out var link))
+                next = link.Href;
             else
                 next = null;
         } while (next != null);
