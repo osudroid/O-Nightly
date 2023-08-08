@@ -9,21 +9,21 @@ CREATE SEQUENCE IF NOT EXISTS bbl_user_id_seq AS bigint START WITH 1 INCREMENT B
 
 CREATE TABLE IF NOT EXISTS UserInfo
 (
-    UserId               bigint    NOT NULL DEFAULT nextval('bbl_user_id_seq'),
-    Username             text      NOT NULL UNIQUE,
-    Password             text      NOT NULL DEFAULT '',
-    Email                text      NOT NULL UNIQUE,
-    DeviceId             text      NOT NULL DEFAULT '',
-    RegisterTime         timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    LastLoginTime        timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    Region               text      NOT NULL DEFAULT '',
-    Active               boolean   NOT NULL DEFAULT true,
-    Banned               boolean   NOT NULL DEFAULT false,
-    RestrictMode         boolean   NOT NULL DEFAULT false,
-    UsernameLastChange   timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    LatestIp             text      NOT NULL DEFAULT '',
-    PatronEmail          text               DEFAULT null,
-    PatronEmailAccept    boolean   NOT NULL DEFAULT false,
+    UserId             bigint    NOT NULL DEFAULT nextval('bbl_user_id_seq'),
+    Username           text      NOT NULL UNIQUE,
+    Password           text      NOT NULL DEFAULT '',
+    Email              text      NOT NULL UNIQUE,
+    DeviceId           text      NOT NULL DEFAULT '',
+    RegisterTime       timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    LastLoginTime      timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Region             text      NOT NULL DEFAULT '',
+    Active             boolean   NOT NULL DEFAULT true,
+    Banned             boolean   NOT NULL DEFAULT false,
+    RestrictMode       boolean   NOT NULL DEFAULT false,
+    UsernameLastChange timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    LatestIp           text      NOT NULL DEFAULT '',
+    PatronEmail        text               DEFAULT null,
+    PatronEmailAccept  boolean   NOT NULL DEFAULT false,
     FOREIGN KEY (PatronEmail) REFERENCES Patron (PatronEmail),
     PRIMARY KEY (UserId)
 );
@@ -36,15 +36,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_bbl_user_username ON UserInfo USING btree 
 
 
 
-
-
-
-
-
 CREATE TABLE IF NOT EXISTS TokenUser
 (
     TokenId    uuid      NOT NULL,
-    UserId     bigint    NOT NULL REFERENCES UserInfo(UserId) ON DELETE CASCADE,
+    UserId     bigint    NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
     CreateDate timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (TokenId)
 );
@@ -54,15 +49,9 @@ CREATE INDEX IF NOT EXISTS idx_TokenUser_UserId ON TokenUser USING btree (TokenI
 
 
 
-
-
-
-
-
-
 CREATE TABLE IF NOT EXISTS UserStats
 (
-    UserId           bigint NOT NULL REFERENCES UserInfo(UserId) ON DELETE CASCADE,
+    UserId           bigint NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
     OverallPlaycount bigint NOT NULL DEFAULT 0,
     OverallScore     bigint NOT NULL DEFAULT 0,
     OverallAccuracy  bigint NOT NULL DEFAULT 0,
@@ -86,8 +75,7 @@ CREATE TABLE IF NOT EXISTS UserStats
     PRIMARY KEY (UserId)
 );
 
-CREATE INDEX IF NOT EXISTS idx_bbl_user_stats_score_many ON UserStats(OverallScore) INCLUDE (UserId);
-
+CREATE INDEX IF NOT EXISTS idx_bbl_user_stats_score_many ON UserStats (OverallScore) INCLUDE (UserId);
 
 
 
@@ -96,32 +84,32 @@ CREATE SEQUENCE IF NOT EXISTS public.public_score_id_seq
 
 CREATE TABLE IF NOT EXISTS PlayScore
 (
-    PlayScoreId  bigint    NOT NULL DEFAULT nextval('public_score_id_seq'),
-    UserId   bigint    NOT NULL REFERENCES UserInfo(UserId) ON DELETE CASCADE,
-    Filename text      NOT NULL,
-    Hash     text      NOT NULL,
-    Mode     text[]    NOT NULL DEFAULT '{}',
-    Score    bigint    NOT NULL DEFAULT 0,
-    Combo    bigint    NOT NULL DEFAULT 0,
-    Mark     text      NOT NULL DEFAULT '',
-    Geki     bigint    NOT NULL DEFAULT 0,
-    Perfect  bigint    NOT NULL DEFAULT 0,
-    Katu     bigint    NOT NULL DEFAULT 0,
-    Good     bigint    NOT NULL DEFAULT 0,
-    Bad      bigint    NOT NULL DEFAULT 0,
-    Miss     bigint    NOT NULL DEFAULT 0,
-    Date     timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    Accuracy bigint    NOT NULL DEFAULT 0,
+    PlayScoreId bigint    NOT NULL DEFAULT nextval('public_score_id_seq'),
+    UserId      bigint    NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
+    Filename    text      NOT NULL,
+    Hash        text      NOT NULL,
+    Mode        text[]    NOT NULL DEFAULT '{}',
+    Score       bigint    NOT NULL DEFAULT 0,
+    Combo       bigint    NOT NULL DEFAULT 0,
+    Mark        text      NOT NULL DEFAULT '',
+    Geki        bigint    NOT NULL DEFAULT 0,
+    Perfect     bigint    NOT NULL DEFAULT 0,
+    Katu        bigint    NOT NULL DEFAULT 0,
+    Good        bigint    NOT NULL DEFAULT 0,
+    Bad         bigint    NOT NULL DEFAULT 0,
+    Miss        bigint    NOT NULL DEFAULT 0,
+    Date        timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Accuracy    bigint    NOT NULL DEFAULT 0,
     PRIMARY KEY (PlayScoreId)
 );
 
 
 
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid           ON PlayScore USING btree (UserId);
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid_filename  ON PlayScore USING btree (UserId, Filename);
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_filename      ON PlayScore USING btree (Filename);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid ON PlayScore USING btree (UserId);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_uid_filename ON PlayScore USING btree (UserId, Filename);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_filename ON PlayScore USING btree (Filename);
 CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_hash_filename ON PlayScore USING btree (Filename, Hash);
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_user_id_id    ON PlayScore USING btree (UserId desc , PlayScoreId desc) INCLUDE (
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_user_id_id ON PlayScore USING btree (UserId desc, PlayScoreId desc) INCLUDE (
     Filename,
     Hash,
     Mode,
@@ -144,7 +132,7 @@ ALTER SEQUENCE public_score_id_seq OWNED BY PlayScore.PlayScoreId;
 CREATE TABLE IF NOT EXISTS PlayScorePreSubmit
 (
     ScorePreSubmitId bigint    NOT NULL DEFAULT nextval('public_score_id_seq'),
-    UserID           bigint    NOT NULL REFERENCES UserInfo(UserId) ON DELETE CASCADE,
+    UserID           bigint    NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
     Filename         text      NOT NULL,
     Hash             text      NOT NULL,
     Mode             text[]    NOT NULL DEFAULT '{}',
@@ -163,34 +151,66 @@ CREATE TABLE IF NOT EXISTS PlayScorePreSubmit
 );
 
 ALTER SEQUENCE public_score_id_seq OWNED BY PlayScorePreSubmit.ScorePreSubmitId;
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON PlayScorePreSubmit(UserId) INCLUDE (ScorePreSubmitId);
-CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON PlayScorePreSubmit(ScorePreSubmitId) INCLUDE (UserId);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON PlayScorePreSubmit (UserId) INCLUDE (ScorePreSubmitId);
+CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON PlayScorePreSubmit (ScorePreSubmitId) INCLUDE (UserId);
+
+
+CREATE TABLE IF NOT EXISTS
+    ResetPasswordKey(
+                        Token      TEXT      NOT NULL,
+                        UserId     BIGINT    NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
+                        CreateTime TIMESTAMP NOT NULL,
+                        PRIMARY KEY (UserId, token)
+);
+
+
+
+CREATE TABLE IF NOT EXISTS
+    PatreonEmailToken (
+                          UserId BIGINT        NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
+                          Token UUID           NOT NULL PRIMARY KEY,
+                          CreateTime TIMESTAMP NOT NULL ,
+                          Email TEXT           NOT NULL UNIQUE
+);
+CREATE INDEX IF NOT EXISTS idx_patreon_email_token_token_create_time ON PatreonEmailToken(Token, CreateTime);
+
+
+
+CREATE TABLE IF NOT EXISTS
+    PatreonDeleteAccEmailToken (
+                          UserId BIGINT        NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
+                          Token UUID           NOT NULL PRIMARY KEY,
+                          CreateTime TIMESTAMP NOT NULL ,
+                          Email TEXT           NOT NULL UNIQUE
+);
+CREATE INDEX IF NOT EXISTS idx_patreon_delete_acc_email_token_token_create_time ON PatreonDeleteAccEmailToken(Token, CreateTime);
+
 
 
 CREATE TABLE IF NOT EXISTS
     PlayScoreBanned
 (
-    ScoreBannedId  bigint PRIMARY KEY NOT NULL,
-    UserId         bigint             NOT NULL,
-    Filename       text               NOT NULL,
-    Hash           text               NOT NULL,
-    Mode           text[]             NOT NULL DEFAULT '{}',
-    Score          bigint             NOT NULL DEFAULT 0,
-    Combo          bigint             NOT NULL DEFAULT 0,
-    Mark           text               NOT NULL DEFAULT '',
-    Geki           bigint             NOT NULL DEFAULT 0,
-    Perfect        bigint             NOT NULL DEFAULT 0,
-    Katu           bigint             NOT NULL DEFAULT 0,
-    Good           bigint             NOT NULL DEFAULT 0,
-    Bad            bigint             NOT NULL DEFAULT 0,
-    Miss           bigint             NOT NULL DEFAULT 0,
-    Date           timestamp          NOT NULL,
-    accuracy       bigint             NOT NULL DEFAULT 0
+    ScoreBannedId bigint PRIMARY KEY NOT NULL,
+    UserId        bigint             NOT NULL,
+    Filename      text               NOT NULL,
+    Hash          text               NOT NULL,
+    Mode          text[]             NOT NULL DEFAULT '{}',
+    Score         bigint             NOT NULL DEFAULT 0,
+    Combo         bigint             NOT NULL DEFAULT 0,
+    Mark          text               NOT NULL DEFAULT '',
+    Geki          bigint             NOT NULL DEFAULT 0,
+    Perfect       bigint             NOT NULL DEFAULT 0,
+    Katu          bigint             NOT NULL DEFAULT 0,
+    Good          bigint             NOT NULL DEFAULT 0,
+    Bad           bigint             NOT NULL DEFAULT 0,
+    Miss          bigint             NOT NULL DEFAULT 0,
+    Date          timestamp          NOT NULL,
+    accuracy      bigint             NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS GlobalRankingTimeline
 (
-    UserId        bigint NOT NULL REFERENCES UserInfo(UserId) ON DELETE CASCADE,
+    UserId        bigint NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
     Date          date   NOT NULL DEFAULT current_date,
     GlobalRanking bigint NOT NULL,
     Score         bigint NOT NULL,
@@ -223,7 +243,7 @@ CREATE TABLE IF NOT EXISTS bbl_global_ranking_timeline_y2030 PARTITION OF Global
 
 CREATE TABLE IF NOT EXISTS UserAvatar
 (
-    UserId    BIGINT REFERENCES UserInfo(UserId) ON DELETE CASCADE,
+    UserId    BIGINT REFERENCES UserInfo (UserId) ON DELETE CASCADE,
     Hash      TEXT  Not NULL,
     TypeExt   TEXT  Not NULL,
     PixelSize int   Not NULL,
@@ -233,60 +253,76 @@ CREATE TABLE IF NOT EXISTS UserAvatar
     PRIMARY KEY (UserId, Hash)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_user_avatar_userid_pixelsize on UserAvatar(UserId, PixelSize);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_user_avatar_hash on UserAvatar(hash);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_avatar_userid_pixelsize on UserAvatar (UserId, PixelSize);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_avatar_hash on UserAvatar (hash);
+
+
+CREATE TABLE IF NOT EXISTS WebLoginMathResult (
+    WebLoginMathResultId uuid,
+    CreateTime TIMESTAMP,
+    MathResult INT,
+    PRIMARY KEY (WebLoginMathResultId)
+);
+
+CREATE INDEX IF NOT EXISTS idx_web_login_math_result on WebLoginToken (CreateTime);
+
+
 
 -- Only IN Production (Need Space)
 CREATE INDEX IF NOT EXISTS idx_bbl_global_ranking_timeline_any
     on GlobalRankingTimeline (UserId, Date) INCLUDE (score, GlobalRanking);
 
 
-CREATE TABLE IF NOT EXISTS Log(
-    Id uuid NOT NULL ,
+CREATE TABLE IF NOT EXISTS Log
+(
+    Id       uuid      NOT NULL,
+    Number   int       NOT NULL,
     DateTime timestamp NOT NULL,
-    Message text NOT NULL,
-    Status text NOT NULL,
-    Stack text NOT NULL,
-    Trigger text NOT NULL,
-    PRIMARY KEY (id, DateTime)
+    Message  text      NOT NULL,
+    Status   text      NOT NULL,
+    Stack    text      NOT NULL,
+    Trigger  text      NOT NULL,
+    PRIMARY KEY (id, Number)
 );
 
 
 
 CREATE TABLE IF NOT EXISTS
-    GroupPrivilege (
-        GroupPrivilegeId uuid NOT NULL DEFAULT gen_random_uuid(),
-        Name text UNIQUE NOT NULL,
-        Description text NOT NULL,
-        PRIMARY KEY (GroupPrivilegeId)
+    GroupPrivilege
+(
+    GroupPrivilegeId uuid        NOT NULL DEFAULT gen_random_uuid(),
+    Name             text UNIQUE NOT NULL,
+    Description      text        NOT NULL,
+    PRIMARY KEY (GroupPrivilegeId)
 );
 
 CREATE TABLE IF NOT EXISTS
-    UserGroupPrivilege (
-                                 UserId BIGINT         NOT NULL REFERENCES UserInfo(UserId)        ON DELETE CASCADE,
-                                 GroupPrivilegeId uuid NOT NULL REFERENCES GroupPrivilege(GroupPrivilegeId) ON DELETE CASCADE,
-                                 PRIMARY KEY (UserId, GroupPrivilegeId),
-                                 FOREIGN KEY (UserId) REFERENCES UserInfo (UserId),
-                                 FOREIGN KEY (GroupPrivilegeId) REFERENCES GroupPrivilege (GroupPrivilegeId)
+    UserGroupPrivilege
+(
+    UserId           BIGINT NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
+    GroupPrivilegeId uuid   NOT NULL REFERENCES GroupPrivilege (GroupPrivilegeId) ON DELETE CASCADE,
+    PRIMARY KEY (UserId, GroupPrivilegeId),
+    FOREIGN KEY (UserId) REFERENCES UserInfo (UserId),
+    FOREIGN KEY (GroupPrivilegeId) REFERENCES GroupPrivilege (GroupPrivilegeId)
 );
 
 CREATE TABLE IF NOT EXISTS
-    Privilege(
-                 PrivilegeId uuid DEFAULT gen_random_uuid() NOT NULL,
-                 Name text UNIQUE NOT NULL,
-                 Description text NOT NULL,
-                 PRIMARY KEY (PrivilegeId)          
+    Privilege
+(
+    PrivilegeId uuid DEFAULT gen_random_uuid() NOT NULL,
+    Name        text UNIQUE                    NOT NULL,
+    Description text                           NOT NULL,
+    PRIMARY KEY (PrivilegeId)
 );
 
 CREATE TABLE IF NOT EXISTS
-    GroupPrivilege_Privilege (
-                                  GroupPrivilegeId uuid NOT NULL REFERENCES GroupPrivilege(GroupPrivilegeId) ON DELETE CASCADE,
-                                  ModeAllow bool NOT NULL,
-                                  PrivilegeId uuid NOT NULL REFERENCES Privilege(PrivilegeId) ON DELETE CASCADE,
-                                  primary key (GroupPrivilegeId, PrivilegeId)
+    GroupPrivilege_Privilege
+(
+    GroupPrivilegeId uuid NOT NULL REFERENCES GroupPrivilege (GroupPrivilegeId) ON DELETE CASCADE,
+    ModeAllow        bool NOT NULL,
+    PrivilegeId      uuid NOT NULL REFERENCES Privilege (PrivilegeId) ON DELETE CASCADE,
+    primary key (GroupPrivilegeId, PrivilegeId)
 );
-
-
 
 
 
@@ -308,225 +344,221 @@ CREATE TABLE IF NOT EXISTS
 -- WHERE gp.id IN (SELECT bbl_user_group_privilege.group_privilege_id FROM bbl_user_group_privilege WHERE user_id = 22578);
 
 
-
-
-CREATE TABLE IF NOT EXISTS NeedPrivilege (
-    NeedPrivilegeId uuid NOT NULL default gen_random_uuid(),
-    Name TEXT UNIQUE NOT NULL,
+CREATE TABLE IF NOT EXISTS NeedPrivilege
+(
+    NeedPrivilegeId uuid        NOT NULL default gen_random_uuid(),
+    Name            TEXT UNIQUE NOT NULL,
     PRIMARY KEY (NeedPrivilegeId)
 );
 
-CREATE TABLE IF NOT EXISTS NeedPrivilege_Privilege (
-    NeedPrivilegeId uuid NOT NULL REFERENCES NeedPrivilege(NeedPrivilegeId) ON DELETE CASCADE,
-    PrivilegeId uuid NOT NULL REFERENCES Privilege(PrivilegeId) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS NeedPrivilege_Privilege
+(
+    NeedPrivilegeId uuid NOT NULL REFERENCES NeedPrivilege (NeedPrivilegeId) ON DELETE CASCADE,
+    PrivilegeId     uuid NOT NULL REFERENCES Privilege (PrivilegeId) ON DELETE CASCADE,
     PRIMARY KEY (NeedPrivilegeId, PrivilegeId)
 );
 
 
-CREATE TABLE IF NOT EXISTS Setting (
+CREATE TABLE IF NOT EXISTS Setting
+(
     MainKey TEXT not null,
-    SubKey TEXT not null,
-    Value TEXT not null,
+    SubKey  TEXT not null,
+    Value   TEXT not null,
     PRIMARY KEY (MainKey, SubKey)
 );
 
-CREATE TABLE IF NOT EXISTS RouterSetting (
-    Path TEXT NOT NULL,
-    NeedPrivilege uuid NOT NULL REFERENCES NeedPrivilege(NeedPrivilegeId) ON DELETE RESTRICT,
-    NeedCookie boolean NOT NULL,
+CREATE TABLE IF NOT EXISTS RouterSetting
+(
+    Path              TEXT    NOT NULL,
+    NeedPrivilege     uuid    NOT NULL REFERENCES NeedPrivilege (NeedPrivilegeId) ON DELETE RESTRICT,
+    NeedCookie        boolean NOT NULL,
     NeedCookieHandler text,
     PRIMARY KEY (Path)
 );
 
 
 
-CREATE OR REPLACE function user_check_need_privilege_by_name (CheckUserId BIGINT, NeedPrivilegeName text)
+CREATE OR REPLACE function user_check_need_privilege_by_name(CheckUserId BIGINT, NeedPrivilegeName text)
     RETURNS RECORD
-AS $$
+AS
+$$
 DECLARE
     ret RECORD;
 BEGIN
-    SELECT
-        DISTINCT ON (npp.PrivilegeId)
-        us.PriName,
-        npp.PrivilegeId as NeedPrivilegeId,
-        (case when us.UserModeAllow = true THEN true ELSE false END) as UserHasPrivilege
+    SELECT DISTINCT ON (npp.PrivilegeId) us.PriName,
+                                         npp.PrivilegeId                                              as NeedPrivilegeId,
+                                         (case when us.UserModeAllow = true THEN true ELSE false END) as UserHasPrivilege
     FROM NeedPrivilege need
              join NeedPrivilege_Privilege npp on need.NeedPrivilegeId = npp.NeedPrivilegeId
              FULL JOIN
-         (
-             SELECT p.PrivilegeId as user_privilege_id, gpp.ModeAllow as UserModeAllow, p.Name as PriName
-             FROM Privilege p
-                      JOIN GroupPrivilege_Privilege gpp on p.PrivilegeId = gpp.PrivilegeId
-                      JOIN GroupPrivilege gp on gpp.GroupPrivilegeId = gp.GroupPrivilegeId
-                      JOIN
-                  (
-                      SELECT need.*, npp.*
-                      FROM NeedPrivilege need join NeedPrivilege_Privilege npp on need.NeedPrivilegeId = npp.NeedPrivilegeId
-                      WHERE need.Name = NeedPrivilegeName
-                  ) need_pri on p.PrivilegeId = need_pri.PrivilegeId
-             WHERE gp.GroupPrivilegeId IN (SELECT UserGroupPrivilege.GroupPrivilegeId FROM UserGroupPrivilege WHERE UserGroupPrivilege.UserId = CheckUserId)
-         ) us on us.user_privilege_id = npp.PrivilegeId
+         (SELECT p.PrivilegeId as user_privilege_id, gpp.ModeAllow as UserModeAllow, p.Name as PriName
+          FROM Privilege p
+                   JOIN GroupPrivilege_Privilege gpp on p.PrivilegeId = gpp.PrivilegeId
+                   JOIN GroupPrivilege gp on gpp.GroupPrivilegeId = gp.GroupPrivilegeId
+                   JOIN
+               (SELECT need.*, npp.*
+                FROM NeedPrivilege need
+                         join NeedPrivilege_Privilege npp on need.NeedPrivilegeId = npp.NeedPrivilegeId
+                WHERE need.Name = NeedPrivilegeName) need_pri on p.PrivilegeId = need_pri.PrivilegeId
+          WHERE gp.GroupPrivilegeId IN (SELECT UserGroupPrivilege.GroupPrivilegeId
+                                        FROM UserGroupPrivilege
+                                        WHERE UserGroupPrivilege.UserId = CheckUserId)) us
+         on us.user_privilege_id = npp.PrivilegeId
     WHERE need.name = NeedPrivilegeName
-    ORDER BY npp.PrivilegeId, UserHasPrivilege ASC INTO ret;
+    ORDER BY npp.PrivilegeId, UserHasPrivilege ASC
+    INTO ret;
 
     RETURN ret;
-END $$ LANGUAGE plpgsql;
+END
+$$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE function user_check_need_privilege_by_id (CheckUserId BIGINT, NeedPrivilegeKeyId uuid)
+CREATE OR REPLACE function user_check_need_privilege_by_id(CheckUserId BIGINT, NeedPrivilegeKeyId uuid)
     RETURNS RECORD
-AS $$
+AS
+$$
 DECLARE
     ret RECORD;
 BEGIN
 
-    SELECT
-        DISTINCT ON (npp.PrivilegeId)
-        us.PriName,
-        npp.PrivilegeId as NeedPrivilegeId,
-        (case when us.UserModeAllow = true THEN true ELSE false END) as UserHasPrivilege
+    SELECT DISTINCT ON (npp.PrivilegeId) us.PriName,
+                                         npp.PrivilegeId                                              as NeedPrivilegeId,
+                                         (case when us.UserModeAllow = true THEN true ELSE false END) as UserHasPrivilege
     FROM NeedPrivilege need
              join NeedPrivilege_Privilege npp on need.NeedPrivilegeId = npp.NeedPrivilegeId
              FULL JOIN
-         (
-             SELECT p.PrivilegeId as UserPrivilegeId, gpp.ModeAllow as UserModeAllow, p.Name as PriName
-             FROM privilege p
-                      JOIN GroupPrivilege_Privilege gpp on p.PrivilegeId = gpp.PrivilegeId
-                      JOIN GroupPrivilege gp on gpp.GroupPrivilegeId = gp.GroupPrivilegeId
-                      JOIN
-                  (
-                      SELECT need.*, npp.*
-                      FROM NeedPrivilege need join NeedPrivilege_Privilege npp on need.NeedPrivilegeId = npp.NeedPrivilegeId
-                      WHERE need.NeedPrivilegeId = NeedPrivilegeKeyId
-                  ) NeedPri on p.PrivilegeId = NeedPri.PrivilegeId
-             WHERE gp.GroupPrivilegeId IN (SELECT UserGroupPrivilege.GroupPrivilegeId FROM UserGroupPrivilege WHERE UserId = CheckUserId)
-         ) us on us.UserPrivilegeId = npp.PrivilegeId
+         (SELECT p.PrivilegeId as UserPrivilegeId, gpp.ModeAllow as UserModeAllow, p.Name as PriName
+          FROM privilege p
+                   JOIN GroupPrivilege_Privilege gpp on p.PrivilegeId = gpp.PrivilegeId
+                   JOIN GroupPrivilege gp on gpp.GroupPrivilegeId = gp.GroupPrivilegeId
+                   JOIN
+               (SELECT need.*, npp.*
+                FROM NeedPrivilege need
+                         join NeedPrivilege_Privilege npp on need.NeedPrivilegeId = npp.NeedPrivilegeId
+                WHERE need.NeedPrivilegeId = NeedPrivilegeKeyId) NeedPri on p.PrivilegeId = NeedPri.PrivilegeId
+          WHERE gp.GroupPrivilegeId IN
+                (SELECT UserGroupPrivilege.GroupPrivilegeId FROM UserGroupPrivilege WHERE UserId = CheckUserId)) us
+         on us.UserPrivilegeId = npp.PrivilegeId
     WHERE need.NeedPrivilegeId = NeedPrivilegeKeyId
-    ORDER BY npp.PrivilegeId, UserHasPrivilege ASC INTO ret;
+    ORDER BY npp.PrivilegeId, UserHasPrivilege ASC
+    INTO ret;
 
     RETURN ret;
-END $$ LANGUAGE plpgsql;
+END
+$$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE function router_settings_with_privilege (Path TEXT, NeedCookie bool, CookieHandler TEXT)
-RETURNS TEXT
-    AS $$
+CREATE OR REPLACE function router_settings_with_privilege(Path TEXT, NeedCookie bool, CookieHandler TEXT)
+    RETURNS TEXT
+AS
+$$
 DECLARE
-    Id uuid;
+    Id   uuid;
     Name TEXT;
 BEGIN
     Id := gen_random_uuid();
     Name := concat('route:', path);
-    
+
     INSERT INTO NeedPrivilege (name, NeedPrivilegeId) VALUES (name, id);
-    
-    INSERT INTO RouterSetting 
-        (path, NeedPrivilege, NeedCookie, NeedCookieHandler) 
-    VALUES 
-        (path, Id, NeedCookie, CookieHandler);
+
+    INSERT INTO RouterSetting
+        (path, NeedPrivilege, NeedCookie, NeedCookieHandler)
+    VALUES (path, Id, NeedCookie, CookieHandler);
 
     RETURN Name;
 END
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE function beatmap_top(file TEXT, fileHash TEXT, limitCount INT) 
-RETURNS RECORD
-AS $$
+CREATE OR REPLACE function beatmap_top(file TEXT, fileHash TEXT, limitCount INT)
+    RETURNS RECORD
+AS
+$$
 DECLARE
     ret RECORD;
 BEGIN
     SELECT score.*, UserInfo.Username, md5(UserInfo.Email) as EmailHash
-    FROM PlayScore, UserInfo
+    FROM PlayScore,
+         UserInfo
     WHERE PlayScore.Filename = file
       AND Hash = fileHash
       AND PlayScore.UserId = UserInfo.UserId
-    ORDER BY PlayScore.Score DESC , PlayScore.Accuracy DESC, PlayScore.Date ASC
+    ORDER BY PlayScore.Score DESC, PlayScore.Accuracy DESC, PlayScore.Date ASC
     LIMIT limitCount;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION setting_update (NewMainKey TEXT, NewSubKey TEXT, NewValue TEXT)
+CREATE OR REPLACE FUNCTION setting_update(NewMainKey TEXT, NewSubKey TEXT, NewValue TEXT)
     RETURNS void
-AS $$
+AS
+$$
 BEGIN
     INSERT INTO Setting (MainKey, SubKey, Value)
     VALUES (NewMainKey, NewSubKey, NewValue)
     ON CONFLICT (MainKey, SubKey) DO UPDATE
-        SET
-            MainKey = NewMainKey,
-            SubKey = NewSubKey,
-            Value = NewVALUE;
+        SET MainKey = NewMainKey,
+            SubKey  = NewSubKey,
+            Value   = NewVALUE;
 END;
 $$ LANGUAGE plpgsql;
-                                 
 
 
-SELECT ;
+
+SELECT;
 INSERT INTO privilege
-(name, description)
-VALUES
-    ('admin_pannel_login', 'you can login to admin pannel'),
-    ('admin_pannel_change_user_settings', 'you can change other settings from other user'),
-    ('admin_pannel_user_delete', 'delete user'),
-    ('admin_pannel_user_delete_plays', 'delte userplays'),
-    ('admin_pannel_privilege_rwd', 'read, write, delete privilege'),
-    ('admin_pannel_group_priviege_rwd', 'read, write, delete group_privilege'),
-    ('admin_pannel_user_group_privilege_rwd', 'read, write, delete user_group_privilege'),
-    ('widget_database_stats', 'can see stats from database')
+    (name, description)
+VALUES ('admin_pannel_login', 'you can login to admin pannel'),
+       ('admin_pannel_change_user_settings', 'you can change other settings from other user'),
+       ('admin_pannel_user_delete', 'delete user'),
+       ('admin_pannel_user_delete_plays', 'delte userplays'),
+       ('admin_pannel_privilege_rwd', 'read, write, delete privilege'),
+       ('admin_pannel_group_priviege_rwd', 'read, write, delete group_privilege'),
+       ('admin_pannel_user_group_privilege_rwd', 'read, write, delete user_group_privilege'),
+       ('widget_database_stats', 'can see stats from database')
 ON CONFLICT DO NOTHING
 ;
 
 INSERT INTO GroupPrivilege
-(name, description)
-VALUES
-    ('admin', 'can do all'),
-    ('player', 'none'),
-    ('group_widget_database_stats', 'group to can use widget_database_stats')
+    (name, description)
+VALUES ('admin', 'can do all'),
+       ('player', 'none'),
+       ('group_widget_database_stats', 'group to can use widget_database_stats')
 ON CONFLICT DO NOTHING
 ;
 
 INSERT INTO GroupPrivilege_Privilege
-(GroupPrivilegeId, ModeAllow, PrivilegeId)
-SELECT gp.GroupPrivilegeId, true, privilege.PrivilegeId FROM privilege
-                                          join GroupPrivilege gp on gp.name = 'admin'
+    (GroupPrivilegeId, ModeAllow, PrivilegeId)
+SELECT gp.GroupPrivilegeId, true, privilege.PrivilegeId
+FROM privilege
+         join GroupPrivilege gp on gp.name = 'admin'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO GroupPrivilege_Privilege
-(GroupPrivilegeId, ModeAllow, PrivilegeId)
-SELECT gp.GroupPrivilegeId, false, privilege.PrivilegeId FROM Privilege
-                                          join GroupPrivilege gp on gp.name = 'player'
+    (GroupPrivilegeId, ModeAllow, PrivilegeId)
+SELECT gp.GroupPrivilegeId, false, privilege.PrivilegeId
+FROM Privilege
+         join GroupPrivilege gp on gp.name = 'player'
 ON CONFLICT DO NOTHING;
 
 
-
-
-
-
-
-
-
-
-
-
 -- widget_database_stats
-INSERT INTO NeedPrivilege (name) VALUES ('widget_database_stats');
+INSERT INTO NeedPrivilege (name)
+VALUES ('widget_database_stats');
 
-INSERT INTO 
-    NeedPrivilege_Privilege 
-    (NeedPrivilegeId, PrivilegeId) 
-SELECT need.NeedPrivilegeId, np.PrivilegeId 
+INSERT INTO NeedPrivilege_Privilege
+    (NeedPrivilegeId, PrivilegeId)
+SELECT need.NeedPrivilegeId, np.PrivilegeId
 FROM NeedPrivilege need
-JOIN privilege np on np.name = 'widget_database_stats';
+         JOIN privilege np on np.name = 'widget_database_stats';
+
 
 SELECT router_settings_with_privilege('/api/user-info-by-cookie', false, null);
 SELECT router_settings_with_privilege('/api/weblogin', false, null);
 SELECT router_settings_with_privilege('/api/webloginwithusername', false, null);
 SELECT router_settings_with_privilege('/api/webregister', false, null);
 SELECT router_settings_with_privilege('/api/weblogintoken', false, null);
-SELECT router_settings_with_privilege('/api/webupdateCookie', true, null);
+SELECT router_settings_with_privilege('/api/webupdateCookie', true, 'BASE');
 SELECT router_settings_with_privilege('/api/webresetpasswdandsendemail', false, null);
 SELECT router_settings_with_privilege('/api/token/newpasswdwithtoken', false, null);
 SELECT router_settings_with_privilege('/api/signin/patreon', false, null);
-SELECT router_settings_with_privilege('/api/signout/patreon', true, null);
+SELECT router_settings_with_privilege('/api/signout/patreon', true, 'BASE');
 SELECT router_settings_with_privilege('/api/weblogout', true, 'BASE');
 SELECT router_settings_with_privilege('/api/update', false, null);
 SELECT router_settings_with_privilege('/api2/profile/stats/{id:long}', false, null);
@@ -543,7 +575,7 @@ SELECT router_settings_with_privilege('/api2/profile/accept/patreonemail/token/{
 SELECT router_settings_with_privilege('/api2/profile/drop-account/sendMail}', true, 'BASE');
 SELECT router_settings_with_privilege('/api2/profile/drop-account/token/{token:guid}', true, 'BASE');
 SELECT router_settings_with_privilege('/api2/profile/top-play-by-marks-length/user-id/{userId:long}', false, null);
-SELECT router_settings_with_privilege('/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}', false, null);
+SELECT router_settings_with_privilege('/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}',false, null);
 SELECT router_settings_with_privilege('/api2/apk/version/{dirNameNumber:long}.apk', false, null);
 SELECT router_settings_with_privilege('/api2/avatar/hash', false, null);
 SELECT router_settings_with_privilege('/api2/avatar/hash/{hash:alpha}', false, null);
