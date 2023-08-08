@@ -1,642 +1,483 @@
 using Microsoft.AspNetCore.Mvc;
+using OsuDroid.Class;
+using OsuDroid.Class.Dto;
 using OsuDroid.Extensions;
+using OsuDroid.HttpGet;
 using OsuDroid.Lib;
 using OsuDroid.Post;
-using OsuDroid.Utils;
 using OsuDroid.View;
-using OsuDroid.Model;
-using OsuDroidLib.Dto;
-using OsuDroidLib.Query;
+using OsuDroid.OutputHandler;
+using OsuDroid.Validation;
+using OsuDroidAttachment;
+using OsuDroidAttachment.Class;
 
-namespace OsuDroid.Controllers.Api2;
+// ReSharper disable All
 
-[SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class Api2Profile : ControllerExtensions {
-    [HttpGet("/api2/profile/stats/{id:long}")]
-    [PrivilegeRoute(route: "/api2/profile/stats/{id:long}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewProfileStats))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewProfileStats))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> WebProfileStats([FromRoute(Name = "id")] long userId) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
+namespace OsuDroid.Controllers.Api2 {
+    [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
+    public sealed class Api2Profile : ControllerExtensions {
+        [HttpGet("/api2/profile/stats/{id:long}")]
+        [PrivilegeRoute(route: "/api2/profile/stats/{id:long}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewProfileStats>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> WebProfileStats([FromRoute(Name = "id")] long userId) {
+            var prop = new UserIdBox() { UserId = userId };
         
-        try {
-            var optionUserAndStatsResult = await log.AddResultAndTransformAsync(
-                await Query.GetUserInfoAndBblUserStatsByUserIdAsync(db, userId));
-
-            if (optionUserAndStatsResult == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            if (optionUserAndStatsResult.Ok().IsNotSet())
-                return Ok(new ViewProfileStats { Found = false });
-
-
-            var result = await log.AddResultAndTransformAsync(
-                await ModelApi2Profile.WebProfileStatsAsync(this, db, log, userId));
-
-            if (result == EResult.Err) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-    [HttpGet("/api2/profile/stats/timeline/{id:long}")]
-    [PrivilegeRoute(route: "/api2/profile/stats/timeline/{id:long}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUserRankTimeLine))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> WebProfileStatsTimeLine([FromRoute(Name = "id")] long userId) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (userId < 0)
-                return await RollbackAndGetBadRequestAsync(dbT);
-
-            var result = await log.AddResultAndTransformAsync(
-                await ModelApi2Profile.WebProfileStatsTimeLineAsync(this, db, userId));
-
-            if (result == EResult.Err) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-    [HttpGet("/api2/profile/topplays/{id:long}")]
-    [PrivilegeRoute(route: "/api2/profile/topplays/{id:long}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewPlays))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> WebProfileTopPlays([FromRoute(Name = "id")] long userId) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            var result =
-                await log.AddResultAndTransformAsync(await QueryPlayScore.GetTopScoreFromUserIdAsync(db, userId));
-            if (result == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
+        
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerGetWrapper<UserIdBox>, 
+                ControllerGetWrapper<UserIdBoxDto>, 
+                OptionHandlerOutput<ViewProfileStats>, 
+                ApiTypes.ViewExistOrFoundInfo<ViewProfileStats>>(
             
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new UserIdBoxValidation(),
+                transformHandler: new TransformAction<
+                    ControllerGetWrapper<UserIdBox>,
+                    ControllerGetWrapper<UserIdBoxDto>>((i) 
+                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))),
+                handler: new Handler.WebProfileStatsHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewProfileStats>(),
+                input: new ControllerGetWrapper<UserIdBox>(this.ControllerHandlerBuild(), prop)
+            );
+        
+            return TransactionToIResult(transaction);
+        }
+
+        [HttpGet("/api2/profile/stats/timeline/{id:long}")]
+        [PrivilegeRoute(route: "/api2/profile/stats/timeline/{id:long}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUserRankTimeLine>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> WebProfileStatsTimeLine([FromRoute(Name = "id")] long userId) {
+            var prop = new UserIdBox() { UserId = userId };
+        
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerGetWrapper<UserIdBox>, 
+                ControllerGetWrapper<UserIdBoxDto>, 
+                OptionHandlerOutput<ViewUserRankTimeLine>, 
+                ApiTypes.ViewExistOrFoundInfo<ViewUserRankTimeLine>>(
             
-            return Ok(new ViewPlays {
-                Found = true,
-                Scores = result.Ok().Select(ViewPlayScore.FromPlayScore).ToList()
-            });
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new UserIdBoxValidation(),
+                transformHandler: new TransformAction<
+                    ControllerGetWrapper<UserIdBox>,
+                    ControllerGetWrapper<UserIdBoxDto>>((i) 
+                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))),
+                handler: new Handler.WebProfileStatsTimeLineHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewUserRankTimeLine>(),
+                input: new ControllerGetWrapper<UserIdBox>(this.ControllerHandlerBuild(), prop)
+            );
+        
+            return TransactionToIResult(transaction);
         }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
 
-    [HttpGet("/api2/profile/topplays/{id:long}/page/{page:int}")]
-    [PrivilegeRoute(route: "/api2/profile/topplays/{id:long}/page/{page:int}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> WebProfileTopPlaysPage([FromRoute(Name = "id")] long userId, int page) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (long.IsNegative(userId))
-                return await RollbackAndGetBadRequestAsync(dbT, "userid Is Negative");
-            if (int.IsNegative(page))
-                return await RollbackAndGetBadRequestAsync(dbT, "page Is Negative");
-
-            var fetchResult = await log.AddResultAndTransformAsync(
-                await QueryPlayScore.GetTopScoreFromUserIdWithPageAsync(db, userId, page, 50));
-            if (fetchResult == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-
-            return Ok(new ViewPlays() { Found = true, Scores = fetchResult.Ok().Select(ViewPlayScore.FromPlayScore).ToList() });
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-    [HttpGet("/api2/profile/recentplays/{id:long}")]
-    [PrivilegeRoute(route: "/api2/profile/recentplays/{id:long}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewPlays))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> WebProfileTopRecent([FromRoute(Name = "id")] long userId) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            var result = await log.AddResultAndTransformAsync(
-                await QueryPlayScore.GetLastPlayScoreFilterByUserIdAsync(db, userId, 50));
-
-            if (result == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
+        [HttpGet("/api2/profile/topplays/{id:long}")]
+        [PrivilegeRoute(route: "/api2/profile/topplays/{id:long}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewPlays>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> WebProfileTopPlays([FromRoute(Name = "id")] long userId) {
+            var prop = new UserIdBox() { UserId = userId };
+        
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerGetWrapper<UserIdBox>, 
+                ControllerGetWrapper<UserIdBoxDto>, 
+                OptionHandlerOutput<ViewPlays>, 
+                ApiTypes.ViewExistOrFoundInfo<ViewPlays>>(
             
-            return Ok(new ViewPlays {
-                Found = true,
-                Scores = result.Ok().Select(ViewPlayScore.FromPlayScore).ToList()
-            });
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new UserIdBoxValidation(),
+                transformHandler: new TransformAction<
+                    ControllerGetWrapper<UserIdBox>,
+                    ControllerGetWrapper<UserIdBoxDto>>((i) 
+                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))),
+                handler: new Handler.WebProfileTopPlaysHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewPlays>(),
+                input: new ControllerGetWrapper<UserIdBox>(this.ControllerHandlerBuild(), prop)
+            );
+        
+            return TransactionToIResult(transaction);
         }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
+
+        [HttpGet("/api2/profile/topplays/{id:long}/page/{page:int}")]
+        [PrivilegeRoute(route: "/api2/profile/topplays/{id:long}/page/{page:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewPlays>))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> WebProfileTopPlaysPage([FromRoute(Name = "id")] long userId, int page) {
+            var prop = new TopPlaysPageing() { Page = page, UserId = userId};
+        
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerGetWrapper<TopPlaysPageing>, 
+                ControllerGetWrapper<TopPlaysPageingDto>, 
+                OptionHandlerOutput<ViewPlays>, 
+                ApiTypes.ViewExistOrFoundInfo<ViewPlays>>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new TopPlaysPageingValidation(),
+                transformHandler: new TransformAction<
+                    ControllerGetWrapper<TopPlaysPageing>,
+                    ControllerGetWrapper<TopPlaysPageingDto>>((i) 
+                    => new ControllerGetWrapper<TopPlaysPageingDto>(i.Controller, DtoMapper.TopPlaysPageingToDto(i.Get))),
+                handler: new Handler.WebProfileTopPlaysPageHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewPlays>(),
+                input: new ControllerGetWrapper<TopPlaysPageing>(this.ControllerHandlerBuild(), prop)
+            );
+        
+            return TransactionToIResult(transaction);
         }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
+
+        [HttpGet("/api2/profile/recentplays/{id:long}")]
+        [PrivilegeRoute(route: "/api2/profile/recentplays/{id:long}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewPlays>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> WebProfileTopRecent([FromRoute(Name = "id")] long userId) {
+            var prop = new UserIdBox() { UserId = userId };
+        
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerGetWrapper<UserIdBox>, 
+                ControllerGetWrapper<UserIdBoxDto>, 
+                OptionHandlerOutput<ViewPlays>, 
+                ApiTypes.ViewExistOrFoundInfo<ViewPlays>>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new UserIdBoxValidation(),
+                transformHandler: new TransformAction<
+                    ControllerGetWrapper<UserIdBox>,
+                    ControllerGetWrapper<UserIdBoxDto>>((i) 
+                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))),
+                handler: new Handler.WebProfileTopRecentHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewPlays>(),
+                input: new ControllerGetWrapper<UserIdBox>(this.ControllerHandlerBuild(), prop)
+            );
+        
+            return TransactionToIResult(transaction);
         }
-    }
 
-    [HttpPost("/api2/profile/update/email")]
-    [PrivilegeRoute(route: "/api2/profile/update/email")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateEmail([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdateEmail> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
+        [HttpPost("/api2/profile/update/email")]
+        [PrivilegeRoute(route: "/api2/profile/update/email")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdateEmail([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdateEmail> prop) {
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateEmail>>, 
+                ControllerPostWrapper<UpdateEmailDto>, 
+                WorkHandlerOutput, 
+                ApiTypes.ViewWork>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new UpdateEmailValidation(),
+                transformHandler: new TransformAction<
+                    ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateEmail>>,
+                    ControllerPostWrapper<UpdateEmailDto>>((i) 
+                    => new ControllerPostWrapper<UpdateEmailDto>(i.Controller, DtoMapper.UpdateEmailToDto(i.Post.Body))),
+                handler: new Handler.UpdateEmailHandler(),
+                outputHandler: new WorkHandler(),
+                input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateEmail>>(this.ControllerHandlerBuild(), prop)
+            );
+        
+            return TransactionToIResult(transaction);
+        }
 
-        try {
-            if (prop.ValuesAreGood() == false) {
-                await log.AddLogDebugAsync("Post Prop Are Bad");
-                return await RollbackAndGetBadRequestAsync(dbT);
-            }
+        [HttpPost("/api2/profile/update/passwd")]
+        [PrivilegeRoute(route: "/api2/profile/update/passwd")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdatePasswd([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdatePasswd> prop) {
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdatePasswd>>, 
+                ControllerPostWrapper<UpdatePasswdDto>, 
+                WorkHandlerOutput, 
+                ApiTypes.ViewWork>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new UpdatePasswordValidation(),
+                transformHandler: new TransformAction<
+                    ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdatePasswd>>,
+                    ControllerPostWrapper<UpdatePasswdDto>>((i) 
+                    => new ControllerPostWrapper<UpdatePasswdDto>(i.Controller, DtoMapper.UpdatePasswdToDto(i.Post.Body!))),
+                handler: new Handler.UpdatePasswordHandler(),
+                outputHandler: new WorkHandler(),
+                input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdatePasswd>>(this.ControllerHandlerBuild(), prop)
+            );
+        
+            return TransactionToIResult(transaction);
+        }
 
-            var body = prop.Body!;
+        [HttpPost("/api2/profile/update/username")]
+        [PrivilegeRoute(route: "/api2/profile/update/username")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUpdateUsernameRes>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult>
+            UpdateUsername([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdateUsername> prop) {
+        
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateUsername>>, 
+                ControllerPostWrapper<UpdateUsernameDto>, 
+                OptionHandlerOutput<ViewUpdateUsernameRes>, 
+                ApiTypes.ViewExistOrFoundInfo<ViewUpdateUsernameRes>>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new UpdateUsernameValidation(),
+                transformHandler: new TransformAction<
+                    ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateUsername>>,
+                    ControllerPostWrapper<UpdateUsernameDto>>((i) 
+                    => new ControllerPostWrapper<UpdateUsernameDto>(i.Controller, DtoMapper.UpdateUsernameToDto(i.Post.Body!))),
+                handler: new Handler.UpdateUsernameHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewUpdateUsernameRes>(),
+                input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateUsername>>(this.ControllerHandlerBuild(), prop)
+            );
+        
+            return TransactionToIResult(transaction);
+        }
 
-            UserIdAndToken cookieToken = this.LoginTokenInfo(db).Ok().Unwrap();
+        [HttpPost("/api2/profile/update/avatar")]
+        [PrivilegeRoute(route: "/api2/profile/update/avatar")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUpdateAvatar>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdateAvatar([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdateAvatar> prop) {
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateAvatar>>, 
+                ControllerPostWrapper<UpdateAvatarDto>, 
+                OptionHandlerOutput<ViewUpdateAvatar>, 
+                ApiTypes.ViewExistOrFoundInfo<ViewUpdateAvatar>>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new UpdateAvatarValidation(),
+                transformHandler: new TransformAction<
+                    ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateAvatar>>,
+                    ControllerPostWrapper<UpdateAvatarDto>>((i) 
+                    => new ControllerPostWrapper<UpdateAvatarDto>(i.Controller, DtoMapper.UpdateAvatarToDto(i.Post.Body!))),
+                handler: new Handler.UpdateAvatarHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewUpdateAvatar>(),
+                input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateAvatar>>(this.ControllerHandlerBuild(), prop)
+            );
+        
+            return TransactionToIResult(transaction);
+        }
+
+        [HttpPost("/api2/profile/update/patreonemail")]
+        [PrivilegeRoute(route: "/api2/profile/update/patreonemail")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdatePatreonEmail(
+            [FromBody] PostApi.PostApi2GroundNoHeader<PostUpdatePatreonEmail> prop) {
+            
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdatePatreonEmail>>, 
+                ControllerPostWrapper<UpdatePatreonEmailDto>, 
+                WorkHandlerOutput, 
+                ApiTypes.ViewWork>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new UpdatePatreonEmailValidation(),
+                transformHandler: new TransformAction<
+                    ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdatePatreonEmail>>,
+                    ControllerPostWrapper<UpdatePatreonEmailDto>>((i) 
+                    => new ControllerPostWrapper<UpdatePatreonEmailDto>(i.Controller, DtoMapper.UpdatePatreonEmailToDto(i.Post.Body!))),
+                handler: new Handler.UpdatePatreonEmaildHandler(),
+                outputHandler: new WorkHandler(),
+                input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdatePatreonEmail>>(this.ControllerHandlerBuild(), prop)
+            );
+        
+            return TransactionToIResult(transaction);
+        }
+
+        [HttpGet("/api2/profile/accept/patreonemail/token/{token:guid}")]
+        [PrivilegeRoute(route: "/api2/profile/accept/patreonemail/token/{token:guid}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> AcceptPatreonEmail([FromRoute(Name = "token")] Guid token) {
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerGetWrapper<Guid>, 
+                ControllerGetWrapper<Guid>, 
+                WorkHandlerOutput, 
+                ApiTypes.ViewWork>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new GuidValidation(),
+                transformHandler: new TransformAction<
+                    ControllerGetWrapper<Guid>,
+                    ControllerGetWrapper<Guid>>((i) 
+                    => new ControllerGetWrapper<Guid>(i.Controller, i.Get)),
+                handler: new Handler.AcceptPatreonEmailHandler(),
+                outputHandler: new WorkHandler(),
+                input: new ControllerGetWrapper<Guid>(this.ControllerHandlerBuild(), token)
+            );
+        
+            return TransactionToIResult(transaction);
+        }
+
+        [HttpPost("/api2/profile/drop-account/sendMail")]
+        [PrivilegeRoute(route: "/api2/profile/drop-account/sendMail}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewCreateDropAccountTokenRes>))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> CreateDropAccountToken(
+            [FromBody] PostApi.PostApi2GroundNoHeader<PostCreateDropAccountToken> prop) {
+            
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper,
+                ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostCreateDropAccountToken>>, 
+                ControllerPostWrapper<CreateDropAccountTokenDto>, 
+                OptionHandlerOutput<ViewCreateDropAccountTokenRes>,
+                ApiTypes.ViewExistOrFoundInfo<ViewCreateDropAccountTokenRes>>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new CreateDropAccountTokenValidation(),
+                transformHandler: new TransformAction<
+                    ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostCreateDropAccountToken>>,
+                    ControllerPostWrapper<CreateDropAccountTokenDto>>((i) 
+                    => new ControllerPostWrapper<CreateDropAccountTokenDto>(i.Controller, DtoMapper.CreateDropAccountTokenToDto(i.Post.Body!))),
+                handler: new Handler.CreateDropAccountTokenHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewCreateDropAccountTokenRes>(),
+                input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostCreateDropAccountToken>>(this.ControllerHandlerBuild(), prop)
+            );
+        
+            return TransactionToIResult(transaction);
+        }
+
+        [HttpGet("/api2/profile/drop-account/token/{token:guid}")]
+        [PrivilegeRoute(route: "/api2/profile/drop-account/token/{token:guid}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DropAccountWithTokenAsync([FromRoute(Name = "token")] Guid token) {
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerGetWrapper<Guid>, 
+                ControllerPostWrapper<Guid>, 
+                WorkHandlerOutput, 
+                ApiTypes.ViewWork>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new GuidValidation(),
+                transformHandler: new TransformAction<
+                    ControllerGetWrapper<Guid>,
+                    ControllerPostWrapper<Guid>>((i) 
+                    => new ControllerPostWrapper<Guid>(i.Controller, i.Get)),
+                handler: new Handler.DropAccountWithTokenAsyncHandler(),
+                outputHandler: new WorkHandler(),
+                input: new ControllerGetWrapper<Guid>(this.ControllerHandlerBuild(), token)
+            );
+        
+            return TransactionToIResult(transaction);
+        }
 
 
-            var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
-                .UpdateEmailAsync(this, db, log, DtoMapper.UpdateEmailToDto(body), cookieToken));
+        [HttpGet("/api2/profile/top-play-by-marks-length/user-id/{userId:long}")]
+        [PrivilegeRoute(route: "/api2/profile/top-play-by-marks-length/user-id/{userId:long}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewPlaysMarksLength>))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> WebProfileTopPlaysByMarksLength([FromRoute] long userId) {
+            
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerGetWrapper<UserIdBox>, 
+                ControllerGetWrapper<UserIdBox>, 
+                OptionHandlerOutput<ViewPlaysMarksLength>, 
+                ApiTypes.ViewExistOrFoundInfo<ViewPlaysMarksLength>>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new UserIdBoxValidation(),
+                transformHandler: new TransformAction<
+                    ControllerGetWrapper<UserIdBox>,
+                    ControllerGetWrapper<UserIdBox>>((i) 
+                    => new ControllerGetWrapper<UserIdBox>(i.Controller, i.Get)),
+                handler: new Handler.WebProfileTopPlaysByMarksLengthHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewPlaysMarksLength>(),
+                input: new ControllerGetWrapper<UserIdBox>(this.ControllerHandlerBuild(), new UserIdBox() { UserId = userId})
+            );
+        
+            return TransactionToIResult(transaction);
+        }
 
-            if (result == EResult.Err) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
+        [HttpGet("/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
+        [PrivilegeRoute(
+            route: "/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewPlays>))]
+        public async Task<IActionResult> WebProfileTopPlaysByMark(
+            [FromRoute] long userId, [FromRoute] string markString, [FromRoute] int page) {
+            var request = new HttpGet.GetTopPlaysByMarkPageing() {
+                Page = page,
+                MarkString = markString,
+                UserId = userId
             };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-    [HttpPost("/api2/profile/update/passwd")]
-    [PrivilegeRoute(route: "/api2/profile/update/passwd")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdatePasswd([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdatePasswd> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (!prop.ValuesAreGood())
-                return Ok(new ApiTypes.ViewWork { HasWork = false });
-
-            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-
-            var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
-                .UpdatePasswdAsync(this, db, DtoMapper.UpdatePasswdToDto(prop.Body!), cookieInfo));
-
-            if (result == EResult.Err) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-    [HttpPost("/api2/profile/update/username")]
-    [PrivilegeRoute(route: "/api2/profile/update/username")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUpdateUsernameRes))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewUpdateUsernameRes))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult>
-        UpdateUsername([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdateUsername> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (prop.Body is null || prop.Body.NewUsername is null)
-                return await this.RollbackAndGetBadRequestAsync(dbT, "Post Body Is Bad");
-
-            prop.Body.NewUsername = prop.Body.NewUsername.Trim();
-            if (!prop.ValuesAreGood())
-                return await this.RollbackAndGetBadRequestAsync(dbT, "Post Body Is Bad");
-
-            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-
-            var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
-                .UpdateUsernameAsync(this, db, DtoMapper.UpdateUsernameToDto(prop.Body!), cookieInfo));
-
-            if (result == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-    [HttpPost("/api2/profile/update/avatar")]
-    [PrivilegeRoute(route: "/api2/profile/update/avatar")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewUpdateAvatar))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdateAvatar([FromBody] PostApi.PostApi2GroundNoHeader<PostUpdateAvatar> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (!prop.ValuesAreGood())
-                return await this.RollbackAndGetBadRequestAsync(dbT, "Post Body Is Bad");
-
-            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-
-            var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
-                .UpdateAvatarAsync(this, db, DtoMapper.UpdateAvatarToDto(prop.Body!), cookieInfo));
-
-            if (result == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-    [HttpPost("/api2/profile/update/patreonemail")]
-    [PrivilegeRoute(route: "/api2/profile/update/patreonemail")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> UpdatePatreonEmail(
-        [FromBody] PostApi.PostApi2GroundNoHeader<PostUpdatePatreonEmail> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (!prop.ValuesAreGood())
-                return await this.RollbackAndGetBadRequestAsync(dbT, "Post Body Is Bad");
-
-            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-
-            var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
-                .UpdatePatreonEmailAsync(this, db, DtoMapper.UpdatePatreonEmailToDto(prop.Body!), cookieInfo));
-
-            if (result == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-    [HttpGet("/api2/profile/accept/patreonemail/token/{token:guid}")]
-    [PrivilegeRoute(route: "/api2/profile/accept/patreonemail/token/{token:guid}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> AcceptPatreonEmail([FromRoute(Name = "token")] Guid token) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (token == Guid.Empty)
-                return Ok(new ApiTypes.ViewWork { HasWork = false });
-
-            var result = await log.AddResultAndTransformAsync(
-                await ModelApi2Profile.AcceptPatreonEmailAsync(this, db, token));
-
-            if (result == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-    [HttpPost("/api2/profile/drop-account/sendMail")]
-    [PrivilegeRoute(route: "/api2/profile/drop-account/sendMail}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewCreateDropAccountTokenRes))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CreateDropAccountToken(
-        [FromBody] PostApi.PostApi2GroundNoHeader<PostCreateDropAccountToken> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (prop.ValuesAreGood() == false)
-                return Ok(ViewCreateDropAccountTokenRes.HasElseError());
-
-            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-
-            var result = await log.AddResultAndTransformAsync(await ModelApi2Profile.CreateDropAccountTokenAsync(
-                this, db, DtoMapper.CreateDropAccountTokenToDto(prop.Body!), cookieInfo));
-
-            if (result == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-    [HttpGet("/api2/profile/drop-account/token/{token:guid}")]
-    [PrivilegeRoute(route: "/api2/profile/drop-account/token/{token:guid}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> DropAccountWithTokenAsync([FromRoute(Name = "token")] Guid token) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (token == Guid.Empty)
-                return await this.RollbackAndGetBadRequestAsync(dbT, "Token Is Empty");
-
-            var cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-
-            var result = await log.AddResultAndTransformAsync(await ModelApi2Profile.DropAccountWithTokenAsync(
-                this, db, token, cookieInfo));
-
-            if (result == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-
-    [HttpGet("/api2/profile/top-play-by-marks-length/user-id/{userId:long}")]
-    [PrivilegeRoute(route: "/api2/profile/top-play-by-marks-length/user-id/{userId:long}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlaysMarksLength))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> WebProfileTopPlaysByMarksLength([FromRoute] long userId) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (long.IsNegative(userId))
-                return await RollbackAndGetBadRequestAsync(dbT, "UserId < 0");
-
-
-            var result = await log.AddResultAndTransformAsync(await ModelApi2Profile
-                .WebProfileTopPlaysByMarksLengthAsync(this, db, userId));
-
-            if (result == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
-
-    [HttpGet("/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
-    [PrivilegeRoute(
-        route: "/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlays))]
-    public async Task<IActionResult> WebProfileTopPlaysByMark(
-        [FromRoute] long userId, [FromRoute] string markString, [FromRoute] int page) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (long.IsNegative(userId))
-                return await RollbackAndGetBadRequestAsync(dbT, "userid Is Negative");
-            if (string.IsNullOrEmpty(markString))
-                return await RollbackAndGetBadRequestAsync(dbT, "markString Is Null Or Empty");
-            if (int.IsNegative(page))
-                return await RollbackAndGetBadRequestAsync(dbT, "page Is Negative");
-
-
-            if (EPlayScoreMarkExtensions.TryParse(markString, out var mark))
-                return await RollbackAndGetBadRequestAsync(dbT, "markString Case Not Exist");
-
-
-            var fetchResult = await log.AddResultAndTransformAsync(
-                await QueryPlayScore.GetTopScoreFromUserIdFilterMark(db, userId, page, 50, mark));
-            if (fetchResult == EResult.Err)
-                return await RollbackAndGetBadRequestAsync(dbT);
-
-            var scores = fetchResult.Ok().Select(ViewPlayScore.FromPlayScore).ToList();;
-            return Ok(new ViewPlays() { Found = true, Scores = scores });
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
+            
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerGetWrapper<HttpGet.GetTopPlaysByMarkPageing>, 
+                ControllerGetWrapper<TopPlaysByMarkPageingDto>, 
+                OptionHandlerOutput<ViewPlays>, 
+                ApiTypes.ViewExistOrFoundInfo<ViewPlays>>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new TopPlaysByMarkPageingValidation(),
+                transformHandler: new TransformAction<
+                    ControllerGetWrapper<HttpGet.GetTopPlaysByMarkPageing>,
+                    ControllerGetWrapper<TopPlaysByMarkPageingDto>>((i) 
+                    => new ControllerGetWrapper<TopPlaysByMarkPageingDto>(i.Controller, DtoMapper.TopPlaysByMarkPageingToDto(i.Get))),
+                handler: new Handler.WebProfileTopPlaysByMarkHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewPlays>(),
+                input: new ControllerGetWrapper<HttpGet.GetTopPlaysByMarkPageing>(this.ControllerHandlerBuild(), request)
+            );
+        
+            return TransactionToIResult(transaction);
         }
     }
 }
+
+
+
+
 
 
 

@@ -1,10 +1,8 @@
+using OsuDroid.Class;
 using OsuDroid.Class.Dto;
+using OsuDroid.HttpGet;
 using OsuDroid.Post;
-using OsuDroid.View;
-using OsuDroidMediator.Domain.Interface;
-using OsuDroidMediator.Domain.Model.Dto;
 using Riok.Mapperly.Abstractions;
-using IDto = OsuDroid.Class.Dto.IDto;
 using UpdateUsernameDto = OsuDroid.Class.Dto.UpdateUsernameDto;
 using WebLoginWithUsernameDto = OsuDroid.Class.Dto.WebLoginWithUsernameDto;
 
@@ -12,9 +10,6 @@ namespace OsuDroid.Lib;
 
 [Mapper]
 public static partial class DtoMapper {
-    public static IDto ViewToDto(PostApi.IValuesAreGood post) {
-        
-    }
     public static partial Api2MapFileRankDto Api2MapFileRankToDto(PostApi2MapFileRank post);
     public static partial Api2PlayByIdDto Api2PlayByIdToDto(PostApi2PlayById post);
     public static partial Api2UploadReplayFileDto Api2UploadReplayFileToDto(PostApi2UploadReplayFile post);
@@ -70,8 +65,7 @@ public static partial class DtoMapper {
     public static partial WebLoginDto WebLoginToPost(WebLoginDto dto);
     public static partial WebLoginWithUsernameDto WebLoginWithUsernameToPost(WebLoginWithUsernameDto dto);
     public static partial WebRegisterDto WebRegisterToPost(WebRegisterDto dto);
-
-    public static partial ViewWebLogin ToViewWebLogin(WebLoginResponseDto dto);
-    
-    public static partial ViewUserInfo ToViewUserInfo(ICookieUserInfo dto);
+    public static partial UserIdBoxDto UserIdBoxToDto(UserIdBox get);
+    public static partial TopPlaysPageingDto TopPlaysPageingToDto(TopPlaysPageing get);
+    public static partial TopPlaysByMarkPageingDto TopPlaysByMarkPageingToDto(GetTopPlaysByMarkPageing get);
 }

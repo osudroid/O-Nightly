@@ -1,87 +1,71 @@
 using Microsoft.AspNetCore.Mvc;
+using OsuDroid.Class;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
-using OsuDroid.Model;
+using OsuDroid.OutputHandler;
 using OsuDroid.View;
-using OsuDroidLib;
-using OsuDroidLib.Query;
+using OsuDroidAttachment;
+using OsuDroidAttachment.Class;
+using OsuDroidAttachment.DbBuilder;
+using OsuDroidAttachment.Validation;
 
-namespace OsuDroid.Controllers.Api2;
-
-public class Api2Statistic : ControllerExtensions {
-    [HttpGet("/api2/statistic/active-user")]
-    [PrivilegeRoute(route: "/api2/statistic/active-user")]
-    [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>))]
-    public async Task<IActionResult> GetActiveUser() {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
+namespace OsuDroid.Controllers.Api2 {
+    public class Api2Statistic : ControllerExtensions {
+        [HttpGet("/api2/statistic/active-user")]
+        [PrivilegeRoute(route: "/api2/statistic/active-user")]
+        [ProducesResponseType(StatusCodes.Status200OK,
+            Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>))]
+        public async Task<IActionResult> GetActiveUser() {
         
-        try {
-            var result = await log.AddResultAndTransformAsync(await ModelStatistic.ActiveUserAsync(db));
-            if (result == EResult.Err)
-                return Ok(ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>.NotExist());
-
-            if (result == EResult.Err) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerWrapper, 
+                ControllerWrapper,
+                OptionHandlerOutput<ViewStatisticActiveUser>,
+                ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new ValidationHandlerNothing<NpgsqlCreates.DbWrapper, LogWrapper, ControllerWrapper>(),
+                transformHandler: new TransformAction<
+                    ControllerWrapper,
+                    ControllerWrapper>((i) 
+                    => new ControllerWrapper(i.Controller)),
+                handler: new Handler.ActiveUserHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewStatisticActiveUser>(),
+                input: new ControllerWrapper(this.ControllerHandlerBuild())
+            );
+        
+            return TransactionToIResult(transaction);
         }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
 
-    [HttpGet("/api2/statistic/all-patreon")]
-    [PrivilegeRoute(route: "/api2/statistic/all-patreon")]
-    [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>))]
-    public async Task<IActionResult> GetAllPatreon() {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            var result = await log.AddResultAndTransformAsync(await ModelStatistic.GetActivePatreonAsync(db));
-            if (result == EResult.Err)
-                return Ok(ApiTypes.ViewExistOrFoundInfo<ViewUsernameAndId>.NotExist());
-
-            if (result == EResult.Err) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
+        [HttpGet("/api2/statistic/all-patreon")]
+        [PrivilegeRoute(route: "/api2/statistic/all-patreon")]
+        [ProducesResponseType(StatusCodes.Status200OK,
+            Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>))]
+        public async Task<IActionResult> GetAllPatreon() {
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerWrapper, 
+                ControllerWrapper,
+                OptionHandlerOutput<List<ViewUsernameAndId>>,
+                ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new ValidationHandlerNothing<NpgsqlCreates.DbWrapper, LogWrapper, ControllerWrapper>(),
+                transformHandler: new TransformAction<
+                    ControllerWrapper,
+                    ControllerWrapper>((i) 
+                    => new ControllerWrapper(i.Controller)),
+                handler: new Handler.GetAllPatreonHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<List<ViewUsernameAndId>>(),
+                input: new ControllerWrapper(this.ControllerHandlerBuild())
+            );
+        
+            return TransactionToIResult(transaction);
         }
     }
 }

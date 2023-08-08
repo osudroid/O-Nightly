@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
@@ -10,21 +11,33 @@ public class Api2JarHasher : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/jar/version/{version}.jar")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(byte[]))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> Jar([FromRoute(Name = "version")] string version,
-        [FromQuery(Name = "q")] string keyToken) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
+    public async Task<IActionResult> Jar(
+        [FromRoute(Name = "version")] string version, [FromQuery(Name = "q")] string keyToken) {
+        
+        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var db = dbT.Connection!;
+        using var log = OsuDroidLib.Log.GetLog(db);
         var isComplete = false;
         
         try {
-            if (Setting.RequestHash_Keyword!.Value != keyToken)
-                return await RollbackAndGetBadRequestAsync(dbT, "Bad RequestHash_Keyword");
+            if (Setting.RequestHash_Keyword!.Value != keyToken) {
+                if (!isComplete) {
+                    isComplete = true;
+                    await dbT.RollbackAsync();
+                }
 
+                return BadRequest("Bad RequestHash_Keyword");
+            }
+            
             var path = $"{Setting.JarPath}/{version}.jar";
             if (System.IO.File.Exists(path) == false) {
+                if (!isComplete) {
+                    isComplete = true;
+                    await dbT.RollbackAsync();
+                }
                 await log.AddLogDebugAsync($"File Not Found In {path}");
-                return await RollbackAndGetBadRequestAsync(dbT, "Not Found");
+                return BadRequest("Not Found");
             }
 
 
@@ -32,14 +45,22 @@ public class Api2JarHasher : ControllerExtensions {
                 await log.AddLogOkAsync("Send File");
                 return File(System.IO.File.OpenRead(path), "application/apk");
             }
-            catch (Exception) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
+            catch (Exception e) {
+                if (!isComplete) {
+                    isComplete = true;
+                    await dbT.RollbackAsync();
+                }
+                await log.AddResultAndTransformAsync(Result<string,string>.Err(e.ToString()));
+                return InternalServerError();
             }
         }
         catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
+            if (!isComplete) {
+                isComplete = true;
+                await dbT.RollbackAsync();
+            }
+            await log.AddResultAndTransformAsync(Result<string,string>.Err(e.ToString()));
+            return InternalServerError();
         }
         finally {
             if (!isComplete) {

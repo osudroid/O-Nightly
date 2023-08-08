@@ -1,4 +1,6 @@
+using System.Data;
 using Microsoft.AspNetCore.Mvc;
+using OsuDroid.Class;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.View;
@@ -9,33 +11,59 @@ namespace OsuDroid.Controllers.Api;
 public class Update : ControllerExtensions {
     [HttpGet("/api/update")]
     [PrivilegeRoute(route: "/api/update")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewApiUpdateInfo))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewApiUpdateInfo>))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUpdateInfoAsync([FromQuery(Name = "lang")] string lang = "en") {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
+        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var db = dbT.Connection!;
+        using var log = OsuDroidLib.Log.GetLog(db);
         var isComplete = false;
         
         try {
-            var result = await log.AddResultAndTransformAsync(await ModelApiUpdate.GetUpdateInfoAsync(
-                this, db, lang));
+            var result = await log.AddResultAndTransformAsync(
+                await ModelApiUpdate.GetUpdateInfoAsync(this, db, lang));
 
             if (result == EResult.Err) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
+                if (!isComplete) {
+                    isComplete = true;
+                    await dbT.RollbackAsync();
+                }
+                return InternalServerError();
             }
 
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
+            var modelResult = result.Ok();
+
+            switch (result.Ok().Mode) {
+                case EModelResult.Ok:
+                    return Ok(result.Ok().Result.Unwrap());
+                case EModelResult.BadRequest:
+                    if (!isComplete) {
+                        isComplete = true;
+                        await dbT.RollbackAsync();
+                    }
+                    return InternalServerError();
+                case EModelResult.InternalServerError:
+                    if (!isComplete) {
+                        isComplete = true;
+                        await dbT.RollbackAsync();
+                    }
+                    return BadRequest();
+                default:
+                    if (!isComplete) {
+                        isComplete = true;
+                        await dbT.RollbackAsync();
+                    }
+                    return InternalServerError();
+            }
         }
         catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
+            await log.AddLogErrorAsync(e.ToString());
+            if (!isComplete) {
+                isComplete = true;
+                await dbT.RollbackAsync();
+            }
+            return InternalServerError();
         }
         finally {
             if (!isComplete) {

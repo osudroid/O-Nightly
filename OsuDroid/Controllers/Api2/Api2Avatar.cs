@@ -1,12 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
+using OsuDroid.Class;
+using OsuDroid.Class.Dto;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Post;
 using OsuDroid.View;
-using OsuDroid.Model;
-using OsuDroidLib.Database.Entities;
-using OsuDroidLib.Extension;
-using OsuDroidLib.Lib;
+using OsuDroid.OutputHandler;
+using OsuDroid.Validation;
+using OsuDroidAttachment;
+using OsuDroidAttachment.Class;
 
 namespace OsuDroid.Controllers.Api2;
 
@@ -17,35 +19,20 @@ public class Api2Avatar : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAvatar([FromRoute(Name = "size")] int size, [FromRoute(Name = "id")] long id) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            var resultUserAvatar = await log.AddResultAndTransformAsync(
-                await UserAvatarHandler.GetByUserIdAsync(db, id, Setting.UserAvatar_SizeLow!.Value >= size));
-
-            if (resultUserAvatar == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            if (resultUserAvatar.Ok().IsNotSet())
-                return NotFound();
-
-            var userAvatar = resultUserAvatar.Ok().Unwrap();
-
-            var mem = new MemoryStream(userAvatar.Bytes!);
-            return File(mem, $"image/{userAvatar.TypeExt}");
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        var prop = new HttpGet.GetAvatar { Size = size, Id = id };
+        
+        var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi(
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new GetAvatarValidation(),
+            transformHandler: new TransformParse<ControllerGetWrapper<HttpGet.GetAvatar>>(),
+            handler: new Handler.GetAvatarHandler(),
+            outputHandler: new ViewImage<IActionResult>() {
+                Converter = (i) => File(i.Bytes, $"image/{i.Ext}")
+            },
+            input: new ControllerGetWrapper<HttpGet.GetAvatar>(this.ControllerHandlerBuild(), prop)
+        );
+        return TransactionToIResult(transaction);
     }
 
     [HttpGet("/api2/avatar/hash/{hash:alpha}")]
@@ -53,75 +40,42 @@ public class Api2Avatar : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewAvatarHashes))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> AvatarByHash([FromRoute(Name = "hash")] string? hash) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            var result = await log.AddResultAndTransformAsync(
-                await UserAvatarHandler.GetByHashAsync(db, hash ?? ""));
-
-            if (result == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-
-            if (result.Ok().IsNotSet())
-                return NotFound();
-
-            var avatar = result.Ok().Unwrap();
-
-            return File(avatar.Bytes!, $"image/{avatar.TypeExt}");
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        var prop = new HttpGet.GetAvatarWithHash { Hash = hash??"" };
+        
+        Transaction<IActionResult> transaction = await OsuDroidAttachment.Service.AttachmentServiceApi(
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new GetAvatarByHashValidation(),
+            transformHandler: new TransformParse<ControllerGetWrapper<HttpGet.GetAvatarWithHash>>(),
+            handler: new Handler.GetAvatarByHashHandler(),
+            outputHandler: new ViewImage<IActionResult>() {
+                Converter = (i) => File(i.Bytes, $"image/{i.Ext}")
+            },
+            input: new ControllerGetWrapper<HttpGet.GetAvatarWithHash>(this.ControllerHandlerBuild(), prop)
+        );
+        return TransactionToIResult(transaction);
     }
 
     [HttpPost("/api2/avatar/hash")]
     [PrivilegeRoute(route: "/api2/avatar/hash")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewAvatarHashes))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewAvatarHashes>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> AvatarHashesByUserIds(
         [FromBody] PostApi.PostApi2GroundNoHeader<PostAvatarHashesByUserIds> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
         
-        try {
-            if (prop.ValuesAreGood() == false)
-                return BadRequest();
-
-            var result = await log.AddResultAndTransformAsync(await ModelApi2Avatar.AvatarHashesByUserIdsAsync(
-                this, db, DtoMapper.AvatarHashesByUserIdsToDto(prop.Body!)));
-
-            if (result == EResult.Err) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi(
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new AvatarHashesByUserIdsValidation(),
+            transformHandler: new TransformAction<ControllerPostWrapper<
+                PostApi.PostApi2GroundNoHeader<PostAvatarHashesByUserIds>>, 
+                ControllerPostWrapper<AvatarHashesByUserIdsDto>>(
+                (i) => new ControllerPostWrapper<AvatarHashesByUserIdsDto>(                 
+                    i.Controller, DtoMapper.AvatarHashesByUserIdsToDto(i.Post.Body!))),
+            handler: new Handler.GetAvatarHashesByUserIdsHandler(),
+            outputHandler: new ViewExistOrFoundInfoHandler<ViewAvatarHashes>(),
+            input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostAvatarHashesByUserIds>>(this.ControllerHandlerBuild(), prop)
+        );
+        return TransactionToIResult(transaction);
     }
 }

@@ -23,8 +23,7 @@ public static class ModelApi2Profile {
     private static readonly TimeoutTokenDictionary<Guid, (long UserId, string Email)> _deleteAccMailToken =
         new(TimeSpan.FromMinutes(5), 10000, 10000);
 
-    public static async Task<Result<ModelResult<ViewProfileStats>, string>> WebProfileStatsAsync(
-        ControllerExtensions controller, NpgsqlConnection db, LamLog log, long userId) {
+    public static async Task<Result<ModelResult<ViewProfileStats>, string>> WebProfileStatsAsync(NpgsqlConnection db, LamLog log, long userId) {
         var optionUserAndStatsResult = await Query.GetUserInfoAndBblUserStatsByUserIdAsync(db, userId);
 
         if (optionUserAndStatsResult == EResult.Err)

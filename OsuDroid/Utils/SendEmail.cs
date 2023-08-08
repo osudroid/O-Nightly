@@ -5,17 +5,19 @@ using MimeKit.Text;
 namespace OsuDroid.Utils;
 
 public static class SendEmail {
-    public static void MainSendResetEmail(long userId, string username, string email, string token) {
-        var domain = Setting.Domain_Name!.Value;
-        var emailNoReplayUsername = Setting.Email_NoReplayUsername!.Value;
-        var emailNoReplay = Setting.Email_NoReplay!.Value;
+    public static ResultErr<string> MainSendResetEmail(long userId, string username, string email, string token) {
+        try
+        {
+            var domain = Setting.Domain_Name!.Value;
+            var emailNoReplayUsername = Setting.Email_NoReplayUsername!.Value;
+            var emailNoReplay = Setting.Email_NoReplay!.Value;
 
-        var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(emailNoReplayUsername, emailNoReplay));
-        message.To.Add(new MailboxAddress(username, email));
-        message.Subject = "OsuDroid Reset Password";
-        message.Body = new TextPart(TextFormat.Text) {
-            Text = @$"
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(emailNoReplayUsername, emailNoReplay));
+            message.To.Add(new MailboxAddress(username, email));
+            message.Subject = "OsuDroid Reset Password";
+            message.Body = new TextPart(TextFormat.Text) {
+                Text = @$"
 
 [osu!droid] Reset Password
  
@@ -29,9 +31,15 @@ Someone has requested a password reset from your '{username}' osu!droid Account.
         _________________________________________________
             This e-mail is sent by the system, do not reply.
 "
-        };
+            };
 
-        Send(message);
+            Send(message);
+            return ResultErr<string>.Ok();
+        }
+        catch (Exception e)
+        {
+            return ResultErr<string>.Err(e.ToString());
+        }
     }
 
     public static void MainSendPatreonVerifyLinkToken(string username, string email, Guid token) {

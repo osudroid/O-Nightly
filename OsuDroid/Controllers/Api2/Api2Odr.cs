@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
@@ -11,37 +12,21 @@ public class Api2Odr : ControllerExtensions {
     [HttpGet("/api2/odr/{replayId}.odr")]
     [PrivilegeRoute(route: "/api2/odr/{replayId}.odr")]
     public async Task<IActionResult> GetOdrFile([FromRoute(Name = "replayId")] string replayId) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
+        var filePath = $"{Setting.ReplayPath}/{replayId}.odr";
 
-        try {
-            var filePath = $"{Setting.ReplayPath}/{replayId}.odr";
-
-            if (System.IO.File.Exists(filePath) == false)
-                return await RollbackAndGetBadRequestAsync(dbT, "File Not Exist");
-
-            return File(System.IO.File.OpenRead(filePath), "Application/octet-stream");
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        if (System.IO.File.Exists(filePath) == false)
+            return BadRequest();
+        
+        return File(System.IO.File.OpenRead(filePath), "Application/octet-stream");
     }
 
     [HttpGet("/api2/odr/{replayId:long}.zip")]
     [PrivilegeRoute(route: "/api2/odr/{replayId:long}.zip")]
     public async Task<IActionResult> GetOdrZipFileAsync([FromRoute(Name = "replayId")] long replayId) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
+        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var db = dbT.Connection!;
+        using var log = OsuDroidLib.Log.GetLog(db);
         var isComplete = false;
 
         try {
@@ -56,9 +41,12 @@ public class Api2Odr : ControllerExtensions {
             return File(stream, "Application/octet-stream");
         }
         catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
+            await log.AddLogErrorAsync(e.ToString());
+            if (!isComplete) {
+                isComplete = true;
+                await dbT.RollbackAsync();
+            }
+            return InternalServerError();
         }
         finally {
             if (!isComplete) {
@@ -71,18 +59,23 @@ public class Api2Odr : ControllerExtensions {
     [PrivilegeRoute(route: "/api2/odr/fullname/{replayId:long}/{fullname}.zip")]
     public async Task<IActionResult> GetOdrZipFileWithName([FromRoute(Name = "replayId")] long replayId,
         [FromRoute(Name = "fullname")] string fullname) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
+        
+        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var db = dbT.Connection!;
+        using var log = OsuDroidLib.Log.GetLog(db);
         var isComplete = false;
 
         try {
             return await GetOdrZipFileAsync(replayId);
         }
         catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
+            await log.AddLogErrorAsync(e.ToString());
+            if (!isComplete) {
+                isComplete = true;
+                await dbT.RollbackAsync();
+            }
+            return InternalServerError();
         }
         finally {
             if (!isComplete) {
@@ -94,9 +87,10 @@ public class Api2Odr : ControllerExtensions {
     [HttpGet("/api2/odr/redirect/{replayId:long}.zip")]
     [PrivilegeRoute(route: "/api2/odr/redirect/{replayId:long}.zip")]
     public async Task<IActionResult> GetOdrZipFileRedHandler([FromRoute(Name = "replayId")] long replayId) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
+        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var db = dbT.Connection!;
+        using var log = OsuDroidLib.Log.GetLog(db);
         var isComplete = false;
         
         try {
@@ -112,9 +106,12 @@ public class Api2Odr : ControllerExtensions {
             return RedirectPermanent($"/api/upload/fullname/{replayId}/{fullname}.zip");
         }
         catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
+            await log.AddLogErrorAsync(e.ToString());
+            if (!isComplete) {
+                isComplete = true;
+                await dbT.RollbackAsync();
+            }
+            return InternalServerError();
         }
         finally {
             if (!isComplete) {

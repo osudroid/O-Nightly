@@ -1,19 +1,20 @@
 using OsuDroid.Lib.Validate;
+using OsuDroidAttachment.Interface;
 using OsuDroidLib.Validation;
 
 namespace OsuDroid.Post;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class PostWebLogin : Api2.IValuesAreGood, Api2.ISingleString {
+public sealed class PostWebLogin : Api2.IValuesAreGood, Api2.ISingleString, IInput {
     public int Math { get; set; }
     public Guid Token { get; set; }
     public string? Email { get; set; }
-    public string? Passwd { get; set; }
+    public string? Password { get; set; }
 
     public bool ValuesAreGood() {
         return Token != default
                && ValidationUsername.Validation(Email)
-               && ValidationPassword.ValidationOldVersion(Passwd)
+               && ValidationPassword.ValidationOldVersion(Password)
             ;
     }
 
@@ -22,7 +23,7 @@ public sealed class PostWebLogin : Api2.IValuesAreGood, Api2.ISingleString {
             Math.ToString(),
             Token.ToString(),
             Email ?? "",
-            Passwd ?? "",
+            Password ?? "",
         });
     }
 }

@@ -7,7 +7,7 @@ namespace OsuDroidMediator.Application.Service;
 public static class CookieInfoService {
     public static async Task<ITransaction<OptionResponse<CookieCookieUserInfoDto>>> GetUserInfoByCookieHandlerAsync(IUserCookie controllerHandler) {
         var domainData = new DomainData<None, UserInfoByCookieDto>(None.NoneValue, _ => new UserInfoByCookieDto());
-        var result = await Mediator.StartNewTaskAndSendWithOptionResponse
+        ITransaction<OptionResponse<CookieCookieUserInfoDto>> result = await Mediator.StartNewTaskAndSendWithOptionResponse
             <OptionResponse<CookieCookieUserInfoDto>>(domainData, controllerHandler);
         return result;
     }

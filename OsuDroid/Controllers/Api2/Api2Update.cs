@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
@@ -11,14 +12,22 @@ public class Api2Update : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewApiUpdateInfoV2))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUpdateInfoV2Async([FromRoute(Name = "lang")] string lang = "en") {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
+        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var db = dbT.Connection!;
+        using var log = OsuDroidLib.Log.GetLog(db);
         var isComplete = false;
         
         try {
             var dirNameNumber = Directory.GetDirectories(Setting.UpdatePath!).Select(long.Parse).MaxBy(x => x);
-            if (dirNameNumber == 0) return await RollbackAndGetInternalServerErrorAsync(dbT);
+            if (dirNameNumber == 0) {
+                if (!isComplete) {
+                    isComplete = true;
+                    await dbT.RollbackAsync();
+                }
+
+                return InternalServerError();
+            }
 
             var langFiles = Directory.GetFiles($"{Setting.UpdatePath}/{dirNameNumber}/changelog");
             string? defaultFile = null;
@@ -32,8 +41,14 @@ public class Api2Update : ControllerExtensions {
                 break;
             }
 
-            if (wantFile is null && defaultFile is null)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
+            if (wantFile is null && defaultFile is null) {
+                if (!isComplete) {
+                    isComplete = true;
+                    await dbT.RollbackAsync();
+                }
+
+                return InternalServerError();
+            }
 
             wantFile ??= defaultFile;
 
@@ -45,14 +60,19 @@ public class Api2Update : ControllerExtensions {
             });
         }
         catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
+            await log.AddLogErrorAsync(e.ToString());
+            if (!isComplete) {
+                isComplete = true;
+                await dbT.RollbackAsync();
+            }
+            return InternalServerError();
         }
         finally {
             if (!isComplete) {
                 await dbT.CommitAsync();
             }
+
+            await log.FlushToDbAsync();
         }
     }
 }

@@ -1,14 +1,21 @@
 using LamLogger;
 using Microsoft.AspNetCore.Mvc;
+using OsuDroid.Class;
+using OsuDroid.Class.Dto;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Model;
+using OsuDroid.OutputHandler;
 using OsuDroid.Post;
 using OsuDroid.Utils;
+using OsuDroid.Validation;
 using OsuDroid.View;
+using OsuDroidAttachment;
+using OsuDroidAttachment.Class;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Lib;
+using EModelResult = OsuDroid.Class.EModelResult;
 
 namespace OsuDroid.Controllers.Api2;
 
@@ -19,41 +26,19 @@ public class Api2Leaderboard : ControllerExtensions {
         Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetLeaderBoard([FromBody] PostApi.PostApi2GroundNoHeader<PostLeaderBoard> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (prop.ValuesAreGood() == false) {
-                return await RollbackAndGetBadRequestAsync(dbT);
-            }
-
-
-            var result = await log.AddResultAndTransformAsync(await ModelLeaderBoard.GetLeaderBoardAsync(
-                this, db, DtoMapper.LeaderBoardToDto(prop.Body!)));
-
-            if (result == EResult.Err) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        var transaction = await Service.AttachmentServiceApi(
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new LeaderBoardValidation(),
+            transformHandler: new TransformAction<
+                ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostLeaderBoard>>,
+                ControllerPostWrapper<LeaderBoardDto>>((i) 
+                => new ControllerPostWrapper<LeaderBoardDto>(i.Controller, DtoMapper.LeaderBoardToDto(i.Post.Body!))),
+            handler: new Handler.GetLeaderBoardHandler(),
+            outputHandler: new ViewExistOrFoundInfoHandler<List<ViewLeaderBoardUser>>(),
+            input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostLeaderBoard>>(this.ControllerHandlerBuild(), prop)
+        );
+        return TransactionToIResult(transaction);
     }
 
     [HttpPost("/api2/leaderboard/user")]
@@ -62,35 +47,27 @@ public class Api2Leaderboard : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetUserLeaderBoardRank(
         [FromBody] PostApi.PostApi2GroundNoHeader<PostLeaderBoardUser> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        // TODO Hier weiter
-
-        try {
-            if (prop.ValuesAreGood() == false)
-                return await RollbackAndGetBadRequestAsync(dbT);
-
-            var rep = ((await log.AddResultAndTransformAsync(
-                    await LeaderBoard.UserAsync(db, prop.Body!.UserId))).OkOr(Option<LeaderBoardUser>.Empty))
-                .Map(ViewLeaderBoardUser.FromLeaderBoardUser);
-
-            return Ok(rep.IsSet() == false
-                ? ApiTypes.ViewExistOrFoundInfo<ViewLeaderBoardUser>.NotExist()
-                : ApiTypes.ViewExistOrFoundInfo<ViewLeaderBoardUser>.Exist(rep.Unwrap()));
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        
+        var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+            OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+            Class.LogWrapper, 
+            ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostLeaderBoardUser>>, 
+            ControllerPostWrapper<LeaderBoardUserDto>, 
+            OptionHandlerOutput<ViewLeaderBoardUser>, 
+            ApiTypes.ViewExistOrFoundInfo<ViewLeaderBoardUser>>(
+            
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new LeaderBoardUserValidation(),
+            transformHandler: new TransformAction<
+                ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostLeaderBoardUser>>,
+                ControllerPostWrapper<LeaderBoardUserDto>>((i) 
+                => new ControllerPostWrapper<LeaderBoardUserDto>(i.Controller, DtoMapper.LeaderBoardUserToDto(i.Post.Body!))),
+            handler: new Handler.GetUserLeaderBoardRankHandler(),
+            outputHandler: new ViewExistOrFoundInfoHandler<ViewLeaderBoardUser>(),
+            input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostLeaderBoardUser>>(ControllerHandlerBuild(), prop)
+        );
+        return TransactionToIResult(transaction);
     }
 
     [HttpPost("/api2/leaderboard/search-user")]
@@ -100,40 +77,27 @@ public class Api2Leaderboard : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetUserLeaderBoardRank(
         [FromBody] PostApi.PostApi2GroundNoHeader<PostLeaderBoardSearchUser> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
         
-        try {
-            if (prop.ValuesAreGood() == false)
-                return await RollbackAndGetBadRequestAsync(dbT);
-
-            ((ILogRequestJsonPrint)prop.Body!).LogRequestJsonPrint();
-
-            var result = await log.AddResultAndTransformAsync(await ModelLeaderBoard.GetUserLeaderBoardRank(
-                this, db, log, DtoMapper.LeaderBoardSearchUserToDto(prop.Body!)));
-
-            if (result == EResult.Err) {
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        
+        var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+            OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+            Class.LogWrapper, 
+            ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostLeaderBoardSearchUser>>, 
+            ControllerPostWrapper<LeaderBoardSearchUserDto>, 
+            OptionHandlerOutput<List<ViewLeaderBoardUser>>, 
+            ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>(
+            
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new LeaderBoardSearchUserValidation(),
+            transformHandler: new TransformAction<
+                ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostLeaderBoardSearchUser>>,
+                ControllerPostWrapper<LeaderBoardSearchUserDto>>((i) 
+                => new ControllerPostWrapper<LeaderBoardSearchUserDto>(i.Controller, DtoMapper.LeaderBoardSearchUserToDto(i.Post.Body!))),
+            handler: new Handler.GetUserLeaderBoardRankSearchUser(),
+            outputHandler: new ViewExistOrFoundInfoHandler<List<ViewLeaderBoardUser>>(),
+            input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostLeaderBoardSearchUser>>(this.ControllerHandlerBuild(), prop)
+        );
+        return TransactionToIResult(transaction);
     }
 }

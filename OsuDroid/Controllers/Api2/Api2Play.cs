@@ -1,112 +1,77 @@
 using Microsoft.AspNetCore.Mvc;
+using OsuDroid.Class;
+using OsuDroid.Class.Dto;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Model;
+using OsuDroid.OutputHandler;
 using OsuDroid.Post;
 using OsuDroid.Utils;
+using OsuDroid.Validation;
 using OsuDroid.View;
+using OsuDroidAttachment;
+using OsuDroidAttachment.Class;
+using OsuDroidAttachment.DbBuilder;
+using OsuDroidAttachment.Interface;
 using OsuDroidLib;
 using OsuDroidLib.Database.Entities;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 
-namespace OsuDroid.Controllers.Api2;
-
-public class Api2Play : ControllerExtensions {
-    [HttpPost("/api2/play/by-id")]
-    [PrivilegeRoute(route: "/api2/play/by-id")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPlayInfoById))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(string))]
-    public async Task<IActionResult> GetPlayById([FromBody] PostApi.PostApi2GroundWithHash<PostApi2PlayById> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (prop.ValuesAreGood() == false) {
-                await log.AddLogDebugAsync("Values Are Bad");
-                return await RollbackAndGetBadRequestAsync(dbT, "Values Are Bad");
-            }
-
-
-            if (prop.HashValidate() == false) {
-                await log.AddLogDebugAsync("Hash Not Valid");
-                return await RollbackAndGetBadRequestAsync(dbT, prop.PrintHashOrder());
-            }
-
-
-            await log.AddLogDebugAsync("PlayId: " + prop.Body!.PlayId);
-            var optionRep = (await log.AddResultAndTransformAsync(await ScorePack
-                    .GetByPlayIdAsync(db, prop.Body!.PlayId)))
-                .OkOr(Option<(PlayScore Score, string Username, string Region)>.Empty);
-
-            await (optionRep.IsSet()
-                ? log.AddLogDebugAsync("PlayId Found")
-                : log.AddLogDebugAsync("PlayId Not Found"));
-
-            return optionRep.IsSet() == false
-                ? BadRequest("Not Found")
-                : Ok(new ViewPlayInfoById {
-                    Region = optionRep.Unwrap().Region,
-                    Score = ViewPlayScore.FromPlayScore(optionRep.Unwrap().Score),
-                    Username = optionRep.Unwrap().Username
-                });
+namespace OsuDroid.Controllers.Api2 {
+    public class Api2Play : ControllerExtensions {
+        [HttpPost("/api2/play/by-id")]
+        [PrivilegeRoute(route: "/api2/play/by-id")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewPlayInfoById>))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(string))]
+        public async Task<IActionResult> GetPlayById([FromBody] PostApi.PostApi2GroundWithHash<PostApi2PlayById> prop) {
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerPostWrapper<PostApi.PostApi2GroundWithHash<PostApi2PlayById>>, 
+                ControllerPostWrapper<Api2PlayByIdDto>, 
+                OptionHandlerOutput<ViewPlayInfoById>, 
+                ApiTypes.ViewExistOrFoundInfo<ViewPlayInfoById>>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new Api2PlayByIdValidation(),
+                transformHandler: new TransformAction<
+                    ControllerPostWrapper<PostApi.PostApi2GroundWithHash<PostApi2PlayById>>,
+                    ControllerPostWrapper<Api2PlayByIdDto>>((i) 
+                    => new ControllerPostWrapper<Api2PlayByIdDto>(i.Controller, DtoMapper.Api2PlayByIdToDto(i.Post.Body!))),
+                handler: new Handler.GetPlayByIdHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<ViewPlayInfoById>(),
+                input: new ControllerPostWrapper<PostApi.PostApi2GroundWithHash<PostApi2PlayById>>(this.ControllerHandlerBuild(), prop)
+            );
+            return TransactionToIResult(transaction);
         }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
-    }
 
-    [HttpPost("/api2/play/recent")]
-    [PrivilegeRoute(route: "/api2/play/recent")]
-    [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewPlayScoreWithUsername>>))]
-    public async Task<IActionResult> GetRecentPlay([FromBody] PostApi.PostApi2GroundNoHeader<PostRecentPlays> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-        
-        try {
-            if (prop.ValuesAreGood() == false)
-                return await RollbackAndGetBadRequestAsync(dbT, "Post Prop Are Bad");
-
-            var repTaskResult = await log.AddResultAndTransformAsync(await PlayRecent.FilterByAsync(
-                db,
-                prop.Body!.FilterPlays!,
-                prop.Body!.OrderBy!,
-                prop.Body!.Limit,
-                prop.Body!.StartAt
-            ));
-
-            if (repTaskResult == EResult.Err)
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-
-
-            return Ok(new ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewPlayScoreWithUsername>> {
-                Value = repTaskResult
-                        .Ok()
-                        .Select(ViewPlayScoreWithUsername.FromPlayScoreWithUsername).ToList(),
-                ExistOrFound = true
-            });
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
+        [HttpPost("/api2/play/recent")]
+        [PrivilegeRoute(route: "/api2/play/recent")]
+        [ProducesResponseType(StatusCodes.Status200OK,
+            Type = typeof(ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewPlayScoreWithUsername>>))]
+        public async Task<IActionResult> GetRecentPlay([FromBody] PostApi.PostApi2GroundNoHeader<PostRecentPlays> prop) {
+            var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+                OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
+                Class.LogWrapper, 
+                ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostRecentPlays>>, 
+                ControllerPostWrapper<RecentPlaysDto>, 
+                OptionHandlerOutput<IReadOnlyList<ViewPlayScoreWithUsername>>, 
+                ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewPlayScoreWithUsername>>>(
+            
+                dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+                loggerCreates: new Class.LogCreates(),
+                validationHandler: new RecentPlaysValidation(),
+                transformHandler: new TransformAction<
+                    ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostRecentPlays>>,
+                    ControllerPostWrapper<RecentPlaysDto>>((i) 
+                    => new ControllerPostWrapper<RecentPlaysDto>(i.Controller, DtoMapper.RecentPlaysToDto(i.Post.Body!))),
+                handler: new Handler.GetRecentPlayHandler(),
+                outputHandler: new ViewExistOrFoundInfoHandler<IReadOnlyList<ViewPlayScoreWithUsername>>(),
+                input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostRecentPlays>>(this.ControllerHandlerBuild(), prop)
+            );
+            return TransactionToIResult(transaction);
         }
     }
 }

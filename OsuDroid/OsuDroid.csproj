@@ -47,9 +47,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\OsuDroidAttachment\OsuDroidAttachment.csproj" />
         <ProjectReference Include="..\OsuDroidExtraInterface\OsuDroidExtraInterface.csproj"/>
         <ProjectReference Include="..\OsuDroidLib\OsuDroidLib.csproj"/>
-        <ProjectReference Include="..\OsuDroidMediator\OsuDroidMediator.csproj" />
+<!--        <ProjectReference Include="..\OsuDroidMediator\OsuDroidMediator.csproj" />-->
         <ProjectReference Include="..\Patreon.NET\Patreon.NET.csproj"/>
     </ItemGroup>
 

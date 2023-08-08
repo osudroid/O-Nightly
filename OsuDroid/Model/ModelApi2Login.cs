@@ -4,8 +4,7 @@ using OsuDroid.Class;
 using OsuDroid.Class.Dto;
 using OsuDroid.View;
 using OsuDroid.Extensions;
-using OsuDroid.Lib.TokenHandler;
-using OsuDroid.Post;
+using OsuDroidLib.Manager.TokenHandler;
 using OsuDroidLib.Query;
 
 namespace OsuDroid.Model;
@@ -13,6 +12,7 @@ namespace OsuDroid.Model;
 public static class ModelApi2Login {
     public static async Task<Result<ModelResult<ViewCreateApi2TokenResult>, string>> CreateApi2TokenAsync(
         ControllerExtensions controller, NpgsqlConnection db, LamLog log, CreateApi2TokenDto createApi2Token) {
+        
         var result = await QueryUserInfo.GetIdUsernamePasswordByLowerUsernameAsync(db, createApi2Token.Username ?? "");
         if (result == EResult.Err)
             return result.ChangeOkType<ModelResult<ViewCreateApi2TokenResult>>();

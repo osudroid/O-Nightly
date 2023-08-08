@@ -1,5 +1,5 @@
 namespace OsuDroid.View; 
 
-public interface IView {
+public interface IView: OsuDroidAttachment.Interface.IHandlerOutput {
     
 }

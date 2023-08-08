@@ -1,6 +1,6 @@
 namespace OsuDroid.View;
 
-public static class ApiTypes {
+public static class ApiTypes{
     public class ViewExistOrFoundInfo<T>: IView {
         public bool ExistOrFound { get; set; }
         public T? Value { get; set; }

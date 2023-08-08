@@ -1,5 +1,5 @@
 using Npgsql;
-using OsuDroid.Lib.TokenHandler;
+using OsuDroidLib.Manager.TokenHandler;
 
 namespace OsuDroid.Lib;
 

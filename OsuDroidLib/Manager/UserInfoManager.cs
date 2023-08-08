@@ -8,6 +8,12 @@ public static class UserInfoManager {
     public static async Task<Result<Option<UserInfo>, string>> GetByUserIdAsync(NpgsqlConnection db, long userId) {
         return await QueryUserInfo.GetByUserIdAsync(db, userId);
     }
+    
+    public static async Task<Result<Option<UserInfo>, string>>GetIdUsernamePasswordByLowerUsernameAsync(
+        NpgsqlConnection db, string username) {
+        
+        return await QueryUserInfo.GetIdUsernamePasswordByLowerUsernameAsync(db, username.ToLower());
+    }
 
     public static async Task<ResultErr<string>> UpdatePasswordAsync(NpgsqlConnection db, long userId,
         string newPassword) {

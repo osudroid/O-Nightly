@@ -129,7 +129,7 @@ public static class ModelApi2Submit {
                 }));
     }
 
-    public static async Task<Result<ModelResult<long>, string>> InsertPreBuildPlayAsync(
+    public static async Task<Result<ModelResult<ViewPushPlayStartResult200>, string>> InsertPreBuildPlayAsync(
         NpgsqlConnection db, long userId, string filename, string fileHash) {
         var idBblScorePreSubmit = await QueryPlayScorePreSubmit
             .PreAddScoreAsync(
@@ -139,9 +139,11 @@ public static class ModelApi2Submit {
                 fileHash);
 
         if (idBblScorePreSubmit == EResult.Err)
-            return idBblScorePreSubmit.ChangeOkType<ModelResult<long>>();
+            return idBblScorePreSubmit.ChangeOkType<ModelResult<ViewPushPlayStartResult200>>();
 
-        return Result<ModelResult<long>, string>.Ok(ModelResult<long>.Ok(idBblScorePreSubmit.Ok().PlayScoreId));
+        return Result<ModelResult<ViewPushPlayStartResult200>, string>.Ok(ModelResult<ViewPushPlayStartResult200>.Ok(
+            new ViewPushPlayStartResult200() { PlayId = idBblScorePreSubmit.Ok().PlayScoreId})
+        );
     }
 
 

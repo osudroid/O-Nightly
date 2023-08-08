@@ -1,15 +1,21 @@
+using System.Data;
 using System.Net;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Class;
+using OsuDroid.Class.Dto;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
 using OsuDroid.Post;
 using OsuDroid.View;
 using OsuDroid.Model;
-using OsuDroidMediator.Domain.Model;
-using OsuDroidMediator.Domain.Model.Dto;
-using EModelResult = OsuDroid.View.EModelResult;
+using OsuDroid.OutputHandler;
+using OsuDroid.Validation;
+using OsuDroidAttachment;
+using OsuDroidAttachment.Class;
+using OsuDroidAttachment.DbBuilder;
+using OsuDroidAttachment.Validation;
+using EModelResult = OsuDroid.Class.EModelResult;
 
 namespace OsuDroid.Controllers.Api;
 
@@ -18,313 +24,189 @@ namespace OsuDroid.Controllers.Api;
 public sealed class Login : ControllerExtensions {
     [HttpPost("/api/weblogin")]
     [PrivilegeRoute(route: "/api/weblogin")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLogin))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewWebLogin>))]
     public async Task<IActionResult> WebLogin([FromBody] PostWebLogin prop) {
-        var transaction = await OsuDroidMediator.Application.Service.LoginService.WebLoginAsync(new WebLogin() {
-            Password = prop.Passwd,
-            Token = prop.Token,
-            Email = prop.Email,
-            Math = prop.Math
-        }, new UserCookieControllerHandler(this));
-
-        return this.HandelResultData(transaction, value => {
-            if (value.Data.IsNotSet()) {
-                return new ViewWebLogin() { Work = false };
-            }
-
-            WebLoginResponseDto dto = value.Data.Unwrap();
-
-            return DtoMapper.ToViewWebLogin(dto);
-        });
+        Transaction<ApiTypes.ViewExistOrFoundInfo<ViewWebLogin>> transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+            NpgsqlCreates.DbWrapper, 
+            LogWrapper, 
+            ControllerPostWrapper<PostWebLogin>, 
+            ControllerPostWrapper<WebLoginDto>, 
+            OptionHandlerOutput<ViewWebLogin>, 
+            ApiTypes.ViewExistOrFoundInfo<ViewWebLogin>
+            >(
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new WebLoginValidation(),
+            transformHandler: new TransformAction<ControllerPostWrapper<PostWebLogin>, ControllerPostWrapper<WebLoginDto>>(
+                (post) => new ControllerPostWrapper<WebLoginDto>(post.Controller, DtoMapper.WebLoginToDto(post.Post))),
+            handler: new Handler.WebLoginHandler(),
+            outputHandler: new ViewExistOrFoundInfoHandler<ViewWebLogin>(),
+            input: new ControllerPostWrapper<PostWebLogin>(this.ControllerHandlerBuild(), prop),
+            default
+            );
+        
+        return TransactionToIResult(transaction);
     }
 
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLogin))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewWebLogin>))]
     [HttpPost("/api/webloginwithusername")]
     [PrivilegeRoute(route: "/api/webloginwithusername")]
     public async Task<IActionResult> WebLoginWithUsername([FromBody] PostWebLoginWithUsername prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            prop.Username = this.FixUsername(prop.Username ?? string.Empty);
-
-            if (!prop.ValuesAreGood()) {
-                isComplete = true;
-                await log.AddLogDebugAsync("Post Prop Are Not Valid");
-                return await RollbackAndGetBadRequestAsync(dbT);
-            }
-
-            var result = await log.AddResultAndTransformAsync(await ModelApiLogin.WebLoginWithUsername(
-                this,
-                db,
-                DtoMapper.WebLoginWithUsernameToDto(prop)));
-
-            if (result == EResult.Err) {
-                isComplete = true;
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi<
+            NpgsqlCreates.DbWrapper, 
+            LogWrapper, 
+            ControllerPostWrapper<PostWebLoginWithUsername>, 
+            ControllerPostWrapper<WebLoginWithUsernameDto>, 
+            OptionHandlerOutput<ViewWebLogin>, 
+            ApiTypes.ViewExistOrFoundInfo<ViewWebLogin>
+        >(
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new WebLoginWithUsernameValidation(),
+            transformHandler: new TransformAction<ControllerPostWrapper<PostWebLoginWithUsername>, ControllerPostWrapper<WebLoginWithUsernameDto>>(
+                (post) => new ControllerPostWrapper<WebLoginWithUsernameDto>(post.Controller, DtoMapper.WebLoginWithUsernameToDto(post.Post))),
+            handler: new Handler.WebLoginWithUsernameHandler(),
+            outputHandler: new ViewExistOrFoundInfoHandler<ViewWebLogin>(),
+            input: new ControllerPostWrapper<PostWebLoginWithUsername>(this.ControllerHandlerBuild(), prop),
+            default
+        );
+        
+        return TransactionToIResult(transaction);
+        
+ 
     }
 
     [HttpPost("/api/webregister")]
     [PrivilegeRoute(route: "/api/webregister")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLogin))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewWebLogin))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewWebLogin>))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewWebLogin>))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> WebRegister([FromBody] PostWebRegister prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            prop.Username = this.FixUsername(prop.Username ?? string.Empty);
-
-            if (!prop.ValuesAreGood()) {
-                isComplete = true;
-                await log.AddLogDebugAsync("Post Prop Are Not Valid");
-                return await RollbackAndGetBadRequestAsync(dbT);
-            }
-
-            var result = await log.AddResultAndTransformAsync(
-                await ModelApiLogin.WebRegisterAsync(this, db, DtoMapper.WebRegisterToDto(prop)));
-
-            if (result == EResult.Err) {
-                isComplete = true;
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        
+        var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi(
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new WebRegisterValidation(),
+            transformHandler: new TransformAction<ControllerPostWrapper<PostWebRegister>, ControllerPostWrapper<WebRegisterDto>>(
+                (post) => new ControllerPostWrapper<WebRegisterDto>(post.Controller, DtoMapper.WebRegisterToDto(post.Post))),
+            handler: new Handler.WebRegisterHandler(),
+            outputHandler: new ViewExistOrFoundInfoHandler<ViewWebLogin>(),
+            input: new ControllerPostWrapper<PostWebRegister>(this.ControllerHandlerBuild(), prop),
+            default
+        );
+        
+        return TransactionToIResult(transaction);
     }
 
     [HttpGet("/api/weblogintoken")]
     [PrivilegeRoute(route: "/api/weblogintoken")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebLoginToken))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewWebLoginToken>))]
     public async Task<IActionResult> WebLoginToken() {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            var result = await log.AddResultAndTransformAsync(await ModelApiLogin.WebLoginTokenAsync(this, db));
-
-            if (result == EResult.Err) {
-                isComplete = true;
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi(
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new OsuDroidAttachment.Validation.ValidationHandlerNothing<NpgsqlCreates.DbWrapper,LogWrapper,ControllerWrapper>(),
+            transformHandler: new TransformParse<ControllerWrapper>(),
+            handler: new Handler.WebLoginTokenHandler(),
+            outputHandler: new ViewExistOrFoundInfoHandler<ViewWebLoginToken>(),
+            input: new ControllerWrapper(this.ControllerHandlerBuild()),
+            default
+        );
+        
+        return TransactionToIResult(transaction);
     }
 
     [HttpGet("/api/webupdateCookie")]
     [PrivilegeRoute(route: "/api/webupdateCookie")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUpdateCookieInfo>))]
     public async Task<IActionResult> WebUpdateCookie() {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            UserIdAndToken cookieInfo = this.LoginTokenInfo(db).Ok().Unwrap();
-            this.AppendCookie(ECookie.LoginCookie, cookieInfo.Token.ToString());
-
-
-            var result = await log.AddResultAndTransformAsync(
-                await ModelApiLogin.WebUpdateCookieAsync(this, db, cookieInfo));
-
-            if (result == EResult.Err) {
-                isComplete = true;
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi(
+            dbCreates: new NpgsqlCreates(),
+            loggerCreates: new LogCreates(),
+            validationHandler: new ValidationHandlerNothing<NpgsqlCreates.DbWrapper,LogWrapper,ControllerWrapper>(),
+            transformHandler: new TransformParse<ControllerWrapper>(),
+            handler: new Handler.WebUpdateCookieHandler(),
+            outputHandler: new ViewExistOrFoundInfoHandler<ViewUpdateCookieInfo>(),
+            input: new ControllerWrapper(this.ControllerHandlerBuild()),
+            default
+        );
+        
+        return TransactionToIResult(transaction);
     }
 
 
     [HttpPost("/api/webresetpasswdandsendemail")]
     [PrivilegeRoute(route: "/api/webresetpasswdandsendemail")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewResetPasswdAndSendEmail))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewResetPasswdAndSendEmail))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewResetPasswdAndSendEmail>))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ResetPasswdAndSendEmail([FromBody] PostResetPasswdAndSendEmail prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (!prop.ValuesAreGood()) {
-                isComplete = true;
-                await log.AddLogDebugAsync("Post Prop Are Not Valid");
-                return await RollbackAndGetBadRequestAsync(dbT);
-            }
-
-            Option<IPAddress> optionIpAddress =
-                Option<IPAddress>.Trim(await log.AddResultAndTransformAsync(GetIpAddress()));
-            if (optionIpAddress.IsNotSet()) {
-                isComplete = true;
-                return await this.RollbackAndGetBadRequestAsync(dbT, "Can Not Get IP IS NEEDED");
-            }
-
-            IPAddress ipAddress = optionIpAddress.Unwrap();
-
-            var result = await log.AddResultAndTransformAsync(await ModelApiLogin.ResetPasswdAndSendEmailAsync(
-                this, db, DtoMapper.ResetPasswdAndSendEmailToDto(prop), ipAddress));
-
-            if (result == EResult.Err) {
-                isComplete = true;
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi(
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new ResetPasswdAndSendEmailValidation(),
+            transformHandler: new TransformAction<ControllerPostWrapper<PostResetPasswdAndSendEmail>,ControllerPostWrapper<ResetPasswdAndSendEmailDto>>(
+                (i) => new ControllerPostWrapper<ResetPasswdAndSendEmailDto>(i.Controller,
+                    DtoMapper.ResetPasswdAndSendEmailToDto(i.Post))),
+            handler: new Handler.ResetPasswdAndSendEmailHandler(),
+            outputHandler: new ViewExistOrFoundInfoHandler<ViewResetPasswdAndSendEmail>(),
+            input: new ControllerPostWrapper<PostResetPasswdAndSendEmail>(this.ControllerHandlerBuild(), prop),
+            default
+        );
+        
+        return TransactionToIResult(transaction);
     }
 
     [HttpPost("/api/token/newpasswdwithtoken")]
     [PrivilegeRoute(route: "/api/token/newpasswdwithtoken")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewWebReplacePasswordWithToken))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ViewWebReplacePasswordWithToken))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewWebReplacePasswordWithToken>))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> SetNewPasswd([FromBody] PostApi.PostApi2GroundNoHeader<PostSetNewPasswd> prop) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
-
-        try {
-            if (!prop.ValuesAreGood()) {
-                isComplete = true;
-                await log.AddLogDebugAsync("Post Prop Are Not Valid");
-                return await RollbackAndGetBadRequestAsync(dbT);
-            }
-
-            var result = await log.AddResultAndTransformAsync(await ModelApiLogin.SetNewPasswdAsync(
-                this, db, DtoMapper.SetNewPasswdToDto(prop.Body!)));
-
-            if (result == EResult.Err) {
-                isComplete = true;
-                return await RollbackAndGetInternalServerErrorAsync(dbT);
-            }
-
-            return result.Ok().Mode switch {
-                EModelResult.Ok => Ok(result.Ok().Result.Unwrap()),
-                EModelResult.BadRequest => await RollbackAndGetBadRequestAsync(dbT),
-                EModelResult.InternalServerError => await RollbackAndGetInternalServerErrorAsync(dbT),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi(
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new SetNewPasswdValidation(),
+            transformHandler: new TransformAction<
+                ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostSetNewPasswd>>,
+                ControllerPostWrapper<SetNewPasswdDto>>((i) => 
+                new ControllerPostWrapper<SetNewPasswdDto>(i.Controller, DtoMapper.SetNewPasswdToDto(i.Post.Body!))),
+            handler: new Handler.SetNewPasswdHandler(),
+            outputHandler: new ViewExistOrFoundInfoHandler<ViewWebReplacePasswordWithToken>(),
+            input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostSetNewPasswd>>(this.ControllerHandlerBuild(), prop),
+            default
+        );
+        
+        return TransactionToIResult(transaction);
     }
 
     [HttpPost("/api/signin/patreon")]
     [PrivilegeRoute(route: "/api/signin/patreon")]
     public async Task<IActionResult> PatreonSignLogin([FromForm] string provider) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
+        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var db = dbT.Connection!;
         var isComplete = false;
 
         try {
             // Note: the "provider" parameter corresponds to the external
             // authentication provider choosen by the user agent.
-            if (string.IsNullOrWhiteSpace(provider))
-                return await this.RollbackAndGetBadRequestAsync(dbT, "provider IsNullOrWhiteSpace");
+            if (string.IsNullOrWhiteSpace(provider)) {
+                if (!isComplete) {
+                    isComplete = true;
+                    await dbT.RollbackAsync();
+                }
+                return BadRequest("provider IsNullOrWhiteSpace");
+            }
 
-            if (await HttpContext.IsProviderSupportedAsync(provider))
-                return await this.RollbackAndGetBadRequestAsync(dbT);
+            if (await HttpContext.IsProviderSupportedAsync(provider)) {
+                if (!isComplete) {
+                    isComplete = true;
+                    await dbT.RollbackAsync();
+                }
+                return BadRequest();
+            }
+                
 
             // Instruct the middleware corresponding to the requested external identity
             // provider to redirect the user agent to its own authorization endpoint.
@@ -332,9 +214,12 @@ public sealed class Login : ControllerExtensions {
             return Challenge(new AuthenticationProperties { RedirectUri = "/" }, provider);
         }
         catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
+            if (!isComplete) {
+                isComplete = true;
+                await dbT.RollbackAsync();
+            }
+
+            return InternalServerError();
         }
         finally {
             if (!isComplete) {
@@ -346,12 +231,12 @@ public sealed class Login : ControllerExtensions {
     [HttpGet("/api/signout/patreon")]
     [PrivilegeRoute(route: "/api/signout/patreon")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ApiTypes.ViewWork))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PatreonSignout() {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
+        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var db = dbT.Connection!;
         var isComplete = false;
 
         try {
@@ -364,9 +249,12 @@ public sealed class Login : ControllerExtensions {
             return Ok();
         }
         catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
+            if (!isComplete) {
+                isComplete = true;
+                await dbT.RollbackAsync();
+            }
+
+            return InternalServerError();
         }
         finally {
             if (!isComplete) {
@@ -378,26 +266,22 @@ public sealed class Login : ControllerExtensions {
 
     [HttpGet("/api/weblogout")]
     [PrivilegeRoute(route: "/api/weblogout")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> RemoveCookie() {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
-        var isComplete = false;
+        var transaction = await OsuDroidAttachment.Service.AttachmentServiceApi(
+            dbCreates: new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
+            loggerCreates: new Class.LogCreates(),
+            validationHandler: new ValidationHandlerNothing<NpgsqlCreates.DbWrapper,LogWrapper,ControllerWrapper>(),
+            transformHandler: new TransformParse<ControllerWrapper>(),
+            handler: new Handler.RemoveCookieHandler(),
+            outputHandler: new ViewExistOrFoundInfoHandler<ApiTypes.ViewWork>(),
+            input: new ControllerWrapper(this.ControllerHandlerBuild()),
+            default
+        );
         
-        try {
-            RemoveCookieByEName(ECookie.LoginCookie);
-            return Ok();
-        }
-        catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
-        }
-        finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
-        }
+        return TransactionToIResult(transaction);
     }
 }
 

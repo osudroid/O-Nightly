@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
@@ -10,24 +11,29 @@ public class Api2Apk : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(byte[]))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUpdateInfo([FromRoute(Name = "dirNameNumber")] long version) {
-        await using var start = await GetStartAsync();
-        var (dbT, db, log) = start.Unpack();
-        await log.AddLogDebugStartAsync();
+        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
+        await using var db = dbT.Connection!;
+        using var log = OsuDroidLib.Log.GetLog(db);
         var isComplete = false;
         
         try {
             var path = $"{Setting.UpdatePath}/{version}/android.apk";
 
-            if (System.IO.File.Exists(path) == false)
-                return await RollbackAndGetBadRequestAsync(dbT, "Version Number not exist");
-
+            if (System.IO.File.Exists(path) == false) {
+                return BadRequest("Version Number not exist");
+            }
+            
             await using var fileStream = System.IO.File.OpenRead(path);
             return File(fileStream, "application/apk");
         }
         catch (Exception e) {
-            isComplete = true;
-            await log.AddLogErrorAsync("ERROR", Option<string>.With(e.ToString()));
-            return await RollbackAndGetInternalServerErrorAsync(dbT);
+            await log.AddLogErrorAsync(e.ToString());
+            if (!isComplete) {
+                isComplete = true;
+                await dbT.RollbackAsync();
+            }
+            return InternalServerError();
         }
         finally {
             if (!isComplete) {

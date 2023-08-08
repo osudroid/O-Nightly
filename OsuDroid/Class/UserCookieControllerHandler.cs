@@ -1,11 +1,11 @@
+using System.Net;
 using Npgsql;
 using OsuDroid.Extensions;
-using OsuDroidMediator.Domain.Interface;
-using OsuDroidMediator.Domain.Model;
+using OsuDroidAttachment.Interface;
 
 namespace OsuDroid.Class; 
 
-public class UserCookieControllerHandler(ControllerExtensions controller) : IUserCookie {
+public class UserCookieControllerHandler(ControllerExtensions controller) : ITransformOutput, IInput {
     private ControllerExtensions Controller { get; init; } = controller;
 
     public Option<Guid> GetCookie() {
@@ -34,4 +34,9 @@ public class UserCookieControllerHandler(ControllerExtensions controller) : IUse
             ? Option<(Guid Cookie, long UserId)>.Empty 
             : Option<(Guid Cookie, long UserId)>.With((option.Unwrap().Token, option.Unwrap().UserId));
     }
+
+    public Result<Option<IPAddress>, string> GetIpAddress() => Controller.GetIpAddress();
+
+    public void RemoveCookieByEName(ControllerExtensions.ECookie loginCookie) 
+        => Controller.RemoveCookieByEName(loginCookie);
 }

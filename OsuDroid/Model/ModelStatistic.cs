@@ -11,6 +11,7 @@ public static class ModelStatistic {
 
     public static async Task<Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>>, string>>
         ActiveUserAsync(NpgsqlConnection db) {
+        
         if (Buffer.LastUpdate + TimeSpan.FromMinutes(10) > DateTime.UtcNow)
             return Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>>, string>
                 .Ok(ModelResult<ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>>

@@ -3,13 +3,19 @@ using OsuDroid.Lib;
 namespace OsuDroid.Post;
 
 public static class Api2 {
-    public class PostApi2GroundNoHeader<T> : IValuesAreGood where T : IValuesAreGood, ISingleString {
+    public class PostApi2GroundNoHeader<T> : IValuesAreGood, ISingleString where T : IValuesAreGood, ISingleString {
         public T? Body { get; set; }
 
         public bool ValuesAreGood() {
             if (Body is null) return false;
             if (Body.ValuesAreGood() == false) return false;
             return true;
+        }
+
+        public string ToSingleString() {
+            if (Body is null) return "";
+            
+            return Body.ToSingleString();
         }
     }
 
