@@ -1,4 +1,4 @@
-namespace OsuDroid.Class; 
+namespace OsuDroid.Class;
 
 public struct TopPlaysPageing {
     public required long UserId { get; init; }

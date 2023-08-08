@@ -1,7 +1,7 @@
 using Npgsql;
 using OsuDroid.Class;
-using OsuDroid.View;
 using OsuDroid.Extensions;
+using OsuDroid.View;
 
 namespace OsuDroid.Model;
 
@@ -33,7 +33,7 @@ public static class ModelApiUpdate {
 
         return Result<ModelResult<ViewApiUpdateInfo>, string>
             .Ok(ModelResult<ViewApiUpdateInfo>.Ok(new ViewApiUpdateInfo {
-                Changelog = await System.IO.File.ReadAllTextAsync(
+                Changelog = await File.ReadAllTextAsync(
                     $"{Setting.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
                 VersionCode = dirNameNumber,
                 Link = $"https://{Setting.Domain_Name!.Value}/api2/apk/version/{dirNameNumber}.apk"

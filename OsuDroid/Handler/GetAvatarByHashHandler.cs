@@ -5,14 +5,12 @@ using OsuDroidAttachment.DbBuilder;
 using OsuDroidAttachment.Interface;
 using OsuDroidLib.Query;
 
-namespace OsuDroid.Handler; 
+namespace OsuDroid.Handler;
 
-public class GetAvatarByHashHandler 
-    : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerGetWrapper<HttpGet.GetAvatarWithHash>, ImageWrapper> {
-    
+public class GetAvatarByHashHandler
+    : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerGetWrapper<GetAvatarWithHash>, ImageWrapper> {
     public async ValueTask<Result<ImageWrapper, string>> Handel(
         NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerGetWrapper<GetAvatarWithHash> request) {
-        
         var db = dbWrapper.Db;
         var controller = request.Controller;
         var prop = request.Get;

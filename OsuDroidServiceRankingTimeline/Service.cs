@@ -1,5 +1,4 @@
 using Npgsql;
-using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
 
 namespace OsuDroidServiceRankingTimeline;
@@ -15,7 +14,7 @@ public static class Service {
         if (db is null)
             throw new NullReferenceException(nameof(db));
         WriteLine("Finish Calc New Ranking Timeline");
-        ResultErr<string> resultErr = Run(db).GetAwaiter().GetResult();
+        var resultErr = Run(db).GetAwaiter().GetResult();
 
         return resultErr == EResult.Err
             ? Result<ServiceState, string>.Err(resultErr.Err())
@@ -23,9 +22,9 @@ public static class Service {
     }
 
     private static async Task<List<DateTime>> GetCalcDays(NpgsqlConnection db) {
-        var lastTimeVResult = await db.SafeQueryFirstOrDefaultAsync<GlobalRankingTimeline>(
+        var lastTimeVResult = await db.SafeQueryFirstOrDefaultAsync<Entities.GlobalRankingTimeline>(
             "SELECT * FROM GlobalRankingTimeline ORDER BY date DESC LIMIT 1");
-        var firstScoreResult = await db.SafeQueryFirstOrDefaultAsync<PlayScore>(
+        var firstScoreResult = await db.SafeQueryFirstOrDefaultAsync<Entities.PlayScore>(
             "SELECT * FROM PlayScore ORDER BY date ASC LIMIT 1");
 
         if (lastTimeVResult == EResult.Err) {
@@ -76,9 +75,7 @@ public static class Service {
             var response = await CalcTableGlobalForThisDay(dateTime);
             WriteLine("( END   ) ADD New GlobalTimeLine For: " + Time.ToScyllaString(dateTime));
             WriteLine($"Response Ok: {response == EResult.Err}");
-            if (response == EResult.Err) {
-                WriteLine($"Response Message: " + response.Err());
-            }
+            if (response == EResult.Err) WriteLine("Response Message: " + response.Err());
 
             return response;
         }

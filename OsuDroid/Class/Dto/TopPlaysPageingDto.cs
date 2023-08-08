@@ -1,4 +1,4 @@
-namespace OsuDroid.Class.Dto; 
+namespace OsuDroid.Class.Dto;
 
 public class TopPlaysPageingDto {
     public required long UserId { get; init; }

@@ -6,8 +6,7 @@ namespace OsuDroid.Utils;
 
 public static class SendEmail {
     public static ResultErr<string> MainSendResetEmail(long userId, string username, string email, string token) {
-        try
-        {
+        try {
             var domain = Setting.Domain_Name!.Value;
             var emailNoReplayUsername = Setting.Email_NoReplayUsername!.Value;
             var emailNoReplay = Setting.Email_NoReplay!.Value;
@@ -36,8 +35,7 @@ Someone has requested a password reset from your '{username}' osu!droid Account.
             Send(message);
             return ResultErr<string>.Ok();
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             return ResultErr<string>.Err(e.ToString());
         }
     }

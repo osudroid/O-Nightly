@@ -1,6 +1,6 @@
 namespace OsuDroid.View;
 
-public class ViewUserStats: IView {
+public class ViewUserStats : IView {
     public long UserId { get; set; }
     public long OverallPlaycount { get; set; }
     public long OverallScore { get; set; }
@@ -24,7 +24,7 @@ public class ViewUserStats: IView {
     public long OverallMiss { get; set; }
 
     public static ViewUserStats FromUserStats(Entities.UserStats userStats) {
-        return new() {
+        return new ViewUserStats {
             UserId = userStats.UserId,
             OverallPlaycount = userStats.OverallPlaycount,
             OverallScore = userStats.OverallScore,
@@ -45,7 +45,7 @@ public class ViewUserStats: IView {
             Overall50 = userStats.Overall50,
             OverallGeki = userStats.OverallGeki,
             OverallKatu = userStats.OverallKatu,
-            OverallMiss = userStats.OverallMiss,
+            OverallMiss = userStats.OverallMiss
         };
     }
 }

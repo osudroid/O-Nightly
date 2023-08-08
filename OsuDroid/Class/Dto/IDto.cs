@@ -1,5 +1,4 @@
-namespace OsuDroid.Class.Dto; 
+namespace OsuDroid.Class.Dto;
 
 public interface IDto {
-    
 }

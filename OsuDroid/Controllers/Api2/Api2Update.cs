@@ -8,16 +8,16 @@ namespace OsuDroid.Controllers.Api2;
 
 public class Api2Update : ControllerExtensions {
     [HttpGet("/api2/update/{lang}")]
-    [PrivilegeRoute(route: "/api2/update/{lang}")]
+    [PrivilegeRoute("/api2/update/{lang}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewApiUpdateInfoV2))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUpdateInfoV2Async([FromRoute(Name = "lang")] string lang = "en") {
-        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbN = await DbBuilder.BuildNpgsqlConnection();
         await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
         await using var db = dbT.Connection!;
-        using var log = OsuDroidLib.Log.GetLog(db);
+        using var log = Log.GetLog(db);
         var isComplete = false;
-        
+
         try {
             var dirNameNumber = Directory.GetDirectories(Setting.UpdatePath!).Select(long.Parse).MaxBy(x => x);
             if (dirNameNumber == 0) {
@@ -65,12 +65,11 @@ public class Api2Update : ControllerExtensions {
                 isComplete = true;
                 await dbT.RollbackAsync();
             }
+
             return InternalServerError();
         }
         finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
+            if (!isComplete) await dbT.CommitAsync();
 
             await log.FlushToDbAsync();
         }

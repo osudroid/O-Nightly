@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using Dapper;
-using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
 
 namespace OsuDroid.Utils;
@@ -13,8 +12,8 @@ public static class FullRecalcUserRankingTimeline {
     private static async Task RunAsync(DateTime startDate) {
         var iter = startDate;
         var dates = new List<DateTime>();
-        var scoreMapKeyUser = new Dictionary<long, List<PlayScore>>();
-        UserInfo[] userList;
+        var scoreMapKeyUser = new Dictionary<long, List<Entities.PlayScore>>();
+        Entities.UserInfo[] userList;
 
         await using var mainDb = await DbBuilder.BuildNpgsqlConnection();
 
@@ -28,14 +27,14 @@ WHERE date >= '{dateStr}'
 
 
         WriteLine("Get ALl User");
-        userList = (await mainDb.SafeQueryAsync<UserInfo>(
+        userList = (await mainDb.SafeQueryAsync<Entities.UserInfo>(
             "SELECT UserId, RegisterTime FROM UserInfo ORDER BY RegisterTime ASC")).Ok().ToArray();
 
 
-        foreach (var bblUser in userList) scoreMapKeyUser.Add(bblUser.UserId, new List<PlayScore>(128));
+        foreach (var bblUser in userList) scoreMapKeyUser.Add(bblUser.UserId, new List<Entities.PlayScore>(128));
 
         WriteLine("Get ALl Score");
-        foreach (var bblScore in (await mainDb.SafeQueryAsync<PlayScore>(
+        foreach (var bblScore in (await mainDb.SafeQueryAsync<Entities.PlayScore>(
                      "SELECT PlayScoreId, Hash, UserId, Score, Date FROM public.PlayScore")).Ok().ToList()) {
             if (!scoreMapKeyUser.TryGetValue(bblScore.UserId, out var list)) continue;
             list.Add(bblScore);
@@ -44,7 +43,7 @@ WHERE date >= '{dateStr}'
         GC.Collect();
 
         var now = DateTime.UtcNow;
-        var endDate = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, System.DateTimeKind.Utc);
+        var endDate = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
 
         while (iter <= endDate) {
             dates.Add(iter.Date);
@@ -65,7 +64,7 @@ WHERE date >= '{dateStr}'
                 using var db = DbBuilder.BuildNpgsqlConnection().GetAwaiter().GetResult();
 
 
-                var lines = String.Join(
+                var lines = string.Join(
                     ", ",
                     timeLineArr.Select(
                         x => $"({x.UserId}, {Time.ToScyllaString(x.Date)}, {x.GlobalRanking}, {x.Score})")
@@ -87,9 +86,9 @@ VALUES
             MultiIter);
     }
 
-    private static GlobalRankingTimeline[] GetFullRecalcUserRankingTimelineForThisDay(
-        Dictionary<long, List<PlayScore>> anyScoresKeyUserId, Span<UserInfo> users, DateTime end) {
-        static (long UserId, long Score) CalcScore(long userId, List<PlayScore> bblScores, DateTime end) {
+    private static Entities.GlobalRankingTimeline[] GetFullRecalcUserRankingTimelineForThisDay(
+        Dictionary<long, List<Entities.PlayScore>> anyScoresKeyUserId, Span<Entities.UserInfo> users, DateTime end) {
+        static (long UserId, long Score) CalcScore(long userId, List<Entities.PlayScore> bblScores, DateTime end) {
             var scoreMapUser = new Dictionary<string, long>(32);
 
             foreach (var bblScore in bblScores) {
@@ -129,11 +128,11 @@ VALUES
         Array.Sort(userAndScoreSumsArr,
             delegate(UserIdAndScoreSum x, UserIdAndScoreSum y) { return x.Score.CompareTo(y.Score); });
 
-        var res = new GlobalRankingTimeline[userAndScoreSumsArr.Length];
+        var res = new Entities.GlobalRankingTimeline[userAndScoreSumsArr.Length];
 
         for (var i = 0; i < res.Length; i++) {
             var v = userAndScoreSumsArr[i];
-            res[i] = new GlobalRankingTimeline {
+            res[i] = new Entities.GlobalRankingTimeline {
                 UserId = v.UserId,
                 Date = DateTime.SpecifyKind(end, DateTimeKind.Utc),
                 Score = v.Score,

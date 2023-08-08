@@ -3,7 +3,6 @@ using OsuDroid.Class;
 using OsuDroid.Class.Dto;
 using OsuDroid.Extensions;
 using OsuDroid.View;
-using OsuDroidLib.Query;
 
 namespace OsuDroid.Model;
 

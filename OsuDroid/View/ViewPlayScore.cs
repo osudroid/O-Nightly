@@ -1,6 +1,6 @@
 namespace OsuDroid.View;
 
-public sealed class ViewPlayScore: IView {
+public sealed class ViewPlayScore : IView {
     public long PlayScoreId { get; set; }
     public long UserId { get; set; }
     public string? Filename { get; set; }
@@ -19,7 +19,7 @@ public sealed class ViewPlayScore: IView {
     public long Accuracy { get; set; }
 
     public static ViewPlayScore FromPlayScore(Entities.PlayScore playScore) {
-        return new() {
+        return new ViewPlayScore {
             PlayScoreId = playScore.PlayScoreId,
             UserId = playScore.UserId,
             Filename = playScore.Filename,
@@ -35,7 +35,7 @@ public sealed class ViewPlayScore: IView {
             Bad = playScore.Bad,
             Miss = playScore.Miss,
             Date = playScore.Date,
-            Accuracy = playScore.Accuracy,
+            Accuracy = playScore.Accuracy
         };
     }
 }

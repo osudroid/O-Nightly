@@ -1,9 +1,8 @@
 using Npgsql;
 using OsuDroid.Class;
-using OsuDroid.View;
-using OsuDroid.Extensions;
 using OsuDroid.Utils;
-using OsuDroidLib.Database.Entities;
+using OsuDroid.View;
+using OsuDroidLib.Dto;
 using OsuDroidLib.Lib;
 using OsuDroidLib.Query;
 
@@ -31,7 +30,7 @@ public static class ModelApi2Submit {
             return Result<ModelResult<ViewPushReplayResult200>, string>.Err(e.ToString());
         }
 
-        PlayScore newScoreInsert = new PlayScore {
+        var newScoreInsert = new Entities.PlayScore {
             PlayScoreId = history.PlayScoreId,
             UserId = history.UserId,
             Filename = history.Filename,
@@ -52,7 +51,7 @@ public static class ModelApi2Submit {
 
         var resultUserStats = await QueryUserStats.GetBblUserStatsByUserIdAsync(db, userId);
         if (resultUserStats == EResult.Err)
-            Result<Option<(UserStats userStats, long BestPlayScoreId)>, string>.Err(resultUserStats.Err());
+            Result<Option<(Entities.UserStats userStats, long BestPlayScoreId)>, string>.Err(resultUserStats.Err());
 
         var userStats = resultUserStats.Ok();
 
@@ -82,14 +81,14 @@ public static class ModelApi2Submit {
             return Result<ModelResult<ViewPushReplayResult200>, string>.Ok(ModelResult<ViewPushReplayResult200>
                 .BadRequest());
 
-        var newScoreInsertDto = OsuDroidLib.Dto.PlayScoreDto.ToPlayScoreDto(newScoreInsert).Unwrap();
+        var newScoreInsertDto = PlayScoreDto.ToPlayScoreDto(newScoreInsert).Unwrap();
 
         if (optionUserTopScore.IsSet()) {
             var userTopScore = optionUserTopScore.Unwrap();
 
             if (userTopScore.Score > newScoreInsert.Score)
                 return Result<ModelResult<ViewPushReplayResult200>, string>
-                    .Ok(ModelResult<ViewPushReplayResult200>.Ok(new ViewPushReplayResult200() {
+                    .Ok(ModelResult<ViewPushReplayResult200>.Ok(new ViewPushReplayResult200 {
                         BestPlayScoreId = userTopScore.UserId,
                         UserStats = ViewUserStats.FromUserStats(userStats.Unwrap())
                     }));
@@ -99,7 +98,7 @@ public static class ModelApi2Submit {
                 db,
                 newScoreInsert.UserId,
                 newScoreInsertDto,
-                OsuDroidLib.Dto.PlayScoreDto.ToPlayScoreDto(userTopScore).Unwrap()
+                PlayScoreDto.ToPlayScoreDto(userTopScore).Unwrap()
             );
 
             if (result == EResult.Err)
@@ -107,7 +106,7 @@ public static class ModelApi2Submit {
                     .Err(result.Err());
 
             return Result<ModelResult<ViewPushReplayResult200>, string>
-                .Ok(ModelResult<ViewPushReplayResult200>.Ok(new ViewPushReplayResult200() {
+                .Ok(ModelResult<ViewPushReplayResult200>.Ok(new ViewPushReplayResult200 {
                     BestPlayScoreId = newScoreInsert.PlayScoreId,
                     UserStats = ViewUserStats.FromUserStats((await QueryUserStats
                         .GetBblUserStatsByUserIdAsync(db, userId)).Ok().Unwrap())
@@ -122,7 +121,7 @@ public static class ModelApi2Submit {
 
         return Result<ModelResult<ViewPushReplayResult200>, string>
             .Ok(ModelResult<ViewPushReplayResult200>
-                .Ok(new ViewPushReplayResult200() {
+                .Ok(new ViewPushReplayResult200 {
                     BestPlayScoreId = newScoreInsert.UserId,
                     UserStats = ViewUserStats.FromUserStats(
                         (await QueryUserStats.GetBblUserStatsByUserIdAsync(db, userId)).Ok().Unwrap())
@@ -142,7 +141,7 @@ public static class ModelApi2Submit {
             return idBblScorePreSubmit.ChangeOkType<ModelResult<ViewPushPlayStartResult200>>();
 
         return Result<ModelResult<ViewPushPlayStartResult200>, string>.Ok(ModelResult<ViewPushPlayStartResult200>.Ok(
-            new ViewPushPlayStartResult200() { PlayId = idBblScorePreSubmit.Ok().PlayScoreId})
+            new ViewPushPlayStartResult200 { PlayId = idBblScorePreSubmit.Ok().PlayScoreId })
         );
     }
 

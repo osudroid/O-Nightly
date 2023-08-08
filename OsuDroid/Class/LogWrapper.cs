@@ -1,8 +1,11 @@
-namespace OsuDroid.Class; 
+using LamLogger;
+using ILogger = OsuDroidAttachment.Interface.ILogger;
 
-public class LogWrapper(LamLogger.LamLog logger): OsuDroidAttachment.Interface.ILogger {
-    public LamLogger.LamLog Logger { get; } = logger;
-    
+namespace OsuDroid.Class;
+
+public class LogWrapper(LamLog logger) : ILogger {
+    public LamLog Logger { get; } = logger;
+
     public ValueTask DisposeAsync() {
         Logger.Dispose();
         return default;

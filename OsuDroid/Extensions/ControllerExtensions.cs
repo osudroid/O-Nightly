@@ -1,61 +1,62 @@
 using System.Net;
-using System.Transactions;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using OsuDroid.Class;
 using OsuDroid.Lib;
 using OsuDroid.View;
-using OsuDroidAttachment;
 using OsuDroidAttachment.Class;
-using OsuDroidAttachment.DbBuilder;
-using OsuDroidAttachment.Validation;
+using EModelResult = OsuDroidAttachment.Class.EModelResult;
 
 #pragma warning disable CA2252
 
 namespace OsuDroid.Extensions;
 
 public abstract class ControllerExtensions : ControllerBase {
+    public enum ECookie {
+        LoginCookie
+    }
+
     public IActionResult TransactionToIResult<T>(Transaction<ApiTypes.ViewExistOrFoundInfo<T>> transaction) {
         return transaction.Result switch {
-            OsuDroidAttachment.Class.EModelResult.Ok => Ok(transaction.OptionResponse.Unwrap()),
-            OsuDroidAttachment.Class.EModelResult.BadRequest => BadRequest(),
-            OsuDroidAttachment.Class.EModelResult.InternalServerError => this.InternalServerError(),
-            OsuDroidAttachment.Class.EModelResult.BadRequestWithMessage => BadRequest(transaction.OptionResponse.Unwrap()),
-            _ => throw new ArgumentOutOfRangeException()
-        };
-    }
-    
-    public IActionResult TransactionToIResult(Transaction<IActionResult> transaction) {
-        return transaction.Result switch {
-            OsuDroidAttachment.Class.EModelResult.Ok => transaction.OptionResponse.Unwrap(),
-            OsuDroidAttachment.Class.EModelResult.BadRequest => BadRequest(),
-            OsuDroidAttachment.Class.EModelResult.InternalServerError => this.InternalServerError(),
-            OsuDroidAttachment.Class.EModelResult.BadRequestWithMessage => transaction.OptionResponse.Unwrap(),
+            EModelResult.Ok => Ok(transaction.OptionResponse.Unwrap()),
+            EModelResult.BadRequest => BadRequest(),
+            EModelResult.InternalServerError => InternalServerError(),
+            EModelResult.BadRequestWithMessage => BadRequest(transaction.OptionResponse.Unwrap()),
             _ => throw new ArgumentOutOfRangeException()
         };
     }
 
-    public IActionResult TransactionToIResult<IActionResult>(IActionResult actionResult) => actionResult;
+    public IActionResult TransactionToIResult(Transaction<IActionResult> transaction) {
+        return transaction.Result switch {
+            EModelResult.Ok => transaction.OptionResponse.Unwrap(),
+            EModelResult.BadRequest => BadRequest(),
+            EModelResult.InternalServerError => InternalServerError(),
+            EModelResult.BadRequestWithMessage => transaction.OptionResponse.Unwrap(),
+            _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    public IActionResult TransactionToIResult<IActionResult>(IActionResult actionResult) {
+        return actionResult;
+    }
 
     public IActionResult TransactionToIResult(Transaction<ApiTypes.ViewWork> transaction) {
         return transaction.Result switch {
-            OsuDroidAttachment.Class.EModelResult.Ok => Ok(transaction.OptionResponse.Unwrap()),
-            OsuDroidAttachment.Class.EModelResult.BadRequest => BadRequest(),
-            OsuDroidAttachment.Class.EModelResult.InternalServerError => this.InternalServerError(),
-            OsuDroidAttachment.Class.EModelResult.BadRequestWithMessage => BadRequest(transaction.OptionResponse.Unwrap()),
+            EModelResult.Ok => Ok(transaction.OptionResponse.Unwrap()),
+            EModelResult.BadRequest => BadRequest(),
+            EModelResult.InternalServerError => InternalServerError(),
+            EModelResult.BadRequestWithMessage => BadRequest(transaction.OptionResponse.Unwrap()),
             _ => throw new ArgumentOutOfRangeException()
         };
-    }
-    
-    public enum ECookie {
-        LoginCookie
     }
 
     public string FixUsername(string username) {
         return username.Trim();
     }
 
-    public IActionResult InternalServerError() => new StatusCodeResult(500);
+    public IActionResult InternalServerError() {
+        return new StatusCodeResult(500);
+    }
 
     public async Task<IActionResult> RollbackAndGetBadRequestAsync(NpgsqlTransaction dbT) {
         await dbT.RollbackAsync();
@@ -81,7 +82,7 @@ public abstract class ControllerExtensions : ControllerBase {
         if (!HttpContext.Items.TryGetValue(PrivilegeMiddleware.ItemName, out var data))
             return Result<Option<UserIdAndToken>, string>.Ok(Option<UserIdAndToken>.Empty);
 
-        if (data is not UserIdAndToken @userIdAndToken)
+        if (data is not UserIdAndToken userIdAndToken)
             return Result<Option<UserIdAndToken>, string>.Err(TraceMsg.WithMessage("data is not UserIdAndToken"));
 
         return Result<Option<UserIdAndToken>, string>.Ok(Option<UserIdAndToken>.With(userIdAndToken));
@@ -199,5 +200,7 @@ public abstract class ControllerExtensions : ControllerBase {
         return ResultErr<string>.Ok();
     }
 
-    public UserCookieControllerHandler ControllerHandlerBuild() => new UserCookieControllerHandler(this);
+    public UserCookieControllerHandler ControllerHandlerBuild() {
+        return new UserCookieControllerHandler(this);
+    }
 }

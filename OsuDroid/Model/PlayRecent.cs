@@ -1,5 +1,4 @@
 using Npgsql;
-using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Query;
 
 namespace OsuDroid.Model;
@@ -13,7 +12,7 @@ public static class PlayRecent {
     /// <param name="startAt"></param>
     /// <returns></returns>
     /// <exception cref="ArgumentOutOfRangeException"></exception>
-    public static async Task<Result<List<PlayScoreWithUsername>, string>> FilterByAsync(
+    public static async Task<Result<List<Entities.PlayScoreWithUsername>, string>> FilterByAsync(
         NpgsqlConnection db,
         string filterPlays,
         string orderBy,

@@ -3,8 +3,8 @@ using OsuDroid.Utils;
 namespace OsuDroid.Post;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class PostApi2UploadReplayFile : OsuDroid.Post.Api2.IValuesAreGood, OsuDroid.Post.Api2.ISingleString,
-                                               OsuDroid.Post.Api2.IPrintHashOrder {
+public sealed class PostApi2UploadReplayFile : Api2.IValuesAreGood, Api2.ISingleString,
+                                               Api2.IPrintHashOrder {
     public string? MapHash { get; set; }
     public long ReplayId { get; set; }
 

@@ -1,26 +1,21 @@
 using System.Collections.Concurrent;
-using System.Data;
 using System.Runtime.CompilerServices;
+using Dapper;
 using Npgsql;
 using OsuDroid.Database.OldEntities;
-using OsuDroidLib.Database.Entities;
-using OsuDroidLib.Extension;
-using System.Collections.Generic;
-using System.Runtime.InteropServices.JavaScript;
-using Dapper;
-using Dapper.Contrib.Extensions;
 using OsuDroidLib.Dto;
+using OsuDroidLib.Extension;
 
 namespace OsuDroid.Utils;
 
 public class ConvertAndMoveToNewTable {
     public async Task OpiRun() {
-        UserInfo[] allUserFromOldDb;
+        Entities.UserInfo[] allUserFromOldDb;
 
         await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
-            WriteLine($"Start Remove New Tables");
+            WriteLine("Start Remove New Tables");
             await RemoveAllRowsFromNewTables(db);
-            WriteLine($"Fetch Old Users");
+            WriteLine("Fetch Old Users");
             WriteLine("Insert Users");
             allUserFromOldDb = await GetBblUser();
             await InsertAllUsers(db, allUserFromOldDb);
@@ -32,19 +27,18 @@ public class ConvertAndMoveToNewTable {
 
     private async Task ParallelTransfer() {
         try {
-            ConcurrentDictionary<long, ConcurrentBag<PlayScore>> playScores = new();
+            ConcurrentDictionary<long, ConcurrentBag<Entities.PlayScore>> playScores = new();
 
             {
                 await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
-                    foreach (var bblUser in await db.QueryAsync<UserInfo>("SELECT UserId FROM public.UserInfo")) {
-                        playScores[bblUser.UserId] = new();
-                    }
+                    foreach (var bblUser in
+                             await db.QueryAsync<Entities.UserInfo>("SELECT UserId FROM public.UserInfo"))
+                        playScores[bblUser.UserId] = new ConcurrentBag<Entities.PlayScore>();
 
                     WriteLine($"User Count: {playScores.Count}");
-                    List<bbl_score> oldScore = new List<bbl_score>(30_000_000);
-                    foreach (var bblScore in await db.QueryAsync<bbl_score>("SELECT * FROM old_osu.bbl_score")) {
+                    var oldScore = new List<bbl_score>(30_000_000);
+                    foreach (var bblScore in await db.QueryAsync<bbl_score>("SELECT * FROM old_osu.bbl_score"))
                         oldScore.Add(bblScore);
-                    }
 
                     WriteLine($"oldScore Count: {oldScore.Count}");
 
@@ -63,9 +57,8 @@ public class ConvertAndMoveToNewTable {
                             || score.score <= 0
                             || score.accuracy <= 0
                             || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.hash)
-                            || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.filename)) {
+                            || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.filename))
                             WriteLine($"Not Valid Score Row {score.id}");
-                        }
 
                         if (score.mode is null)
                             score.mode = "|";
@@ -74,13 +67,13 @@ public class ConvertAndMoveToNewTable {
                         if (score.mode.IndexOf("-", StringComparison.Ordinal) != -1)
                             score.mode = "|";
 
-                        var bblScore = new PlayScore {
+                        var bblScore = new Entities.PlayScore {
                             PlayScoreId = score.id,
                             UserId = score.id,
                             Filename = score.filename ??
                                        throw new NullReferenceException($"score.filename score.id: {score.id}"),
                             Hash = score.hash ?? throw new NullReferenceException($"score.hash score.id: {score.id}"),
-                            Mode = Utils.Mode.ModeAsSingleStringToModeArray(score.mode),
+                            Mode = Mode.ModeAsSingleStringToModeArray(score.mode),
                             Score = score.score,
                             Combo = score.combo,
                             Mark = score.mark ?? throw new NullReferenceException($"score.mark score.id: {score.id}"),
@@ -108,12 +101,10 @@ public class ConvertAndMoveToNewTable {
                 GC.Collect();
 
                 WriteLine("Pre Insert Scores");
-                var bblScoresList = new List<PlayScore>(30_000_000);
-                foreach (KeyValuePair<long, ConcurrentBag<PlayScore>> keyValuePair in playScores) {
-                    foreach (var bblScore in keyValuePair.Value) {
-                        bblScoresList.Add(bblScore);
-                    }
-                }
+                var bblScoresList = new List<Entities.PlayScore>(30_000_000);
+                foreach (var keyValuePair in playScores)
+                foreach (var bblScore in keyValuePair.Value)
+                    bblScoresList.Add(bblScore);
 
                 WriteLine($"Pre Insert Scores Count: {bblScoresList.Count}");
                 WriteLine("Insert All Scores");
@@ -125,7 +116,7 @@ INSERT INTO PlayScore (PlayScoreId, UserId, Filename, Hash, Mode, Score, Combo, 
 VALUES                (@PlayScoreId, @UserId, @Filename, @Hash, @Mode, @Score, @Combo, @Mark, @Geki, @Perfect, @Katu, @Good, @Bad, @Miss, @Date, @Accuracy) 
 ";
                     long posi = 0;
-                    var list = new List<PlayScore>(10_000);
+                    var list = new List<Entities.PlayScore>(10_000);
                     foreach (var i in bblScoresList) {
                         if (list.Count < 10_000) {
                             list.Add(i);
@@ -139,13 +130,13 @@ VALUES                (@PlayScoreId, @UserId, @Filename, @Hash, @Mode, @Score, @
                     }
 
                     await db.ExecuteAsync(query, list);
-                    WriteLine($"Insert End");
+                    WriteLine("Insert End");
                 }
 
                 GC.Collect();
             }
 
-            ConcurrentBag<UserStats> stats = new ConcurrentBag<UserStats>();
+            var stats = new ConcurrentBag<Entities.UserStats>();
 
             await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
                 WriteLine("Calc Stats");
@@ -164,7 +155,7 @@ VALUES                (@PlayScoreId, @UserId, @Filename, @Hash, @Mode, @Score, @
 
                 var statsArrayChunks = stats.Chunk(1000);
                 foreach (var x in statsArrayChunks) {
-                    Console.WriteLine("UserStats Next");
+                    WriteLine("UserStats Next");
                     await db.ExecuteAsync(@"
 INSERT INTO UserStats (userid, overallplaycount, overallscore, overallaccuracy, overallcombo, overallxss, overallxs, overallss, overalls, overalla, overallb, overallc, overalld, overallperfect, overallhits, overall300, overall100, overall50, overallgeki, overallkatu, overallmiss)
 VALUES (
@@ -194,28 +185,27 @@ VALUES (
                 }
             }
 
-            WriteLine($"Finish");
+            WriteLine("Finish");
         }
         catch (Exception e) {
             WriteLine(e);
             WriteLine("------------------------------------------");
-            System.Environment.Exit(1);
+            Environment.Exit(1);
             throw;
         }
     }
 
 
     public async Task RunRecalcStats() {
-        ConcurrentDictionary<long, ConcurrentBag<PlayScore>> bblScores = new();
-        ConcurrentBag<UserStats> stats = new ConcurrentBag<UserStats>();
+        ConcurrentDictionary<long, ConcurrentBag<Entities.PlayScore>> bblScores = new();
+        var stats = new ConcurrentBag<Entities.UserStats>();
 
         await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
-            foreach (var bblUser in await db.QueryAsync<UserInfo>("SELECT UserId FROM public.UserInfo")) {
-                bblScores[bblUser.UserId] = new();
-            }
+            foreach (var bblUser in await db.QueryAsync<Entities.UserInfo>("SELECT UserId FROM public.UserInfo"))
+                bblScores[bblUser.UserId] = new ConcurrentBag<Entities.PlayScore>();
 
             WriteLine($"User Count: {bblScores.Count}");
-            List<PlayScore> scores = (await db.QueryAsync<PlayScore>("SELECT * FROM PlayScore")).ToList();
+            var scores = (await db.QueryAsync<Entities.PlayScore>("SELECT * FROM PlayScore")).ToList();
             WriteLine($"Score Count: {scores.Count}");
 
             WriteLine("Bind Score To User");
@@ -235,18 +225,18 @@ VALUES (
             pair => {
                 var userId = pair.Key;
                 var scores = pair.Value.ToArray();
-                UserStats userStats = CreateUserStats(userId, scores);
+                var userStats = CreateUserStats(userId, scores);
                 WriteLine($"Calc Stats UserId: {userId}, Score: {userStats.OverallScore}, ScoresRows: {scores.Length}");
                 stats.Add(userStats);
             }
         );
 
-        UserStats[] statsArray = stats.ToArray();
+        var statsArray = stats.ToArray();
         WriteLine($"Stats Insert Count: {statsArray.Length}");
         await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
-            WriteLine($"Delete Old Stats");
+            WriteLine("Delete Old Stats");
             await db.QueryAsync("DELETE FROM public.UserStats");
-            WriteLine($"Insert");
+            WriteLine("Insert");
             var sql = @"
 INSERT 
 INTO UserStats (
@@ -296,16 +286,16 @@ INTO UserStats (
             await db.QueryAsync(sql, statsArray);
         }
 
-        WriteLine($"Finish");
+        WriteLine("Finish");
     }
 
     public async Task Run() {
-        UserInfo[] allUserFromOldDb;
+        Entities.UserInfo[] allUserFromOldDb;
 
         await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
-            WriteLine($"Start Remove New Tables");
+            WriteLine("Start Remove New Tables");
             await RemoveAllRowsFromNewTables(db);
-            WriteLine($"Fetch Old Users");
+            WriteLine("Fetch Old Users");
             WriteLine("Insert Users");
             allUserFromOldDb = await GetBblUser();
             await InsertAllUsers(db, allUserFromOldDb);
@@ -323,9 +313,9 @@ INTO UserStats (
     }
 
     private async Task RunFixUserStats() {
-        UserInfo[] allUserFromOldDb;
+        Entities.UserInfo[] allUserFromOldDb;
         await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
-            allUserFromOldDb = (await db.QueryAsync<UserInfo>("SELECT UserId FROM public.UserInfo")).ToArray();
+            allUserFromOldDb = (await db.QueryAsync<Entities.UserInfo>("SELECT UserId FROM public.UserInfo")).ToArray();
             await db.QueryAsync("DELETE FROM public.UserStats");
         }
 
@@ -335,10 +325,11 @@ INTO UserStats (
             SingleFixStat
         );
 
-        static async ValueTask SingleFixStat(UserInfo user, CancellationToken token) {
-            PlayScore[] scores;
+        static async ValueTask SingleFixStat(Entities.UserInfo user, CancellationToken token) {
+            Entities.PlayScore[] scores;
             await using var db = await DbBuilder.BuildNpgsqlConnection();
-            scores = (await db.QueryAsync<PlayScore>($"SELECT * FROM public.PlayScore WHERE UserId = {user.UserId}"))
+            scores = (await db.QueryAsync<Entities.PlayScore>(
+                    $"SELECT * FROM public.PlayScore WHERE UserId = {user.UserId}"))
                 .ToArray();
             var userStats = CreateUserStats(user.UserId, scores);
             WriteLine($"SET Stats UserId: {user.UserId}, Score: {userStats.OverallScore}, ScoresRows: {scores.Length}");
@@ -393,7 +384,7 @@ VALUES (
         }
     }
 
-    private static async Task InsertAllUsers(NpgsqlConnection db, UserInfo[] users) {
+    private static async Task InsertAllUsers(NpgsqlConnection db, Entities.UserInfo[] users) {
         await db.ExecuteAsync(@"
 Insert Into public.UserInfo (UserId, Username, Password, Email, DeviceId, RegisterTime, LastLoginTime, LatestIp, region, active, banned, RestrictMode, UsernameLastChange, PatronEmail, PatronEmailAccept)
 VALUES (
@@ -415,9 +406,9 @@ VALUES (
 ", users);
     }
 
-    private static async ValueTask SingleTransfer(UserInfo userInfo, CancellationToken token) {
+    private static async ValueTask SingleTransfer(Entities.UserInfo userInfo, CancellationToken token) {
         try {
-            var box = new StrongBox<PlayScore[]?>(default);
+            var box = new StrongBox<Entities.PlayScore[]?>(default);
             box.Value = await GetOldScoresByUserId(userInfo.UserId);
 
             if (box.Value is null || box.Value.Length <= 0) {
@@ -436,12 +427,12 @@ VALUES (
         catch (Exception e) {
             WriteLine(e);
             WriteLine("------------------------------------------");
-            System.Environment.Exit(1);
+            Environment.Exit(1);
             throw;
         }
     }
 
-    private static async Task<ResultErr<string>> InsertScores(PlayScore[] scores) {
+    private static async Task<ResultErr<string>> InsertScores(Entities.PlayScore[] scores) {
         await using var db = await DbBuilder.BuildNpgsqlConnection();
 
         return await db.SafeQueryAsync(@"
@@ -466,10 +457,11 @@ VALUES (
 ", scores);
     }
 
-    private static bool IsNullOrEmptyOrNULLOrNullOrWhitespace(string? value)
-        => value is null || value.Trim() is "" or " " or "NULL" or "null";
+    private static bool IsNullOrEmptyOrNULLOrNullOrWhitespace(string? value) {
+        return value is null || value.Trim() is "" or " " or "NULL" or "null";
+    }
 
-    private async Task<UserInfo[]> GetBblUser() {
+    private async Task<Entities.UserInfo[]> GetBblUser() {
         await using var db = await DbBuilder.BuildNpgsqlConnection();
 
         var bblUsersOld = (await db.QueryAsync<bbl_user>($"SELECT * FROM {Setting.OldDatabase}.bbl_user")).ToList();
@@ -491,8 +483,8 @@ VALUES (
             singleUser.email = singleUser.email!.Trim();
         }
 
-        IEnumerable<UserInfo> RemoveAllEqEmails(System.Collections.Generic.IEnumerable<UserInfo> enumerable) {
-            var dictionary = new Dictionary<string, UserInfo>(128000);
+        IEnumerable<Entities.UserInfo> RemoveAllEqEmails(IEnumerable<Entities.UserInfo> enumerable) {
+            var dictionary = new Dictionary<string, Entities.UserInfo>(128000);
             foreach (var bblUser in enumerable.OrderBy(x => x.UserId)) {
                 if (dictionary.ContainsKey(bblUser.Email!))
                     continue;
@@ -502,8 +494,8 @@ VALUES (
             return dictionary.Select(x => x.Value);
         }
 
-        IEnumerable<UserInfo> RemoveAllEqUsername(System.Collections.Generic.IEnumerable<UserInfo> enumerable) {
-            var dictionary = new Dictionary<string, UserInfo>(128000);
+        IEnumerable<Entities.UserInfo> RemoveAllEqUsername(IEnumerable<Entities.UserInfo> enumerable) {
+            var dictionary = new Dictionary<string, Entities.UserInfo>(128000);
             foreach (var bblUser in enumerable.OrderBy(x => x.UserId)) {
                 if (dictionary.ContainsKey(bblUser.Username!))
                     continue;
@@ -513,7 +505,7 @@ VALUES (
             return dictionary.Select(x => x.Value);
         }
 
-        var bblUsers = bblUsersOld.Select(bblUser => new UserInfo {
+        var bblUsers = bblUsersOld.Select(bblUser => new Entities.UserInfo {
             Active = bblUser.active == 1,
             Banned = bblUser.banned == 1,
             DeviceId = "",
@@ -534,9 +526,9 @@ VALUES (
         return RemoveAllEqUsername(RemoveAllEqEmails(bblUsers)).ToArray();
     }
 
-    private static async Task<PlayScore[]?> GetOldScoresByUserId(long id) {
+    private static async Task<Entities.PlayScore[]?> GetOldScoresByUserId(long id) {
         await using var db = await DbBuilder.BuildNpgsqlConnection();
-        List<bbl_score> scores =
+        var scores =
             (await db.QueryAsync<bbl_score>($"SELECT * FROM {Setting.OldDatabase}.bbl_score WHERE uid = {id}"))
             .ToList();
 
@@ -550,9 +542,8 @@ VALUES (
                 || score.accuracy <= 0
                 || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.hash)
                 || IsNullOrEmptyOrNULLOrNullOrWhitespace(score.filename)
-               ) {
+               )
                 scores.RemoveAt(i);
-            }
         }
 
         foreach (var bblScore in scores) {
@@ -564,17 +555,17 @@ VALUES (
                 bblScore.mode = "|";
         }
 
-        var res = new PlayScore[scores.Count];
+        var res = new Entities.PlayScore[scores.Count];
         for (var i = 0; i < scores.Count; i++) {
             var bblScore = scores[i];
 
-            static string[] ModeToArray(ReadOnlySpan<Char> mode) {
+            static string[] ModeToArray(ReadOnlySpan<char> mode) {
                 var res = new List<string>(4);
 
-                bool hasPipe = false;
-                int posi = 0;
-                for (int i = 0; i < mode.Length; i++) {
-                    char c = mode[i];
+                var hasPipe = false;
+                var posi = 0;
+                for (var i = 0; i < mode.Length; i++) {
+                    var c = mode[i];
                     if (c == '|') {
                         hasPipe = true;
                         posi = i + 1;
@@ -594,7 +585,7 @@ VALUES (
                 return res.ToArray();
             }
 
-            res[i] = new PlayScore {
+            res[i] = new Entities.PlayScore {
                 PlayScoreId = bblScore.id,
                 UserId = bblScore.uid,
                 Filename = bblScore.filename,
@@ -618,25 +609,25 @@ VALUES (
     }
 
     private static async Task RemoveAllRowsFromNewTables(NpgsqlConnection db) {
-        Console.WriteLine("Start DELETE FROM public.Patron");
-        await db.ExecuteAsync("DELETE FROM public.Patron", null, null, commandTimeout: 4000);
-        Console.WriteLine("Start DELETE FROM public.PlayScore");
-        await db.ExecuteAsync("DELETE FROM public.PlayScore", null, null, commandTimeout: 4000);
-        Console.WriteLine("Start DELETE FROM public.PlayscoreBanned");
-        await db.ExecuteAsync("DELETE FROM public.PlayscoreBanned", null, null, commandTimeout: 4000);
-        Console.WriteLine("Start DELETE FROM public.PlayScorePreSubmit");
-        await db.ExecuteAsync("DELETE FROM public.PlayScorePreSubmit", null, null, commandTimeout: 4000);
-        Console.WriteLine("Start DELETE FROM public.UserStats");
-        await db.ExecuteAsync("DELETE FROM public.UserStats", null, null, commandTimeout: 4000);
-        Console.WriteLine("Start DELETE FROM public.UserInfo");
+        WriteLine("Start DELETE FROM public.Patron");
+        await db.ExecuteAsync("DELETE FROM public.Patron", null, 4000);
+        WriteLine("Start DELETE FROM public.PlayScore");
+        await db.ExecuteAsync("DELETE FROM public.PlayScore", null, 4000);
+        WriteLine("Start DELETE FROM public.PlayscoreBanned");
+        await db.ExecuteAsync("DELETE FROM public.PlayscoreBanned", null, 4000);
+        WriteLine("Start DELETE FROM public.PlayScorePreSubmit");
+        await db.ExecuteAsync("DELETE FROM public.PlayScorePreSubmit", null, 4000);
+        WriteLine("Start DELETE FROM public.UserStats");
+        await db.ExecuteAsync("DELETE FROM public.UserStats", null, 4000);
+        WriteLine("Start DELETE FROM public.UserInfo");
         // await db.ExecuteAsync("DELETE FROM public.UserInfo", null, null, commandTimeout: 4000);
-        Console.WriteLine("Start DELETE FROM public.GlobalRankingTimeLine");
-        await db.ExecuteAsync("DELETE FROM public.GlobalRankingTimeLine", null, null, commandTimeout: 4000);
+        WriteLine("Start DELETE FROM public.GlobalRankingTimeLine");
+        await db.ExecuteAsync("DELETE FROM public.GlobalRankingTimeLine", null, 4000);
     }
 
 
-    private static UserStats CreateUserStats(long userId, PlayScore[] listBblScores) {
-        var bblUserStats = new UserStats() {
+    private static Entities.UserStats CreateUserStats(long userId, Entities.PlayScore[] listBblScores) {
+        var bblUserStats = new Entities.UserStats {
             UserId = userId,
             OverallPlaycount = 0,
             OverallScore = 0,
@@ -657,16 +648,16 @@ VALUES (
             Overall50 = 0,
             OverallGeki = 0,
             OverallKatu = 0,
-            OverallMiss = 0,
+            OverallMiss = 0
         };
 
         if (listBblScores.Length == 0) {
-            Console.WriteLine($"UserId: {userId} Has Not Plays");
+            WriteLine($"UserId: {userId} Has Not Plays");
             return bblUserStats;
         }
 
 
-        var dictionary = new Dictionary<string, PlayScore>((listBblScores.Length + 1) / 2);
+        var dictionary = new Dictionary<string, Entities.PlayScore>((listBblScores.Length + 1) / 2);
 
         foreach (var bblScore in listBblScores) {
             if (bblScore.Hash is null) continue;

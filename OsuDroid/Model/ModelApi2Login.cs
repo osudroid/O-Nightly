@@ -2,8 +2,10 @@ using LamLogger;
 using Npgsql;
 using OsuDroid.Class;
 using OsuDroid.Class.Dto;
-using OsuDroid.View;
 using OsuDroid.Extensions;
+using OsuDroid.View;
+using OsuDroidLib.Lib;
+using OsuDroidLib.Manager;
 using OsuDroidLib.Manager.TokenHandler;
 using OsuDroidLib.Query;
 
@@ -12,7 +14,6 @@ namespace OsuDroid.Model;
 public static class ModelApi2Login {
     public static async Task<Result<ModelResult<ViewCreateApi2TokenResult>, string>> CreateApi2TokenAsync(
         ControllerExtensions controller, NpgsqlConnection db, LamLog log, CreateApi2TokenDto createApi2Token) {
-        
         var result = await QueryUserInfo.GetIdUsernamePasswordByLowerUsernameAsync(db, createApi2Token.Username ?? "");
         if (result == EResult.Err)
             return result.ChangeOkType<ModelResult<ViewCreateApi2TokenResult>>();
@@ -32,7 +33,7 @@ public static class ModelApi2Login {
 
         var user = userOption.Unwrap();
 
-        var passwordIsRight = OsuDroidLib.Lib.PasswordHash.IsRightPassword(createApi2Token.Passwd, user.Password!);
+        var passwordIsRight = PasswordHash.IsRightPassword(createApi2Token.Passwd, user.Password!);
         if (passwordIsRight == EResult.Err)
             return Result<ModelResult<ViewCreateApi2TokenResult>, string>
                 .Ok(ModelResult<ViewCreateApi2TokenResult>.Ok(new ViewCreateApi2TokenResult {
@@ -51,35 +52,31 @@ public static class ModelApi2Login {
                 }));
         }
 
-        switch (OsuDroidLib.Lib.PasswordHash.IsBCryptHash(user.Password!)) {
+        switch (PasswordHash.IsBCryptHash(user.Password!)) {
             case true:
-                if (!OsuDroidLib.Lib.PasswordHash.BCryptNeedRehash(user.Password!).Ok()) {
-                    break;
-                }
+                if (!PasswordHash.BCryptNeedRehash(user.Password!).Ok()) break;
 
                 await log.AddLogDebugAsync("Rehash Password");
-                var newBcryptRehash = OsuDroidLib.Lib.PasswordHash.HashWithBCryptPassword(createApi2Token.Passwd);
+                var newBcryptRehash = PasswordHash.HashWithBCryptPassword(createApi2Token.Passwd);
                 if (newBcryptRehash == EResult.Err)
                     return newBcryptRehash.ChangeOkType<ModelResult<ViewCreateApi2TokenResult>>();
 
-                await OsuDroidLib.Manager.UserInfoManager
-                                 .UpdatePasswordAsync(db, user.UserId, newBcryptRehash.Ok());
+                await UserInfoManager
+                    .UpdatePasswordAsync(db, user.UserId, newBcryptRehash.Ok());
                 break;
             default:
-                var newBcrypt = OsuDroidLib.Lib.PasswordHash.HashWithBCryptPassword(createApi2Token.Passwd);
+                var newBcrypt = PasswordHash.HashWithBCryptPassword(createApi2Token.Passwd);
                 if (newBcrypt == EResult.Err)
                     return newBcrypt.ChangeOkType<ModelResult<ViewCreateApi2TokenResult>>();
 
-                await OsuDroidLib.Manager.UserInfoManager
-                                 .UpdatePasswordAsync(db, user.UserId, newBcrypt.Ok());
+                await UserInfoManager
+                    .UpdatePasswordAsync(db, user.UserId, newBcrypt.Ok());
                 break;
         }
 
         var resultToken = await TokenHandlerManger.GetOrCreateCacheDatabase().InsertAsync(db, user.UserId);
 
-        if (resultToken == EResult.Err) {
-            return resultToken.ChangeOkType<ModelResult<ViewCreateApi2TokenResult>>();
-        }
+        if (resultToken == EResult.Err) return resultToken.ChangeOkType<ModelResult<ViewCreateApi2TokenResult>>();
 
         await log.AddLogDebugAsync("Return Token");
         return Result<ModelResult<ViewCreateApi2TokenResult>, string>

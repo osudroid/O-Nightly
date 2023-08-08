@@ -1,38 +1,31 @@
-using System.Runtime.CompilerServices;
-
-namespace OsuDroid.Lib.DbTransfer; 
+namespace OsuDroid.Lib.DbTransfer;
 
 public class DbTransfer {
-    private bool _cleanDb = false;
-    private bool _insertUser = false;
-    private bool _insertScore = false;
-    private bool _calcUserScore = false;
+    public bool CleanDb { get; private set; }
 
-    public bool CleanDb => _cleanDb;
+    public bool InsertUser { get; private set; }
 
-    public bool InsertUser => _insertUser;
+    public bool InsertScore { get; private set; }
 
-    public bool InsertScore => _insertScore;
-
-    public bool CalcUserScore => _calcUserScore;
+    public bool CalcUserScore { get; private set; }
 
     public DbTransfer UseCleanDb() {
-        _cleanDb = true;
+        CleanDb = true;
         return this;
     }
 
     public DbTransfer UseInsertUser() {
-        _insertUser = true;
+        InsertUser = true;
         return this;
     }
 
     public DbTransfer UseInsertScore() {
-        _insertScore = true;
+        InsertScore = true;
         return this;
     }
 
     public DbTransfer UseCalcUserScore() {
-        _calcUserScore = true;
+        CalcUserScore = true;
         return this;
     }
 
@@ -41,11 +34,11 @@ public class DbTransfer {
             // if (_cleanDb) await CleanDbHandler.Run(); 
             // if (_insertUser) await InsertUserHandler.Run(); 
             // if (_insertScore) await InsertScoreHandler.Run(); 
-            if (_calcUserScore) await CalcUserScoreHandler.Run(); 
+            if (CalcUserScore) await CalcUserScoreHandler.Run();
         }
         catch (Exception e) {
             WriteLine(e);
-            System.Environment.Exit(1);
+            Environment.Exit(1);
         }
     }
 }

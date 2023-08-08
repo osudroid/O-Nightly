@@ -1,14 +1,16 @@
-using OsuDroid.View;
+using OsuDroidLib.Validation;
 
 namespace OsuDroid.Post;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class PostCreateDropAccountToken : PostApi.IValuesAreGood, PostApi.ISingleString {
+public sealed class PostCreateDropAccountToken : Api2.IValuesAreGood, Api2.ISingleString {
     public string? Password { get; set; }
 
-    public bool ValuesAreGood() {
-        return OsuDroidLib.Validation.ValidationPassword.ValidationOldVersion(Password);
+    public string ToSingleString() {
+        return Password ?? "";
     }
 
-    public string ToSingleString() => Password ?? "";
+    public bool ValuesAreGood() {
+        return ValidationPassword.ValidationOldVersion(Password);
+    }
 }

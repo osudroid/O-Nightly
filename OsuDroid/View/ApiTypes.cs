@@ -1,7 +1,7 @@
 namespace OsuDroid.View;
 
-public static class ApiTypes{
-    public class ViewExistOrFoundInfo<T>: IView {
+public static class ApiTypes {
+    public class ViewExistOrFoundInfo<T> : IView {
         public bool ExistOrFound { get; set; }
         public T? Value { get; set; }
 
@@ -20,7 +20,7 @@ public static class ApiTypes{
         }
     }
 
-    public class ViewWork: IView {
+    public class ViewWork : IView {
         public static ViewWork False = new() { HasWork = false };
         public static ViewWork True = new() { HasWork = true };
         public bool HasWork { get; init; }

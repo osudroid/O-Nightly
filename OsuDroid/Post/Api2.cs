@@ -6,16 +6,16 @@ public static class Api2 {
     public class PostApi2GroundNoHeader<T> : IValuesAreGood, ISingleString where T : IValuesAreGood, ISingleString {
         public T? Body { get; set; }
 
+        public string ToSingleString() {
+            if (Body is null) return "";
+
+            return Body.ToSingleString();
+        }
+
         public bool ValuesAreGood() {
             if (Body is null) return false;
             if (Body.ValuesAreGood() == false) return false;
             return true;
-        }
-
-        public string ToSingleString() {
-            if (Body is null) return "";
-            
-            return Body.ToSingleString();
         }
     }
 

@@ -1,9 +1,8 @@
 using OsuDroid.Utils;
-using OsuDroid.View;
 
 namespace OsuDroid.Post;
 
-public class PostApi2MapFileRank : PostApi.IValuesAreGood, PostApi.ISingleString, PostApi.IPrintHashOrder {
+public class PostApi2MapFileRank : Api2.IValuesAreGood, Api2.ISingleString, Api2.IPrintHashOrder {
     public string? Filename { get; set; }
     public string? FileHash { get; set; }
 

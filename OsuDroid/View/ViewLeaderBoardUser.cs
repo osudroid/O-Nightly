@@ -1,6 +1,6 @@
 namespace OsuDroid.View;
 
-public class ViewLeaderBoardUser : IView{
+public class ViewLeaderBoardUser : IView {
     public long RankNumber { get; set; }
     public long UserId { get; set; }
     public string? Username { get; set; }
@@ -13,7 +13,7 @@ public class ViewLeaderBoardUser : IView{
     public long OverallAccuracy { get; set; }
 
     public static ViewLeaderBoardUser FromLeaderBoardUser(Entities.LeaderBoardUser leaderBoardUser) {
-        return new() {
+        return new ViewLeaderBoardUser {
             RankNumber = leaderBoardUser.RankNumber,
             UserId = leaderBoardUser.UserId,
             Username = leaderBoardUser.Username,
@@ -23,7 +23,7 @@ public class ViewLeaderBoardUser : IView{
             OverallSs = leaderBoardUser.OverallSs,
             OverallS = leaderBoardUser.OverallS,
             OverallA = leaderBoardUser.OverallA,
-            OverallAccuracy = leaderBoardUser.OverallAccuracy,
+            OverallAccuracy = leaderBoardUser.OverallAccuracy
         };
     }
 }

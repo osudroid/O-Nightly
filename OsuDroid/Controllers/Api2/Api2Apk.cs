@@ -7,23 +7,21 @@ namespace OsuDroid.Controllers.Api2;
 
 public class Api2Apk : ControllerExtensions {
     [HttpGet("/api2/apk/version/{dirNameNumber:long}.apk")]
-    [PrivilegeRoute(route: "/api2/apk/version/{dirNameNumber:long}.apk")]
+    [PrivilegeRoute("/api2/apk/version/{dirNameNumber:long}.apk")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(byte[]))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUpdateInfo([FromRoute(Name = "dirNameNumber")] long version) {
-        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbN = await DbBuilder.BuildNpgsqlConnection();
         await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
         await using var db = dbT.Connection!;
-        using var log = OsuDroidLib.Log.GetLog(db);
+        using var log = Log.GetLog(db);
         var isComplete = false;
-        
+
         try {
             var path = $"{Setting.UpdatePath}/{version}/android.apk";
 
-            if (System.IO.File.Exists(path) == false) {
-                return BadRequest("Version Number not exist");
-            }
-            
+            if (System.IO.File.Exists(path) == false) return BadRequest("Version Number not exist");
+
             await using var fileStream = System.IO.File.OpenRead(path);
             return File(fileStream, "application/apk");
         }
@@ -33,12 +31,11 @@ public class Api2Apk : ControllerExtensions {
                 isComplete = true;
                 await dbT.RollbackAsync();
             }
+
             return InternalServerError();
         }
         finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
+            if (!isComplete) await dbT.CommitAsync();
         }
     }
 }

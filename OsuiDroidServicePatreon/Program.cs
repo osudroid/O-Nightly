@@ -1,13 +1,12 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-using Npgsql;
 using OsuDroidLib;
 
 namespace OsuDroidServicePatreon;
 
 public static class Program {
     public static async Task Main(string[] args) {
-        var loadResult = (await OsuDroidLib.Setting.LoadAsync());
+        var loadResult = await Setting.LoadAsync();
         if (loadResult == EResult.Err)
             throw new Exception(loadResult.Err());
 

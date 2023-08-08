@@ -1,4 +1,3 @@
-using Dapper;
 using OsuDroidLib.Extension;
 
 namespace OsuDroidServiceCleaner;

@@ -5,11 +5,11 @@ namespace OsuDroid.Lib;
 
 public class TimeoutTokenDictionary<Token, Value> where Token : notnull {
     private static readonly Mutex Mut = new();
+    private readonly int CounterClearAt;
+    private readonly TimeSpan LifeTime;
 
     private Dictionary<Token, Holder> _dictionary;
     private int Counter;
-    private readonly int CounterClearAt;
-    private readonly TimeSpan LifeTime;
 
     public TimeoutTokenDictionary(TimeSpan lifeTime, int counterClearAt = 1000, int capacity = 0) {
         if (capacity < 0)

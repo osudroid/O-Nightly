@@ -2,7 +2,7 @@ namespace OsuDroid.Utils;
 
 public static class Mode {
     /// <exception cref="Exception"></exception>
-    public static string[] ModeAsSingleStringToModeArray(ReadOnlySpan<Char> mode) {
+    public static string[] ModeAsSingleStringToModeArray(ReadOnlySpan<char> mode) {
         var res = new List<string>(4);
 
         var hasPipe = false;
@@ -25,7 +25,7 @@ public static class Mode {
 
         if (slice[0] != 'x')
             throw new Exception("Must be start with 'x'");
-        res.Add(new String(slice));
+        res.Add(new string(slice));
 
         return res.ToArray();
     }
@@ -35,8 +35,8 @@ public static class Mode {
         if (modes is null)
             return Option<string>.With("|");
 
-        StringBuilder builder = new StringBuilder(2);
-        string end = "";
+        var builder = new StringBuilder(2);
+        var end = "";
 
         foreach (var mode in modes) {
             if (mode.Length == 0)

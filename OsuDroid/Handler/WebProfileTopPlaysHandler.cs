@@ -6,18 +6,17 @@ using OsuDroidAttachment.DbBuilder;
 using OsuDroidAttachment.Interface;
 using OsuDroidLib.Extension;
 
-namespace OsuDroid.Handler; 
+namespace OsuDroid.Handler;
 
-public class WebProfileTopPlaysHandler 
-    : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerGetWrapper<UserIdBoxDto>, OptionHandlerOutput<ViewPlays>> {
-    
+public class WebProfileTopPlaysHandler
+    : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerGetWrapper<UserIdBoxDto>,
+        OptionHandlerOutput<ViewPlays>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewPlays>, string>> Handel(
         NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerGetWrapper<UserIdBoxDto> request) {
-
         var db = dbWrapper.Db;
         var userId = request.Get.UserId;
-        
-        var res =  (await db.SafeQueryAsync<Entities.PlayScore>(@$"
+
+        var res = (await db.SafeQueryAsync<Entities.PlayScore>(@$"
 SELECT * 
 FROM (
          SELECT distinct ON (filename) * FROM PlayScore

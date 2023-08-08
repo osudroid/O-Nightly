@@ -1,14 +1,12 @@
 using LamLogger;
-using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using OsuDroid.Class;
 using OsuDroid.Class.Dto;
 using OsuDroid.Extensions;
 using OsuDroid.Lib;
-using OsuDroid.Post;
 using OsuDroid.Utils;
 using OsuDroid.View;
-using OsuDroidLib.Dto;
+using OsuDroidLib.Lib;
 using OsuDroidLib.Manager;
 using OsuDroidLib.Query;
 
@@ -23,7 +21,8 @@ public static class ModelApi2Profile {
     private static readonly TimeoutTokenDictionary<Guid, (long UserId, string Email)> _deleteAccMailToken =
         new(TimeSpan.FromMinutes(5), 10000, 10000);
 
-    public static async Task<Result<ModelResult<ViewProfileStats>, string>> WebProfileStatsAsync(NpgsqlConnection db, LamLog log, long userId) {
+    public static async Task<Result<ModelResult<ViewProfileStats>, string>> WebProfileStatsAsync(NpgsqlConnection db,
+        LamLog log, long userId) {
         var optionUserAndStatsResult = await Query.GetUserInfoAndBblUserStatsByUserIdAsync(db, userId);
 
         if (optionUserAndStatsResult == EResult.Err)
@@ -43,12 +42,11 @@ public static class ModelApi2Profile {
             return Result<ModelResult<ViewProfileStats>, string>.Err("Error Not Found");
 
 
-        Option<Entities.Patron> optionBblPatron = Option<Entities.Patron>.Empty;
-        if ((userInfoAndStats.Email ?? "").Length == 0) {
+        var optionBblPatron = Option<Entities.Patron>.Empty;
+        if ((userInfoAndStats.Email ?? "").Length == 0)
             optionBblPatron = (await log.AddResultAndTransformAsync(await QueryPatron
                     .GetByPatronEmailAsync(db, userInfoAndStats.Email ?? "")))
                 .OkOrDefault();
-        }
 
         return Result<ModelResult<ViewProfileStats>, string>
             .Ok(ModelResult<ViewProfileStats>.Ok(new ViewProfileStats {
@@ -121,7 +119,7 @@ public static class ModelApi2Profile {
 
         var userInfo = userInfoResult.Ok().Unwrap();
 
-        var result = await OsuDroidLib.Manager.UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
+        var result = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
             db, userInfo.UserId, updateEmail.Passwd, userInfo.Password ?? "");
 
         if (result == EResult.Err)
@@ -135,7 +133,7 @@ public static class ModelApi2Profile {
             case { PasswordIsValid: false }:
                 return Result<ModelResult<ApiTypes.ViewWork>, string>
                     .Ok(ModelResult<ApiTypes.ViewWork>
-                        .Ok(new ApiTypes.ViewWork() { HasWork = false }));
+                        .Ok(new ApiTypes.ViewWork { HasWork = false }));
             default:
                 if (result.Ok().RehashPassword)
                     await log.AddLogDebugAsync($"RehashPassword For UserId: {userInfo.UserId}");
@@ -163,8 +161,8 @@ public static class ModelApi2Profile {
 
 
         var userInfo = userInfoOption.Unwrap();
-        var rightPassword = OsuDroidLib.Lib.PasswordHash
-                                       .IsRightPassword(updatePasswd.OldPasswd, userInfo.Password ?? "");
+        var rightPassword = PasswordHash
+            .IsRightPassword(updatePasswd.OldPasswd, userInfo.Password ?? "");
 
         if (rightPassword == EResult.Err)
             return rightPassword.ChangeOkType<ModelResult<ApiTypes.ViewWork>>();
@@ -173,7 +171,7 @@ public static class ModelApi2Profile {
             return Result<ModelResult<ApiTypes.ViewWork>, string>
                 .Ok(ModelResult<ApiTypes.ViewWork>.Ok(new ApiTypes.ViewWork { HasWork = false }));
 
-        var newPasswordResult = OsuDroidLib.Lib.PasswordHash.HashWithBCryptPassword(updatePasswd.NewPasswd);
+        var newPasswordResult = PasswordHash.HashWithBCryptPassword(updatePasswd.NewPasswd);
         if (newPasswordResult == EResult.Err)
             return rightPassword.ChangeOkType<ModelResult<ApiTypes.ViewWork>>();
 
@@ -193,10 +191,9 @@ public static class ModelApi2Profile {
         if (userInfoResult == EResult.Err)
             return userInfoResult.ChangeOkType<ModelResult<ViewUpdateUsernameRes>>();
 
-        if (userInfoResult.Ok().IsNotSet()) {
+        if (userInfoResult.Ok().IsNotSet())
             return Result<ModelResult<ViewUpdateUsernameRes>, string>
                 .Err(TraceMsg.WithMessage($"userInfoResult IsNotSet UserId {cookieToken.UserId}"));
-        }
 
 
         var userInfo = userInfoResult.Ok().Unwrap();
@@ -208,7 +205,7 @@ public static class ModelApi2Profile {
 
         if (!resultValidatePassword.Ok().PasswordIsValid)
             return Result<ModelResult<ViewUpdateUsernameRes>, string>.Ok(ModelResult<ViewUpdateUsernameRes>
-                .Ok(new ViewUpdateUsernameRes() { HasWork = false }));
+                .Ok(new ViewUpdateUsernameRes { HasWork = false }));
 
         var checkUsername = await UserInfoManager.UsernameIsInUse(db, updateUsername.NewUsername);
 
@@ -217,7 +214,7 @@ public static class ModelApi2Profile {
 
         if (checkUsername.Ok())
             return Result<ModelResult<ViewUpdateUsernameRes>, string>.Ok(ModelResult<ViewUpdateUsernameRes>
-                .Ok(new ViewUpdateUsernameRes() { HasWork = false }));
+                .Ok(new ViewUpdateUsernameRes { HasWork = false }));
 
         var result = await UserInfoManager.UpdateUsernameAsync(db, userInfo.UserId, updateUsername.NewUsername);
 
@@ -225,7 +222,7 @@ public static class ModelApi2Profile {
             return result.ConvertTo<ModelResult<ViewUpdateUsernameRes>>();
 
         return Result<ModelResult<ViewUpdateUsernameRes>, string>.Ok(ModelResult<ViewUpdateUsernameRes>
-            .Ok(new ViewUpdateUsernameRes() { HasWork = true }));
+            .Ok(new ViewUpdateUsernameRes { HasWork = true }));
     }
 
     public static async Task<Result<ModelResult<ViewUpdateAvatar>, string>> UpdateAvatarAsync(
@@ -236,10 +233,9 @@ public static class ModelApi2Profile {
         if (userInfoResult == EResult.Err)
             return userInfoResult.ChangeOkType<ModelResult<ViewUpdateAvatar>>();
 
-        if (userInfoResult.Ok().IsNotSet()) {
+        if (userInfoResult.Ok().IsNotSet())
             return Result<ModelResult<ViewUpdateAvatar>, string>
                 .Err(TraceMsg.WithMessage($"userInfoResult IsNotSet UserId {cookieToken.UserId}"));
-        }
 
         var userInfo = userInfoResult.Ok().Unwrap();
         var resultValidatePassword = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
@@ -250,10 +246,10 @@ public static class ModelApi2Profile {
 
         if (!resultValidatePassword.Ok().PasswordIsValid)
             return Result<ModelResult<ViewUpdateAvatar>, string>.Ok(ModelResult<ViewUpdateAvatar>
-                .Ok(new() { PasswdFalse = true, ImageToBig = false, IsNotAImage = false }));
+                .Ok(new ViewUpdateAvatar { PasswdFalse = true, ImageToBig = false, IsNotAImage = false }));
 
 
-        byte[] imageBytes = Array.Empty<byte>();
+        var imageBytes = Array.Empty<byte>();
         try {
             var charArr = updateAvatar.ImageBase64.AsSpan(updateAvatar.ImageBase64!.IndexOf(',') + 1).ToArray();
             // TODO Write one Convert.FromBase64String With Span
@@ -263,7 +259,7 @@ public static class ModelApi2Profile {
             return Result<ModelResult<ViewUpdateAvatar>, string>.Err(e.ToString());
         }
 
-        var result = await OsuDroidLib.Lib.UserAvatarHandler.UpdateImageForUserAsync(db, userInfo.UserId, imageBytes);
+        var result = await UserAvatarHandler.UpdateImageForUserAsync(db, userInfo.UserId, imageBytes);
 
         if (result == EResult.Err)
             return result.ConvertTo<ModelResult<ViewUpdateAvatar>>();
@@ -284,10 +280,9 @@ public static class ModelApi2Profile {
         if (userInfoResult == EResult.Err)
             return userInfoResult.ChangeOkType<ModelResult<ApiTypes.ViewWork>>();
 
-        if (userInfoResult.Ok().IsNotSet()) {
+        if (userInfoResult.Ok().IsNotSet())
             return Result<ModelResult<ApiTypes.ViewWork>, string>
                 .Err(TraceMsg.WithMessage($"userInfoResult IsNotSet UserId {cookieToken.UserId}"));
-        }
 
         var userInfo = userInfoResult.Ok().Unwrap();
         var resultValidatePassword = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
@@ -298,7 +293,7 @@ public static class ModelApi2Profile {
 
         if (!resultValidatePassword.Ok().PasswordIsValid)
             return Result<ModelResult<ApiTypes.ViewWork>, string>.Ok(ModelResult<ApiTypes.ViewWork>
-                .Ok(new() { HasWork = false }));
+                .Ok(new ApiTypes.ViewWork { HasWork = false }));
 
         var token = Guid.NewGuid();
 
@@ -307,17 +302,16 @@ public static class ModelApi2Profile {
         SendEmail.MainSendPatreonVerifyLinkToken(userInfo.Username!, userInfo.Email!, token);
 
         return Result<ModelResult<ApiTypes.ViewWork>, string>
-            .Ok(ModelResult<ApiTypes.ViewWork>.Ok(new() { HasWork = true }));
+            .Ok(ModelResult<ApiTypes.ViewWork>.Ok(new ApiTypes.ViewWork { HasWork = true }));
     }
 
     public static async Task<Result<ModelResult<ApiTypes.ViewWork>, string>> AcceptPatreonEmailAsync(
         ControllerExtensions controller, NpgsqlConnection db, Guid token) {
         var response = _patreoneMailToken.Pop(token);
 
-        if (response.IsNotSet()) {
+        if (response.IsNotSet())
             return Result<ModelResult<ApiTypes.ViewWork>, string>
                 .Ok(ModelResult<ApiTypes.ViewWork>.Ok(ApiTypes.ViewWork.False));
-        }
 
         var userIdAndEmail = response.Unwrap();
 
@@ -350,10 +344,9 @@ public static class ModelApi2Profile {
         if (userInfoResult == EResult.Err)
             return userInfoResult.ChangeOkType<ModelResult<ViewCreateDropAccountTokenRes>>();
 
-        if (userInfoResult.Ok().IsNotSet()) {
+        if (userInfoResult.Ok().IsNotSet())
             return Result<ModelResult<ViewCreateDropAccountTokenRes>, string>
                 .Err(TraceMsg.WithMessage($"userInfoResult IsNotSet UserId {cookieToken.UserId}"));
-        }
 
         var userInfo = userInfoResult.Ok().Unwrap();
         var resultValidatePassword = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
@@ -370,7 +363,7 @@ public static class ModelApi2Profile {
 
         var deleteAccToken = Guid.NewGuid();
         _deleteAccMailToken.Add(deleteAccToken, (userInfo.UserId, userInfo.Email ?? ""));
-        Utils.SendEmail.MainSendDropAccountVerifyLinkToken(userInfo.Username ?? "", userInfo.Email ?? "",
+        SendEmail.MainSendDropAccountVerifyLinkToken(userInfo.Username ?? "", userInfo.Email ?? "",
             deleteAccToken);
 
         return Result<ModelResult<ViewCreateDropAccountTokenRes>, string>
@@ -382,7 +375,7 @@ public static class ModelApi2Profile {
         _deleteAccMailToken.CleanDeadTokens();
 
 
-        var deleteAccTokenResponse = _deleteAccMailToken.Pop(token: token);
+        var deleteAccTokenResponse = _deleteAccMailToken.Pop(token);
         if (deleteAccTokenResponse.IsNotSet())
             return Result<ModelResult<ApiTypes.ViewWork>, string>.Ok(ModelResult<ApiTypes.ViewWork>.BadRequest());
 
@@ -404,7 +397,7 @@ public static class ModelApi2Profile {
         if (result == EResult.Err)
             return result.ChangeOkType<ModelResult<ViewPlaysMarksLength>>();
 
-        Dictionary<PlayScoreDto.EPlayScoreMark, long> dic = result.Ok();
+        var dic = result.Ok();
 
         return Result<ModelResult<ViewPlaysMarksLength>, string>
             .Ok(ModelResult<ViewPlaysMarksLength>.Ok(ViewPlaysMarksLength.Factory(dic)));

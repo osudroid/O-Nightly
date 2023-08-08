@@ -3,8 +3,6 @@ using OsuDroid.Class.Dto;
 using OsuDroid.HttpGet;
 using OsuDroid.Post;
 using Riok.Mapperly.Abstractions;
-using UpdateUsernameDto = OsuDroid.Class.Dto.UpdateUsernameDto;
-using WebLoginWithUsernameDto = OsuDroid.Class.Dto.WebLoginWithUsernameDto;
 
 namespace OsuDroid.Lib;
 

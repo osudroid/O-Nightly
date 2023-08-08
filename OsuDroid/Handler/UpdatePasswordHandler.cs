@@ -1,28 +1,24 @@
 using OsuDroid.Class;
 using OsuDroid.Class.Dto;
-using OsuDroid.Lib;
-using OsuDroid.Model;
-using OsuDroid.View;
 using OsuDroidAttachment.DbBuilder;
 using OsuDroidAttachment.Interface;
+using OsuDroidLib.Lib;
 using OsuDroidLib.Manager;
 
-namespace OsuDroid.Handler; 
+namespace OsuDroid.Handler;
 
-public class UpdatePasswordHandler 
+public class UpdatePasswordHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<UpdatePasswdDto>, WorkHandlerOutput> {
     public async ValueTask<Result<WorkHandlerOutput, string>> Handel(
         NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<UpdatePasswdDto> request) {
-
         var db = dbWrapper.Db;
         var cookieTokenWithUserIdOption = request.Controller.GetCookieAndUserId(db);
         var updatePasswd = request.Post;
-        
-        if (cookieTokenWithUserIdOption.IsNotSet()) {
+
+        if (cookieTokenWithUserIdOption.IsNotSet())
             return Result<WorkHandlerOutput, string>.Ok(WorkHandlerOutput.False);
-        }
         var userId = cookieTokenWithUserIdOption.Unwrap().UserId;
-        
+
         var resultUserInfo = await UserInfoManager.GetByUserIdAsync(db, userId);
         if (resultUserInfo == EResult.Err)
             return resultUserInfo.ChangeOkType<WorkHandlerOutput>();
@@ -33,8 +29,8 @@ public class UpdatePasswordHandler
             return Result<WorkHandlerOutput, string>.Err(TraceMsg.WithMessage("User Not Found"));
 
         var userInfo = userInfoOption.Unwrap();
-        var rightPassword = OsuDroidLib.Lib.PasswordHash
-                                       .IsRightPassword(updatePasswd.OldPasswd, userInfo.Password ?? "");
+        var rightPassword = PasswordHash
+            .IsRightPassword(updatePasswd.OldPasswd, userInfo.Password ?? "");
 
         if (rightPassword == EResult.Err)
             return rightPassword.ChangeOkType<WorkHandlerOutput>();
@@ -42,7 +38,7 @@ public class UpdatePasswordHandler
         if (!rightPassword.Ok())
             return Result<WorkHandlerOutput, string>.Ok(WorkHandlerOutput.False);
 
-        var newPasswordResult = OsuDroidLib.Lib.PasswordHash.HashWithBCryptPassword(updatePasswd.NewPasswd);
+        var newPasswordResult = PasswordHash.HashWithBCryptPassword(updatePasswd.NewPasswd);
         if (newPasswordResult == EResult.Err)
             return rightPassword.ChangeOkType<WorkHandlerOutput>();
 

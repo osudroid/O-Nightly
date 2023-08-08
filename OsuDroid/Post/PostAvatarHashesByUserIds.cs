@@ -1,7 +1,7 @@
 namespace OsuDroid.Post;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public class PostAvatarHashesByUserIds : PostApi.IValuesAreGood, PostApi.ISingleString {
+public class PostAvatarHashesByUserIds : Api2.IValuesAreGood, Api2.ISingleString {
     public int Size { get; set; }
     public long[]? UserIds { get; set; }
 

@@ -1,4 +1,4 @@
-using OsuDroidLib.Database.Entities;
+using OsuDroid.Utils;
 
 namespace OsuDroid.Lib.OdrZip;
 
@@ -6,14 +6,14 @@ public class OdrEntry {
     public int Version { get; set; }
     public OdrReplay? Replay { get; set; }
 
-    public static OdrEntry Factory(PlayScore playScore, string username) {
+    public static OdrEntry Factory(Entities.PlayScore playScore, string username) {
         return new OdrEntry {
             Version = 1,
             Replay = new OdrReplay {
                 Filename = playScore.Filename,
                 Playername = username,
                 Replayfile = $"{playScore.PlayScoreId}.odr",
-                Mod = Utils.Mode.ModeArrayToModeAsSingleString(playScore.Mode).Or("|"),
+                Mod = Mode.ModeArrayToModeAsSingleString(playScore.Mode).Or("|"),
                 Score = playScore.Score,
                 Combo = playScore.Combo,
                 Mark = playScore.Mark,
@@ -25,7 +25,7 @@ public class OdrEntry {
                 Misses = playScore.Miss,
                 Accuracy = playScore.Accuracy,
                 Time = playScore.Date.Ticks,
-                Perfect = playScore.Perfect,
+                Perfect = playScore.Perfect
             }
         };
     }

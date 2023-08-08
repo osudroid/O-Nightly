@@ -3,7 +3,7 @@ using OsuDroid.Utils;
 namespace OsuDroid.Post;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class PostLeaderBoardUser : PostApi.IValuesAreGood, PostApi.ISingleString, PostApi.IPrintHashOrder {
+public sealed class PostLeaderBoardUser : Api2.IValuesAreGood, Api2.ISingleString, Api2.IPrintHashOrder {
     public long UserId { get; set; }
 
     public string PrintHashOrder() {

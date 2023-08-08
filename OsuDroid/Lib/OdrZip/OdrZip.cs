@@ -1,7 +1,6 @@
 using System.IO.Compression;
 using Newtonsoft.Json;
 using Npgsql;
-using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Query;
 
 namespace OsuDroid.Lib.OdrZip;

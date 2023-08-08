@@ -1,10 +1,9 @@
 using OsuDroid.Utils;
-using OsuDroid.View;
 
 namespace OsuDroid.Post;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class PostRecentPlays : PostApi.IValuesAreGood, PostApi.ISingleString, PostApi.IPrintHashOrder {
+public sealed class PostRecentPlays : Api2.IValuesAreGood, Api2.ISingleString, Api2.IPrintHashOrder {
     public string? FilterPlays { get; set; }
     public string? OrderBy { get; set; }
     public int Limit { get; set; }

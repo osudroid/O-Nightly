@@ -1,6 +1,5 @@
 using OsuDroid.Class;
 using OsuDroid.Class.Dto;
-using OsuDroid.Extensions;
 using OsuDroid.View;
 using OsuDroidAttachment.Class;
 using OsuDroidAttachment.DbBuilder;
@@ -9,35 +8,32 @@ using OsuDroidLib.Lib;
 using OsuDroidLib.Manager;
 using OsuDroidLib.Query;
 
-namespace OsuDroid.Handler; 
+namespace OsuDroid.Handler;
 
 public class WebRegisterHandler
-    : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<WebRegisterDto>, OptionHandlerOutput<ViewWebLogin>>{
-    
+    : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<WebRegisterDto>,
+        OptionHandlerOutput<ViewWebLogin>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewWebLogin>, string>> Handel(
         NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<WebRegisterDto> request) {
-        
         var now = DateTime.UtcNow;
         var data = request.Post;
         var db = dbWrapper.Db;
         var controller = request.Controller;
-        
-        var tokenResult = await WebLoginMathResultManager.GetWebLoginTokenAsync(db, data.MathToken);
-        if (tokenResult == EResult.Err) {
-            return Result<OptionHandlerOutput<ViewWebLogin>, string>.Err(tokenResult.ToString()!);
-        }
 
-        if (tokenResult.Ok().IsNotSet() 
+        var tokenResult = await WebLoginMathResultManager.GetWebLoginTokenAsync(db, data.MathToken);
+        if (tokenResult == EResult.Err)
+            return Result<OptionHandlerOutput<ViewWebLogin>, string>.Err(tokenResult.ToString()!);
+
+        if (tokenResult.Ok().IsNotSet()
             || tokenResult.Ok().Unwrap().MathResult != data.MathRes
-           ) {
-            
-            return Result<OptionHandlerOutput<ViewWebLogin>, string>.Ok(OptionHandlerOutput<ViewWebLogin>.With(new ViewWebLogin() {
-                Work = false,
-                EmailFalse = false,
-                UsernameFalse = false,
-                UserOrPasswdOrMathIsFalse = true
-            }));
-        }
+           )
+            return Result<OptionHandlerOutput<ViewWebLogin>, string>.Ok(OptionHandlerOutput<ViewWebLogin>.With(
+                new ViewWebLogin {
+                    Work = false,
+                    EmailFalse = false,
+                    UsernameFalse = false,
+                    UserOrPasswdOrMathIsFalse = true
+                }));
 
         var findResult = await QueryUserInfo.GetEmailAndUsernameByEmailAndUsername(db, data.Email, data.Username);
 
@@ -55,17 +51,16 @@ public class WebRegisterHandler
                     .Ok(OptionHandlerOutput<ViewWebLogin>
                         .With(new ViewWebLogin { EmailFalse = true }));
         }
-        
-        
+
+
         var optionIp = request.Controller.GetIpAddress().OkOrDefault();
-        if (optionIp.IsSet() == false) {
+        if (optionIp.IsSet() == false)
             return Result<OptionHandlerOutput<ViewWebLogin>, string>.Err(TraceMsg.WithMessage("ip not found"));
-        }
 
         var ip = optionIp.Unwrap();
 
-        
-        var optionCountry = CountryInfo.FindByName((IpInfo.Country(ip)?.Country.Name) ?? "");
+
+        var optionCountry = CountryInfo.FindByName(IpInfo.Country(ip)?.Country.Name ?? "");
         var newUser = new Entities.UserInfo {
             Active = true,
             Banned = false,
@@ -91,7 +86,7 @@ public class WebRegisterHandler
         if (userIdOpt.IsNotSet())
             return Result<OptionHandlerOutput<ViewWebLogin>, string>.Err(TraceMsg.WithMessage("userIdOpt Is Not Set"));
 
-        resultErr = await QueryUserStats.InsertAsync(db, new() { UserId = userIdOpt.Unwrap() });
+        resultErr = await QueryUserStats.InsertAsync(db, new Entities.UserStats { UserId = userIdOpt.Unwrap() });
 
         if (resultErr == EResult.Err)
             return resultErr.ConvertTo<OptionHandlerOutput<ViewWebLogin>>();

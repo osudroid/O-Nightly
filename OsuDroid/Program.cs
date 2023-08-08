@@ -1,20 +1,19 @@
 using AspNetCoreRateLimit;
-using Npgsql;
+using Dapper;
 using OsuDroid.Lib;
-using OsuDroid.Lib.DbTransfer;
 using OsuDroid.Utils;
-using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
+using OsuDroidLib.Lib;
 
 namespace OsuDroid;
 
 public static class Program {
     public static async Task Main(string[] args) {
-        var loadResult = (await OsuDroidLib.Setting.LoadAsync());
+        var loadResult = await Setting.LoadAsync();
         if (loadResult == EResult.Err)
             throw new Exception(loadResult.Err());
 
-        Dapper.DefaultTypeMap.MatchNamesWithUnderscores = false;
+        DefaultTypeMap.MatchNamesWithUnderscores = false;
         await PrivilegeManager.Update();
 
         if (args.Length == 0) {
@@ -35,29 +34,29 @@ public static class Program {
         }
 
         Environment.Exit(args switch {
-            ["--reload-user-stats" or "-s"] => (int)(await ReloadUserStats()),
-            ["--transfer"] => (int)(await RunTransferDb()),
-            ["--reload-timeline" or "-f"] => (int)(await FullReloadRankingTimeline()),
+            ["--reload-user-stats" or "-s"] => (int)await ReloadUserStats(),
+            ["--transfer"] => (int)await RunTransferDb(),
+            ["--reload-timeline" or "-f"] => (int)await FullReloadRankingTimeline(),
             ["--hashpass", var password] => (int)ParseAndPrint(() =>
-                OsuDroidLib.Lib.PasswordHash.HashWithBCryptPassword(password)),
+                PasswordHash.HashWithBCryptPassword(password)),
             _ => (int)ParseAndPrintExistCode(EExitCode.ArgNotExist, "Argument Not Exist")
         });
     }
 
     private static async Task<EExitCode> ReloadUserStats() {
-        await (new ConvertAndMoveToNewTable()).RunRecalcStats();
+        await new ConvertAndMoveToNewTable().RunRecalcStats();
         return EExitCode.Success;
     }
 
     private static async Task<EExitCode> FullReloadRankingTimeline() {
-        Option<PlayScore> playScoreOption;
+        Option<Entities.PlayScore> playScoreOption;
 
         await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
-            var result = await db.SafeQueryFirstOrDefaultAsync<PlayScore>(
+            var result = await db.SafeQueryFirstOrDefaultAsync<Entities.PlayScore>(
                 "SELECT * FROM public.PlayScore ORDER BY date LIMIT 1");
 
             if (result == EResult.Err) {
-                Console.WriteLine(result.Err());
+                WriteLine(result.Err());
                 return EExitCode.UnknownError;
             }
 
@@ -76,7 +75,7 @@ public static class Program {
     }
 
     private static async Task<EExitCode> RunTransferDb() {
-        await (new OsuDroid.Utils.ConvertAndMoveToNewTable()).OpiRun();
+        await new ConvertAndMoveToNewTable().OpiRun();
         return EExitCode.Success;
     }
 
@@ -137,7 +136,7 @@ public static class Program {
         // app.UseIpRateLimiting();
         app.UseHttpsRedirection();
         // app.UseAuthorization();
-        app.UsePrivilege(new List<ICookieHandler>() {
+        app.UsePrivilege(new List<ICookieHandler> {
             new CookieHandlerBasic()
         });
         app.MapControllers();

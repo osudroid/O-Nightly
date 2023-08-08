@@ -1,5 +1,3 @@
-using OsuDroid.Lib.Validate;
-
 namespace OsuDroid.Post;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
@@ -11,10 +9,6 @@ public sealed class PostWebRegister : Api2.IValuesAreGood, Api2.ISingleString {
     public string? Passwd { get; set; }
     public string? Username { get; set; }
 
-    public bool ValuesAreGood() {
-        throw new NotImplementedException();
-    }
-
     public string ToSingleString() {
         return Merge.ListToString(new[] {
             Email ?? "",
@@ -22,7 +16,11 @@ public sealed class PostWebRegister : Api2.IValuesAreGood, Api2.ISingleString {
             MathToken.ToString(),
             Region ?? "",
             Passwd ?? "",
-            Username ?? "",
+            Username ?? ""
         });
+    }
+
+    public bool ValuesAreGood() {
+        throw new NotImplementedException();
     }
 }

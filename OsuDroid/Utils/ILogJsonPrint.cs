@@ -7,10 +7,10 @@ public interface ILogRequestJsonPrint {
         if (Setting.Log_RequestJsonPrint!.Value == false) return;
 
         try {
-            Console.WriteLine(JsonConvert.SerializeObject(this));
+            WriteLine(JsonConvert.SerializeObject(this));
         }
         catch (Exception e) {
-            Console.WriteLine("{e}");
+            WriteLine("{e}");
         }
     }
 }

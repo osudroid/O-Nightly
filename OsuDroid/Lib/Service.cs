@@ -29,7 +29,7 @@ internal sealed class ServiceModeRun<T> : IDisposable, IServiceModeRun {
     }
 
     public static ServiceModeRun<T> DefaultStetting() {
-        return new();
+        return new ServiceModeRun<T>();
     }
 
     private async Task Loop() {

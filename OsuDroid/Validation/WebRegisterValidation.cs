@@ -3,11 +3,12 @@ using OsuDroid.Post;
 using OsuDroidAttachment.DbBuilder;
 using OsuDroidAttachment.Interface;
 
-namespace OsuDroid.Validation; 
+namespace OsuDroid.Validation;
 
 public class WebRegisterValidation
-    : IValidationHandler<NpgsqlCreates.DbWrapper, LogWrapper,ControllerPostWrapper<PostWebRegister>> {
-    public ValueTask<Result<bool, string>> Validate(NpgsqlCreates.DbWrapper db, LogWrapper logger, ControllerPostWrapper<PostWebRegister> input) {
+    : IValidationHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<PostWebRegister>> {
+    public ValueTask<Result<bool, string>> Validate(NpgsqlCreates.DbWrapper db, LogWrapper logger,
+        ControllerPostWrapper<PostWebRegister> input) {
         return ValueTask.FromResult(Result<bool, string>.Ok(input.Post.ValuesAreGood()));
     }
 

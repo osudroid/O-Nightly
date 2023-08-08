@@ -3,7 +3,8 @@ using OsuDroid.Model;
 namespace OsuDroid.Class.Dto;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class PushPlayStartDto: IDto, ModelApi2Submit.IScoreProp {
+public sealed class PushPlayStartDto : IDto, ModelApi2Submit.IScoreProp {
+    public required string FileHash { get; init; }
     public required long Id { get; init; }
     public required long Uid { get; init; }
     public required string Filename { get; init; }
@@ -19,5 +20,4 @@ public sealed class PushPlayStartDto: IDto, ModelApi2Submit.IScoreProp {
     public required long Bad { get; init; }
     public required long Miss { get; init; }
     public required long Accuracy { get; init; }
-    public required string FileHash { get; init; }
 }

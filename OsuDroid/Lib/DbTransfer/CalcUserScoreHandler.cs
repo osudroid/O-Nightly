@@ -2,25 +2,25 @@ using System.Collections.Concurrent;
 using Dapper;
 using OsuDroidLib.Dto;
 
-namespace OsuDroid.Lib.DbTransfer; 
+namespace OsuDroid.Lib.DbTransfer;
 
 internal static class CalcUserScoreHandler {
     public static async Task Run() {
         WriteLine("Run CalcUserScoreHandler");
-        
+
         List<Entities.UserStats> userStatsList;
         {
-            WriteLine("Run CalcUserScoreHandler GetAllPlayScores");    
-            List<PlayScoreDto> playScoreList = await GetAllPlayScoreAsDto();
+            WriteLine("Run CalcUserScoreHandler GetAllPlayScores");
+            var playScoreList = await GetAllPlayScoreAsDto();
             GC.Collect();
-            
+
             WriteLine("Run CalcUserScoreHandler GetAllUserIds");
-            List<Entities.UserInfo> userInfoList = await GetAllUserInfoIds();
-            
+            var userInfoList = await GetAllUserInfoIds();
+
             WriteLine("Run CalcUserScoreHandler CalcStats");
             userStatsList = CalcUserStats(playScoreList, userInfoList);
         }
-        
+
         WriteLine("Run CalcUserScoreHandler Insert");
         GC.Collect();
         await InsertUserStats(userStatsList);
@@ -39,7 +39,7 @@ internal static class CalcUserScoreHandler {
 
         return listResult;
     }
-    
+
     private static async Task<List<Entities.UserInfo>> GetAllUserInfoIds() {
         await using var db = await DbBuilder.BuildNpgsqlConnection();
         return (await db.QueryAsync<Entities.UserInfo>("SELECT UserId FROM public.UserInfo")).ToList();
@@ -47,35 +47,32 @@ internal static class CalcUserScoreHandler {
 
     private static List<Entities.UserStats> CalcUserStats(
         List<PlayScoreDto> playScoreList, List<Entities.UserInfo> userInfoList) {
-        
         Dictionary<long, ConcurrentBag<PlayScoreDto>> dic = new(userInfoList.Count);
 
-        foreach (var userInfo in userInfoList) {
-            dic.Add(userInfo.UserId, new ConcurrentBag<PlayScoreDto>());
-        }
-        
+        foreach (var userInfo in userInfoList) dic.Add(userInfo.UserId, new ConcurrentBag<PlayScoreDto>());
+
         WriteLine("Fill Dictionary With PlayScores");
         Parallel.ForEach(
             playScoreList,
-            new ParallelOptions() { MaxDegreeOfParallelism = 16 },
-            (v) => {
-                if (!dic.TryGetValue(v.UserId, out var bag)) 
+            new ParallelOptions { MaxDegreeOfParallelism = 16 },
+            v => {
+                if (!dic.TryGetValue(v.UserId, out var bag))
                     return;
-                
+
                 bag.Add(v);
             }
         );
         GC.Collect();
 
-        List<Entities.UserStats> userStatsList = new List<Entities.UserStats>(dic.Count); 
-        
+        var userStatsList = new List<Entities.UserStats>(dic.Count);
+
         WriteLine("Calc");
         Parallel.ForEach(
-            dic.ToList(), 
-            new () {  MaxDegreeOfParallelism = 16 },
+            dic.ToList(),
+            new ParallelOptions { MaxDegreeOfParallelism = 16 },
             pair => {
                 WriteLine("Calc User: " + pair.Key);
-                userStatsList.Add(CreateUserStats(pair.Key, pair.Value.ToArray()));        
+                userStatsList.Add(CreateUserStats(pair.Key, pair.Value.ToArray()));
             });
 
         return userStatsList;
@@ -83,7 +80,7 @@ internal static class CalcUserScoreHandler {
 
     private static async Task InsertUserStats(List<Entities.UserStats> userStatsList) {
         await using var db = await DbBuilder.BuildNpgsqlConnection();
-        
+
         await db.ExecuteAsync(@"
 INSERT INTO UserStats (userid, overallplaycount, overallscore, overallaccuracy, overallcombo, overallxss, overallxs, overallss, overalls, overalla, overallb, overallc, overalld, overallperfect, overallhits, overall300, overall100, overall50, overallgeki, overallkatu, overallmiss)
 VALUES (
@@ -111,9 +108,9 @@ VALUES (
 );
 ", userStatsList);
     }
-    
+
     private static Entities.UserStats CreateUserStats(long userId, PlayScoreDto[] playScoreDtoList) {
-        var bblUserStats = new Entities.UserStats() {
+        var bblUserStats = new Entities.UserStats {
             UserId = userId,
             OverallPlaycount = 0,
             OverallScore = 0,
@@ -134,11 +131,11 @@ VALUES (
             Overall50 = 0,
             OverallGeki = 0,
             OverallKatu = 0,
-            OverallMiss = 0,
+            OverallMiss = 0
         };
 
         if (playScoreDtoList.Length == 0) {
-            Console.WriteLine($"UserId: {userId} Has Not Plays");
+            WriteLine($"UserId: {userId} Has Not Plays");
             return bblUserStats;
         }
 
@@ -146,7 +143,7 @@ VALUES (
         var dictionary = new Dictionary<string, PlayScoreDto>(playScoreDtoList.Length);
 
         foreach (var playScore in playScoreDtoList) {
-            if (String.IsNullOrEmpty(playScore.Hash)) continue;
+            if (string.IsNullOrEmpty(playScore.Hash)) continue;
 
             if (dictionary.TryGetValue(playScore.Hash, out var inDic) == false) {
                 dictionary[playScore.Hash] = playScore;
@@ -185,37 +182,3 @@ VALUES (
         return bblUserStats;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

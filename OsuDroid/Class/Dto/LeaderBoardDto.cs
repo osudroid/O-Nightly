@@ -3,7 +3,7 @@ using OsuDroidLib.Lib;
 namespace OsuDroid.Class.Dto;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class LeaderBoardDto: IDto {
+public sealed class LeaderBoardDto : IDto {
     public required string Region { get; set; }
     public required int Limit { get; set; }
 

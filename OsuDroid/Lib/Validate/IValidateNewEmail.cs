@@ -1,4 +1,4 @@
-using OsuDroid.Utils;
+using OsuDroidLib.Validation;
 
 namespace OsuDroid.Lib.Validate;
 
@@ -9,7 +9,7 @@ public interface IValidateNewEmail {
     public static bool ValidateNewEmail(string? email) {
         if (string.IsNullOrEmpty(email))
             return false;
-        return OsuDroidLib.Validation.ValidationEmail.Validation(email);
+        return ValidationEmail.Validation(email);
     }
 
     public static bool ValidateNewEmail(IValidateNewEmail value) {

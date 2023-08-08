@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OsuDroid.Class;
 using OsuDroid.Extensions;
+using OsuDroid.Handler;
 using OsuDroid.Lib;
 using OsuDroid.OutputHandler;
 using OsuDroid.View;
@@ -13,26 +14,25 @@ namespace OsuDroid.Controllers.Api;
 
 public sealed class CookieInfo : ControllerExtensions {
     [HttpGet("/api/user-info-by-cookie")]
-    [PrivilegeRoute(route: "/api/user-info-by-cookie")]
+    [PrivilegeRoute("/api/user-info-by-cookie")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUserInfo>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUserInfoByCookie() {
-        Transaction<ApiTypes.ViewExistOrFoundInfo<ViewUserInfo>> transaction = await new AttachmentServiceApiBuilder<
-            OsuDroidAttachment.DbBuilder.NpgsqlCreates.DbWrapper, 
-            Class.LogWrapper, 
-            UserCookieControllerHandler, 
-            UserCookieControllerHandler, 
-            OptionHandlerOutput<ViewUserInfo>, 
-            ApiTypes.ViewExistOrFoundInfo<ViewUserInfo>> {
-            
-            DbCreates = new OsuDroidAttachment.DbBuilder.NpgsqlCreates(),
-            LoggerCreates = new Class.LogCreates(),
-            ValidationHandler = new ValidationHandlerNothing<NpgsqlCreates.DbWrapper, LogWrapper, UserCookieControllerHandler>(),
+        var transaction = await new AttachmentServiceApiBuilder<
+            NpgsqlCreates.DbWrapper,
+            LogWrapper,
+            UserCookieControllerHandler,
+            UserCookieControllerHandler,
+            OptionHandlerOutput<ViewUserInfo>, ApiTypes.ViewExistOrFoundInfo<ViewUserInfo>> {
+            DbCreates = new NpgsqlCreates(),
+            LoggerCreates = new LogCreates(),
+            ValidationHandler =
+                new ValidationHandlerNothing<NpgsqlCreates.DbWrapper, LogWrapper, UserCookieControllerHandler>(),
             TransformHandler = new TransformParse<UserCookieControllerHandler>(),
-            Handler = new Handler.GetUserInfoByCookieHandler(),
-            OutputHandler = new ViewExistOrFoundInfoHandler<ViewUserInfo>(),
-        }.ToServiceAndRun(this.ControllerHandlerBuild());
+            Handler = new GetUserInfoByCookieHandler(),
+            OutputHandler = new ViewExistOrFoundInfoHandler<ViewUserInfo>()
+        }.ToServiceAndRun(ControllerHandlerBuild());
 
         return TransactionToIResult(transaction);
     }

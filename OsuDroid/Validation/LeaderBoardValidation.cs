@@ -1,18 +1,20 @@
 using OsuDroid.Class;
-using OsuDroid.HttpGet;
 using OsuDroid.Post;
 using OsuDroidAttachment.DbBuilder;
 using OsuDroidAttachment.Interface;
 
-namespace OsuDroid.Validation; 
+namespace OsuDroid.Validation;
 
 public class LeaderBoardValidation
-    : IValidationHandler<NpgsqlCreates.DbWrapper, LogWrapper,ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostLeaderBoard>>>{
-    public ValueTask<Result<bool, string>> Validate(NpgsqlCreates.DbWrapper db, LogWrapper logger, ControllerPostWrapper<Api2.PostApi2GroundNoHeader<PostLeaderBoard>> input) {
+    : IValidationHandler<NpgsqlCreates.DbWrapper, LogWrapper,
+        ControllerPostWrapper<Api2.PostApi2GroundNoHeader<PostLeaderBoard>>> {
+    public ValueTask<Result<bool, string>> Validate(NpgsqlCreates.DbWrapper db, LogWrapper logger,
+        ControllerPostWrapper<Api2.PostApi2GroundNoHeader<PostLeaderBoard>> input) {
         return ValueTask.FromResult(Result<bool, string>.Ok(input.Post.ValuesAreGood()));
     }
 
-    public ValueTask<Result<bool, string>> HashMatch(LogWrapper logger, ControllerPostWrapper<Api2.PostApi2GroundNoHeader<PostLeaderBoard>> input) {
+    public ValueTask<Result<bool, string>> HashMatch(LogWrapper logger,
+        ControllerPostWrapper<Api2.PostApi2GroundNoHeader<PostLeaderBoard>> input) {
         return ValueTask.FromResult(Result<bool, string>.Ok(true));
     }
 }

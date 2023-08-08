@@ -3,7 +3,7 @@ using OsuDroidLib.Dto;
 namespace OsuDroid.View;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class ViewPlaysMarksLength: IView {
+public sealed class ViewPlaysMarksLength : IView {
     public long PlaysXSS { get; set; }
     public long PlaysSS { get; set; }
     public long PlaysXS { get; set; }
@@ -15,7 +15,7 @@ public sealed class ViewPlaysMarksLength: IView {
     public long PlaysAll { get; set; }
 
     public static ViewPlaysMarksLength Factory(Dictionary<PlayScoreDto.EPlayScoreMark, long> dictionary) {
-        return new ViewPlaysMarksLength() {
+        return new ViewPlaysMarksLength {
             PlaysXSS = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.XSS, out var value) ? value : 0,
             PlaysSS = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.SS, out var value1) ? value1 : 0,
             PlaysXS = dictionary.TryGetValue(PlayScoreDto.EPlayScoreMark.XS, out var value2) ? value2 : 0,

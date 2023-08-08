@@ -14,18 +14,17 @@ namespace OsuDroid.Controllers.Api2;
 
 public class Api2Submit : ControllerExtensions {
     [HttpPost("/api2/submit/play-start")]
-    [PrivilegeRoute(route: "/api2/submit/play-start")]
+    [PrivilegeRoute("/api2/submit/play-start")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPushPlayStartResult200))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PushPlayStart(
-        [FromBody] OsuDroid.Post.Api2.PostApi2GroundWithHash<PostPushPlayStart> prop) {
-        
-                await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        [FromBody] PostApi.PostApi2GroundWithHash<PostPushPlayStart> prop) {
+        await using var dbN = await DbBuilder.BuildNpgsqlConnection();
         await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
         await using var db = dbT.Connection!;
-        using var log = OsuDroidLib.Log.GetLog(db);
+        using var log = Log.GetLog(db);
         var isComplete = false;
-        
+
         try {
             if (prop.ValuesAreGood() == false) {
                 await log.AddLogDebugAsync("Post Prop Are Bad");
@@ -33,6 +32,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return BadRequest("Post Prop Are Bad");
             }
 
@@ -42,6 +42,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return BadRequest(prop.PrintHashOrder());
             }
 
@@ -57,6 +58,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return BadRequest("Token Error");
             }
 
@@ -73,6 +75,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return InternalServerError();
             }
 
@@ -91,6 +94,7 @@ public class Api2Submit : ControllerExtensions {
                         isComplete = true;
                         await dbT.RollbackAsync();
                     }
+
                     return InternalServerError();
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -102,29 +106,27 @@ public class Api2Submit : ControllerExtensions {
                 isComplete = true;
                 await dbT.RollbackAsync();
             }
+
             return InternalServerError();
         }
         finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
+            if (!isComplete) await dbT.CommitAsync();
         }
     }
 
     [HttpPost("/api2/submit/play-end")]
-    [PrivilegeRoute(route: "/api2/submit/play-end")]
+    [PrivilegeRoute("/api2/submit/play-end")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ViewPushReplayResult200))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult>
-        PushReplay([FromBody] OsuDroid.Post.Api2.PostApi2GroundWithHash<PostPushPlay> prop) {
-        
-        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        PushReplay([FromBody] PostApi.PostApi2GroundWithHash<PostPushPlay> prop) {
+        await using var dbN = await DbBuilder.BuildNpgsqlConnection();
         await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
         await using var db = dbT.Connection!;
-        using var log = OsuDroidLib.Log.GetLog(db);
+        using var log = Log.GetLog(db);
         var isComplete = false;
-        
+
         try {
             if (prop.ValuesAreGood() == false) {
                 await log.AddLogDebugAsync("Post Prop Are Bad");
@@ -132,6 +134,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return BadRequest("Post Prop Are Bad");
             }
 
@@ -141,6 +144,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return BadRequest(prop.PrintHashOrder());
             }
 
@@ -155,6 +159,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return BadRequest("Token Error");
             }
 
@@ -166,6 +171,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return InternalServerError();
             }
 
@@ -184,6 +190,7 @@ public class Api2Submit : ControllerExtensions {
                         isComplete = true;
                         await dbT.RollbackAsync();
                     }
+
                     return InternalServerError();
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -195,28 +202,27 @@ public class Api2Submit : ControllerExtensions {
                 isComplete = true;
                 await dbT.RollbackAsync();
             }
+
             return InternalServerError();
         }
         finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
+            if (!isComplete) await dbT.CommitAsync();
         }
     }
 
     [HttpPost("/api2/submit/replay-file")]
-    [PrivilegeRoute(route: "/api2/submit/replay-file")]
+    [PrivilegeRoute("/api2/submit/replay-file")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewWork))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UploadReplayFile([FromForm] PostApi2UploadReplayFilePropAsFormWrapper form) {
         PostApi.PostApi2GroundWithHash<PostApi2UploadReplayFile> prop;
-        await using var dbN = await OsuDroidLib.Database.DbBuilder.BuildNpgsqlConnection();
+        await using var dbN = await DbBuilder.BuildNpgsqlConnection();
         await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
         await using var db = dbT.Connection!;
-        using var log = OsuDroidLib.Log.GetLog(db);
+        using var log = Log.GetLog(db);
         var isComplete = false;
-        
+
         try {
             try {
                 var value =
@@ -227,17 +233,20 @@ public class Api2Submit : ControllerExtensions {
                         isComplete = true;
                         await dbT.RollbackAsync();
                     }
+
                     return BadRequest("JSON is false");
                 }
+
                 prop = value;
             }
             catch (Exception e) {
                 await log.AddLogErrorAsync(e.ToString());
-                
+
                 if (!isComplete) {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return BadRequest("JSON is false");
             }
 
@@ -246,6 +255,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return BadRequest("Values Are Bad");
             }
 
@@ -254,6 +264,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return BadRequest(prop.PrintHashOrder());
             }
 
@@ -262,6 +273,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return BadRequest("File Not Found In Form");
             }
 
@@ -283,6 +295,7 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return BadRequest("Token Dead Or Error");
             }
 
@@ -300,9 +313,10 @@ public class Api2Submit : ControllerExtensions {
                     isComplete = true;
                     await dbT.RollbackAsync();
                 }
+
                 return InternalServerError();
             }
-            
+
             return Ok(resp.Ok());
         }
         catch (Exception e) {
@@ -311,12 +325,11 @@ public class Api2Submit : ControllerExtensions {
                 isComplete = true;
                 await dbT.RollbackAsync();
             }
+
             return InternalServerError();
         }
         finally {
-            if (!isComplete) {
-                await dbT.CommitAsync();
-            }
+            if (!isComplete) await dbT.CommitAsync();
         }
     }
 }

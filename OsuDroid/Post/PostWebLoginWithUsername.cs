@@ -1,4 +1,3 @@
-using OsuDroid.Lib.Validate;
 using OsuDroidLib.Validation;
 
 namespace OsuDroid.Post;
@@ -10,19 +9,19 @@ public sealed class PostWebLoginWithUsername : Api2.IValuesAreGood, Api2.ISingle
     public string? Username { get; set; }
     public string? Password { get; set; }
 
-    public bool ValuesAreGood() {
-        return Token != default
-               && ValidationUsername.Validation(Username)
-               && ValidationPassword.ValidationOldVersion(Password)
-            ;
-    }
-
     public string ToSingleString() {
         return Merge.ListToString(new[] {
             Math.ToString(),
             Token.ToString(),
             Username ?? "",
-            Password ?? "",
+            Password ?? ""
         });
+    }
+
+    public bool ValuesAreGood() {
+        return Token != default
+               && ValidationUsername.Validation(Username)
+               && ValidationPassword.ValidationOldVersion(Password)
+            ;
     }
 }

@@ -2,7 +2,7 @@ using OsuDroidLib.Query;
 
 namespace OsuDroid.View;
 
-public class ViewMapTopPlays: IView {
+public class ViewMapTopPlays : IView {
     public long PlayScoreId { get; set; }
     public long UserId { get; set; }
     public string? Mode { get; set; }
@@ -15,7 +15,7 @@ public class ViewMapTopPlays: IView {
     public long PlayRank { get; set; }
 
     public static ViewMapTopPlays FromMapTopPlays(QueryPlayScore.MapTopPlays mapTopPlays) {
-        return new() {
+        return new ViewMapTopPlays {
             PlayScoreId = mapTopPlays.PlayScoreId,
             UserId = mapTopPlays.UserId,
             Mode = mapTopPlays.Mode,
@@ -25,7 +25,7 @@ public class ViewMapTopPlays: IView {
             Date = mapTopPlays.Date,
             Accuracy = mapTopPlays.Accuracy,
             Username = mapTopPlays.Username,
-            PlayRank = mapTopPlays.PlayRank,
+            PlayRank = mapTopPlays.PlayRank
         };
     }
 }

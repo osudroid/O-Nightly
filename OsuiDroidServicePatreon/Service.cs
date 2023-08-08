@@ -1,8 +1,7 @@
 using Npgsql;
 using OsuDroidLib.AdaPatreon;
-using OsuDroidLib.Database.Entities;
-using Patreon.NET;
 using OsuDroidLib.Query;
+using Patreon.NET;
 
 namespace OsuDroidServicePatreon;
 

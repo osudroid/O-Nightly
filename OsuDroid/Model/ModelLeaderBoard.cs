@@ -2,8 +2,8 @@ using LamLogger;
 using Npgsql;
 using OsuDroid.Class;
 using OsuDroid.Class.Dto;
-using OsuDroid.View;
 using OsuDroid.Extensions;
+using OsuDroid.View;
 
 namespace OsuDroid.Model;
 
@@ -20,10 +20,9 @@ public static class ModelLeaderBoard {
                 break;
             default: {
                 var countyRep = leaderBoard.GetRegionAsCountry();
-                if (countyRep.IsSet() == false) {
+                if (countyRep.IsSet() == false)
                     return Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>, string>
                         .Ok(ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>.BadRequest());
-                }
 
                 rep = (await LeaderBoard.FilterRegionAsync(db, leaderBoard.Limit, countyRep.Unwrap())).Map(x =>
                     x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
@@ -46,7 +45,7 @@ public static class ModelLeaderBoard {
             LeaderBoardSearchUserDto leaderBoardSearch) {
         var search = leaderBoardSearch;
 
-        ResultOk<List<ViewLeaderBoardUser>> rep = (leaderBoardSearch.IsRegionAll() switch {
+        var rep = (leaderBoardSearch.IsRegionAll() switch {
             true => await log.AddResultAndTransformAsync(await LeaderBoard
                 .SearchUserAsync(db, search.Limit, search.Query)),
             _ => await log.AddResultAndTransformAsync(await LeaderBoard
@@ -58,6 +57,7 @@ public static class ModelLeaderBoard {
             .Ok(ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>
                 .Ok(rep == EResult.Err
                     ? ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.NotExist()
-                    : ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.OkOr(new()))));
+                    : ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(
+                        rep.OkOr(new List<ViewLeaderBoardUser>()))));
     }
 }

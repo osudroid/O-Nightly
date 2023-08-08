@@ -4,9 +4,9 @@ using OsuDroid.Utils;
 namespace OsuDroid.Post;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class PostPushPlay : ModelApi2Submit.ScoreProp, OsuDroid.Post.Api2.IValuesAreGood,
-                                   OsuDroid.Post.Api2.ISingleString,
-                                   OsuDroid.Post.Api2.IPrintHashOrder {
+public sealed class PostPushPlay : ModelApi2Submit.ScoreProp, Api2.IValuesAreGood,
+                                   Api2.ISingleString,
+                                   Api2.IPrintHashOrder {
     public string PrintHashOrder() {
         return ErrorText.HashBodyDataAreFalse(new List<string> {
             nameof(Mode),

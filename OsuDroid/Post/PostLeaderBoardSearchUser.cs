@@ -4,7 +4,7 @@ using OsuDroidLib.Lib;
 namespace OsuDroid.Post;
 
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
-public sealed class PostLeaderBoardSearchUser : PostApi.IValuesAreGood, PostApi.ISingleString, PostApi.IPrintHashOrder,
+public sealed class PostLeaderBoardSearchUser : Api2.IValuesAreGood, Api2.ISingleString, Api2.IPrintHashOrder,
                                                 ILogRequestJsonPrint {
     private string? _region;
     public long Limit { get; set; }

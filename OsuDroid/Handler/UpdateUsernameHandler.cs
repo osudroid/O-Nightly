@@ -7,31 +7,30 @@ using OsuDroidAttachment.Interface;
 using OsuDroidLib.Manager;
 using OsuDroidLib.Query;
 
-namespace OsuDroid.Handler; 
+namespace OsuDroid.Handler;
 
-public class UpdateUsernameHandler 
-    : IHandler<NpgsqlCreates.DbWrapper,LogWrapper,ControllerPostWrapper<UpdateUsernameDto>,OptionHandlerOutput<ViewUpdateUsernameRes>> {
+public class UpdateUsernameHandler
+    : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<UpdateUsernameDto>,
+        OptionHandlerOutput<ViewUpdateUsernameRes>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>> Handel(
         NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<UpdateUsernameDto> request) {
-        
         var db = dbWrapper.Db;
         var cookieTokenWithUserIdOption = request.Controller.GetCookieAndUserId(db);
         var updateUsername = request.Post;
-        
-        if (cookieTokenWithUserIdOption.IsNotSet()) {
-            return Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>.Ok(OptionHandlerOutput<ViewUpdateUsernameRes>.Empty);
-        }
+
+        if (cookieTokenWithUserIdOption.IsNotSet())
+            return Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>.Ok(
+                OptionHandlerOutput<ViewUpdateUsernameRes>.Empty);
         var userId = cookieTokenWithUserIdOption.Unwrap().UserId;
-        
+
         var userInfoResult = await QueryUserInfo.GetByUserIdAsync(db, userId);
 
         if (userInfoResult == EResult.Err)
             return userInfoResult.ChangeOkType<OptionHandlerOutput<ViewUpdateUsernameRes>>();
 
-        if (userInfoResult.Ok().IsNotSet()) {
+        if (userInfoResult.Ok().IsNotSet())
             return Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>
                 .Err(TraceMsg.WithMessage($"userInfoResult IsNotSet UserId {userId}"));
-        }
 
 
         var userInfo = userInfoResult.Ok().Unwrap();
@@ -42,21 +41,21 @@ public class UpdateUsernameHandler
             return resultValidatePassword.ChangeOkType<OptionHandlerOutput<ViewUpdateUsernameRes>>();
 
         if (!resultValidatePassword.Ok().PasswordIsValid)
-            return Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>.Ok(OptionHandlerOutput<ViewUpdateUsernameRes>.With(new ViewUpdateUsernameRes() {
-                HasWork = false
-            }));
+            return Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>.Ok(
+                OptionHandlerOutput<ViewUpdateUsernameRes>.With(new ViewUpdateUsernameRes {
+                    HasWork = false
+                }));
 
         var checkUsername = await UserInfoManager.UsernameIsInUse(db, updateUsername.NewUsername);
 
         if (checkUsername == EResult.Err)
             return checkUsername.ChangeOkType<OptionHandlerOutput<ViewUpdateUsernameRes>>();
 
-        if (checkUsername.Ok()) {
+        if (checkUsername.Ok())
             return Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>
-                .Ok(OptionHandlerOutput<ViewUpdateUsernameRes>.With(new ViewUpdateUsernameRes() {
-                    HasWork = false                 
+                .Ok(OptionHandlerOutput<ViewUpdateUsernameRes>.With(new ViewUpdateUsernameRes {
+                    HasWork = false
                 }));
-        }
 
         var result = await UserInfoManager.UpdateUsernameAsync(db, userInfo.UserId, updateUsername.NewUsername);
 
@@ -64,6 +63,6 @@ public class UpdateUsernameHandler
             return result.ConvertTo<OptionHandlerOutput<ViewUpdateUsernameRes>>();
 
         return Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>
-            .Ok(OptionHandlerOutput<ViewUpdateUsernameRes>.With(new ViewUpdateUsernameRes() { HasWork = true }));
+            .Ok(OptionHandlerOutput<ViewUpdateUsernameRes>.With(new ViewUpdateUsernameRes { HasWork = true }));
     }
 }

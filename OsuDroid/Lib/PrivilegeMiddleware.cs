@@ -5,7 +5,9 @@ using OsuDroidLib.Extension;
 namespace OsuDroid.Lib;
 
 internal class PrivilegeRouteAttribute : Attribute {
-    public PrivilegeRouteAttribute([StringSyntax("Route")] string route) => Route = route;
+    public PrivilegeRouteAttribute([StringSyntax("Route")] string route) {
+        Route = route;
+    }
 
     public string Route { get; init; }
 }
@@ -20,9 +22,6 @@ public interface ICookieHandler {
 public class PrivilegeMiddleware {
     public const string ItemName = "USER_ID";
 
-    public record RouteInfo(Guid NeedPrilegeId, string NeedPrivileName, bool NeedCookie,
-        Option<ICookieHandler> CookieHandler);
-
     private static IReadOnlyDictionary<string, ICookieHandler> CookieHandlers =
         new Dictionary<string, ICookieHandler>(1);
 
@@ -30,11 +29,13 @@ public class PrivilegeMiddleware {
 
     private readonly RequestDelegate _next;
 
+    public PrivilegeMiddleware(RequestDelegate next) {
+        _next = next;
+    }
+
     public static async Task Load(IReadOnlyList<ICookieHandler> cookieHandlerList) {
         var cookieHandlers = new Dictionary<string, ICookieHandler>(cookieHandlerList.Count * 2);
-        foreach (var cookieHandler in cookieHandlerList) {
-            cookieHandlers[cookieHandler.Name] = cookieHandler;
-        }
+        foreach (var cookieHandler in cookieHandlerList) cookieHandlers[cookieHandler.Name] = cookieHandler;
 
         CookieHandlers = cookieHandlers;
 
@@ -58,29 +59,27 @@ public class PrivilegeMiddleware {
                 throw new Exception("NeedPrivilege Not Found");
 
             var needPrivilege = fetchResult.Ok().Unwrap();
-            Option<ICookieHandler> cookieHandler = Option<ICookieHandler>.Empty;
+            var cookieHandler = Option<ICookieHandler>.Empty;
 
             if (cookieHandlers.ContainsKey(routerSetting.NeedCookieHandler ?? ""))
                 cookieHandler = new Option<ICookieHandler>(cookieHandlers[routerSetting.NeedCookieHandler ?? ""]);
 
-            newMap[routerSetting.Path!] = new(needPrivilege.NeedPrivilegeId, needPrivilege.Name ?? "",
+            newMap[routerSetting.Path!] = new RouteInfo(needPrivilege.NeedPrivilegeId, needPrivilege.Name ?? "",
                 routerSetting.NeedCookie, cookieHandler);
         }
 
         NeedPrivilegeDic = newMap;
     }
 
-    public PrivilegeMiddleware(RequestDelegate next) => _next = next;
-
     public async Task InvokeAsync(HttpContext context) {
-        Endpoint? endpoint = context.Features.Get<IEndpointFeature>()?.Endpoint;
+        var endpoint = context.Features.Get<IEndpointFeature>()?.Endpoint;
 
         if (endpoint is null) {
             await _next.Invoke(context);
             return;
         }
 
-        PrivilegeRouteAttribute? attribute = endpoint.Metadata.GetMetadata<PrivilegeRouteAttribute>();
+        var attribute = endpoint.Metadata.GetMetadata<PrivilegeRouteAttribute>();
 
         if (attribute is null) throw new NullReferenceException(nameof(attribute));
 
@@ -95,16 +94,16 @@ public class PrivilegeMiddleware {
             return;
         }
 
-        RouteInfo routeInfo = checkResult.RouteInfo.Unwrap();
+        var routeInfo = checkResult.RouteInfo.Unwrap();
 
         if (routeInfo.NeedCookie == false) {
             await _next.Invoke(context);
             return;
         }
-        
+
         if (routeInfo.CookieHandler.IsNotSet())
             throw new Exception("routeInfo.CookieHandler.IsNotSet() == true");
-        
+
         await InvokeAsyncWithCookie(context, routeInfo);
     }
 
@@ -128,12 +127,12 @@ public class PrivilegeMiddleware {
 
 
         var resultPrivilegeOk =
-            OsuDroid.Lib.PrivilegeManager.UserCanUseById(db, routeInfo.NeedPrilegeId, result.Ok().UserId);
+            PrivilegeManager.UserCanUseById(db, routeInfo.NeedPrilegeId, result.Ok().UserId);
 
         if (resultPrivilegeOk == EResult.Err)
             throw new Exception(resultPrivilegeOk.Err());
 
-        foreach ((string name, Guid id, bool has) in resultPrivilegeOk.Ok()) {
+        foreach ((var name, var id, var has) in resultPrivilegeOk.Ok()) {
             if (has)
                 continue;
 
@@ -146,13 +145,16 @@ public class PrivilegeMiddleware {
         await _next(context);
     }
 
-    private record struct CheckIfNeedCookieResult(bool Found, Option<RouteInfo> RouteInfo);
-    
     private static CheckIfNeedCookieResult CheckIfNeedCookie(PrivilegeRouteAttribute attribute) {
-        return NeedPrivilegeDic.TryGetValue(attribute.Route, out RouteInfo? routeInfo) == false
+        return NeedPrivilegeDic.TryGetValue(attribute.Route, out var routeInfo) == false
             ? default
             : new CheckIfNeedCookieResult(true, Option<RouteInfo>.With(routeInfo));
     }
+
+    public record RouteInfo(Guid NeedPrilegeId, string NeedPrivileName, bool NeedCookie,
+        Option<ICookieHandler> CookieHandler);
+
+    private record struct CheckIfNeedCookieResult(bool Found, Option<RouteInfo> RouteInfo);
 }
 
 public static class PrivilegeMiddlewareExtensions {
