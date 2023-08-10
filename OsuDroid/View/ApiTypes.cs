@@ -1,5 +1,6 @@
 namespace OsuDroid.View;
 
+// ReSharper disable All
 public static class ApiTypes {
     public class ViewExistOrFoundInfo<T> : IView {
         public bool ExistOrFound { get; set; }

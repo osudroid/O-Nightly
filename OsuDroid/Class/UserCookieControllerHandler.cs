@@ -17,8 +17,7 @@ public class UserCookieControllerHandler(ControllerExtensions controller) : ITra
     }
 
     public ResultErr<string> SetCookie(Guid cookie) {
-        var cookies = controller.GetCookies();
-        cookies[ControllerExtensions.ECookie.LoginCookie] = cookie.ToString();
+        controller.AppendCookie(ControllerExtensions.ECookie.LoginCookie, cookie.ToString());
         return ResultErr<string>.Ok();
     }
 

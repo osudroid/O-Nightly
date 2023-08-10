@@ -7,7 +7,9 @@ namespace OsuDroid.Model;
 
 public static class ModelApiUpdate {
     public static async Task<Result<ModelResult<ViewApiUpdateInfo>, string>> GetUpdateInfoAsync(
-        ControllerExtensions controller, NpgsqlConnection db, string lang) {
+        ControllerExtensions controller,
+        NpgsqlConnection db,
+        string lang) {
         var dirNameNumber = Directory.GetDirectories(Setting.UpdatePath!).Select(long.Parse).MaxBy(x => x);
         if (dirNameNumber == 0)
             return Result<ModelResult<ViewApiUpdateInfo>, string>
@@ -33,10 +35,13 @@ public static class ModelApiUpdate {
 
         return Result<ModelResult<ViewApiUpdateInfo>, string>
             .Ok(ModelResult<ViewApiUpdateInfo>.Ok(new ViewApiUpdateInfo {
-                Changelog = await File.ReadAllTextAsync(
-                    $"{Setting.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
-                VersionCode = dirNameNumber,
-                Link = $"https://{Setting.Domain_Name!.Value}/api2/apk/version/{dirNameNumber}.apk"
-            }));
+                        Changelog = await File.ReadAllTextAsync(
+                            $"{Setting.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"
+                        ),
+                        VersionCode = dirNameNumber,
+                        Link = $"https://{Setting.Domain_Name!.Value}/api2/apk/version/{dirNameNumber}.apk"
+                    }
+                )
+            );
     }
 }

@@ -39,7 +39,8 @@ namespace OsuDroid.Controllers.Api2 {
                 transformHandler: new TransformAction<
                     ControllerGetWrapper<UserIdBox>,
                     ControllerGetWrapper<UserIdBoxDto>>((i)
-                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))),
+                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))
+                ),
                 handler: new WebProfileStatsHandler(),
                 outputHandler: new ViewExistOrFoundInfoHandler<ViewProfileStats>(),
                 input: new ControllerGetWrapper<UserIdBox>(this.ControllerHandlerBuild(), prop)
@@ -51,7 +52,8 @@ namespace OsuDroid.Controllers.Api2 {
         [HttpGet("/api2/profile/stats/timeline/{id:long}")]
         [PrivilegeRoute(route: "/api2/profile/stats/timeline/{id:long}")]
         [ProducesResponseType(StatusCodes.Status200OK,
-            Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUserRankTimeLine>))]
+            Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUserRankTimeLine>)
+        )]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> WebProfileStatsTimeLine([FromRoute(Name = "id")] long userId) {
             var prop = new UserIdBox() { UserId = userId };
@@ -68,7 +70,8 @@ namespace OsuDroid.Controllers.Api2 {
                 transformHandler: new TransformAction<
                     ControllerGetWrapper<UserIdBox>,
                     ControllerGetWrapper<UserIdBoxDto>>((i)
-                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))),
+                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))
+                ),
                 handler: new WebProfileStatsTimeLineHandler(),
                 outputHandler: new ViewExistOrFoundInfoHandler<ViewUserRankTimeLine>(),
                 input: new ControllerGetWrapper<UserIdBox>(this.ControllerHandlerBuild(), prop)
@@ -97,7 +100,8 @@ namespace OsuDroid.Controllers.Api2 {
                 transformHandler: new TransformAction<
                     ControllerGetWrapper<UserIdBox>,
                     ControllerGetWrapper<UserIdBoxDto>>((i)
-                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))),
+                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))
+                ),
                 handler: new WebProfileTopPlaysHandler(),
                 outputHandler: new ViewExistOrFoundInfoHandler<ViewPlays>(),
                 input: new ControllerGetWrapper<UserIdBox>(this.ControllerHandlerBuild(), prop)
@@ -126,7 +130,9 @@ namespace OsuDroid.Controllers.Api2 {
                     ControllerGetWrapper<TopPlaysPageing>,
                     ControllerGetWrapper<TopPlaysPageingDto>>((i)
                     => new ControllerGetWrapper<TopPlaysPageingDto>(i.Controller,
-                        DtoMapper.TopPlaysPageingToDto(i.Get))),
+                        DtoMapper.TopPlaysPageingToDto(i.Get)
+                    )
+                ),
                 handler: new WebProfileTopPlaysPageHandler(),
                 outputHandler: new ViewExistOrFoundInfoHandler<ViewPlays>(),
                 input: new ControllerGetWrapper<TopPlaysPageing>(this.ControllerHandlerBuild(), prop)
@@ -155,7 +161,8 @@ namespace OsuDroid.Controllers.Api2 {
                 transformHandler: new TransformAction<
                     ControllerGetWrapper<UserIdBox>,
                     ControllerGetWrapper<UserIdBoxDto>>((i)
-                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))),
+                    => new ControllerGetWrapper<UserIdBoxDto>(i.Controller, DtoMapper.UserIdBoxToDto(i.Get))
+                ),
                 handler: new WebProfileTopRecentHandler(),
                 outputHandler: new ViewExistOrFoundInfoHandler<ViewPlays>(),
                 input: new ControllerGetWrapper<UserIdBox>(this.ControllerHandlerBuild(), prop)
@@ -184,11 +191,14 @@ namespace OsuDroid.Controllers.Api2 {
                     ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateEmail>>,
                     ControllerPostWrapper<UpdateEmailDto>>((i)
                     => new ControllerPostWrapper<UpdateEmailDto>(i.Controller,
-                        DtoMapper.UpdateEmailToDto(i.Post.Body))),
+                        DtoMapper.UpdateEmailToDto(i.Post.Body)
+                    )
+                ),
                 handler: new UpdateEmailHandler(),
                 outputHandler: new WorkHandler(),
                 input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateEmail>>(
-                    this.ControllerHandlerBuild(), prop)
+                    this.ControllerHandlerBuild(), prop
+                )
             );
 
             return TransactionToIResult(transaction);
@@ -215,11 +225,14 @@ namespace OsuDroid.Controllers.Api2 {
                     ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdatePasswd>>,
                     ControllerPostWrapper<UpdatePasswdDto>>((i)
                     => new ControllerPostWrapper<UpdatePasswdDto>(i.Controller,
-                        DtoMapper.UpdatePasswdToDto(i.Post.Body!))),
+                        DtoMapper.UpdatePasswdToDto(i.Post.Body!)
+                    )
+                ),
                 handler: new UpdatePasswordHandler(),
                 outputHandler: new WorkHandler(),
                 input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdatePasswd>>(
-                    this.ControllerHandlerBuild(), prop)
+                    this.ControllerHandlerBuild(), prop
+                )
             );
 
             return TransactionToIResult(transaction);
@@ -228,7 +241,8 @@ namespace OsuDroid.Controllers.Api2 {
         [HttpPost("/api2/profile/update/username")]
         [PrivilegeRoute(route: "/api2/profile/update/username")]
         [ProducesResponseType(StatusCodes.Status200OK,
-            Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUpdateUsernameRes>))]
+            Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewUpdateUsernameRes>)
+        )]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult>
@@ -246,11 +260,14 @@ namespace OsuDroid.Controllers.Api2 {
                     ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateUsername>>,
                     ControllerPostWrapper<UpdateUsernameDto>>((i)
                     => new ControllerPostWrapper<UpdateUsernameDto>(i.Controller,
-                        DtoMapper.UpdateUsernameToDto(i.Post.Body!))),
+                        DtoMapper.UpdateUsernameToDto(i.Post.Body!)
+                    )
+                ),
                 handler: new UpdateUsernameHandler(),
                 outputHandler: new ViewExistOrFoundInfoHandler<ViewUpdateUsernameRes>(),
                 input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateUsername>>(
-                    this.ControllerHandlerBuild(), prop)
+                    this.ControllerHandlerBuild(), prop
+                )
             );
 
             return TransactionToIResult(transaction);
@@ -276,11 +293,14 @@ namespace OsuDroid.Controllers.Api2 {
                     ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateAvatar>>,
                     ControllerPostWrapper<UpdateAvatarDto>>((i)
                     => new ControllerPostWrapper<UpdateAvatarDto>(i.Controller,
-                        DtoMapper.UpdateAvatarToDto(i.Post.Body!))),
+                        DtoMapper.UpdateAvatarToDto(i.Post.Body!)
+                    )
+                ),
                 handler: new UpdateAvatarHandler(),
                 outputHandler: new ViewExistOrFoundInfoHandler<ViewUpdateAvatar>(),
                 input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdateAvatar>>(
-                    this.ControllerHandlerBuild(), prop)
+                    this.ControllerHandlerBuild(), prop
+                )
             );
 
             return TransactionToIResult(transaction);
@@ -307,11 +327,14 @@ namespace OsuDroid.Controllers.Api2 {
                     ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdatePatreonEmail>>,
                     ControllerPostWrapper<UpdatePatreonEmailDto>>((i)
                     => new ControllerPostWrapper<UpdatePatreonEmailDto>(i.Controller,
-                        DtoMapper.UpdatePatreonEmailToDto(i.Post.Body!))),
+                        DtoMapper.UpdatePatreonEmailToDto(i.Post.Body!)
+                    )
+                ),
                 handler: new UpdatePatreonEmaildHandler(),
                 outputHandler: new WorkHandler(),
                 input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostUpdatePatreonEmail>>(
-                    this.ControllerHandlerBuild(), prop)
+                    this.ControllerHandlerBuild(), prop
+                )
             );
 
             return TransactionToIResult(transaction);
@@ -336,7 +359,8 @@ namespace OsuDroid.Controllers.Api2 {
                 transformHandler: new TransformAction<
                     ControllerGetWrapper<Guid>,
                     ControllerGetWrapper<Guid>>((i)
-                    => new ControllerGetWrapper<Guid>(i.Controller, i.Get)),
+                    => new ControllerGetWrapper<Guid>(i.Controller, i.Get)
+                ),
                 handler: new AcceptPatreonEmailHandler(),
                 outputHandler: new WorkHandler(),
                 input: new ControllerGetWrapper<Guid>(this.ControllerHandlerBuild(), token)
@@ -348,7 +372,8 @@ namespace OsuDroid.Controllers.Api2 {
         [HttpPost("/api2/profile/drop-account/sendMail")]
         [PrivilegeRoute(route: "/api2/profile/drop-account/sendMail}")]
         [ProducesResponseType(StatusCodes.Status200OK,
-            Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewCreateDropAccountTokenRes>))]
+            Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewCreateDropAccountTokenRes>)
+        )]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateDropAccountToken(
             [FromBody] PostApi.PostApi2GroundNoHeader<PostCreateDropAccountToken> prop) {
@@ -366,11 +391,14 @@ namespace OsuDroid.Controllers.Api2 {
                     ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostCreateDropAccountToken>>,
                     ControllerPostWrapper<CreateDropAccountTokenDto>>((i)
                     => new ControllerPostWrapper<CreateDropAccountTokenDto>(i.Controller,
-                        DtoMapper.CreateDropAccountTokenToDto(i.Post.Body!))),
+                        DtoMapper.CreateDropAccountTokenToDto(i.Post.Body!)
+                    )
+                ),
                 handler: new CreateDropAccountTokenHandler(),
                 outputHandler: new ViewExistOrFoundInfoHandler<ViewCreateDropAccountTokenRes>(),
                 input: new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostCreateDropAccountToken>>(
-                    this.ControllerHandlerBuild(), prop)
+                    this.ControllerHandlerBuild(), prop
+                )
             );
 
             return TransactionToIResult(transaction);
@@ -395,7 +423,8 @@ namespace OsuDroid.Controllers.Api2 {
                 transformHandler: new TransformAction<
                     ControllerGetWrapper<Guid>,
                     ControllerPostWrapper<Guid>>((i)
-                    => new ControllerPostWrapper<Guid>(i.Controller, i.Get)),
+                    => new ControllerPostWrapper<Guid>(i.Controller, i.Get)
+                ),
                 handler: new DropAccountWithTokenAsyncHandler(),
                 outputHandler: new WorkHandler(),
                 input: new ControllerGetWrapper<Guid>(this.ControllerHandlerBuild(), token)
@@ -408,7 +437,8 @@ namespace OsuDroid.Controllers.Api2 {
         [HttpGet("/api2/profile/top-play-by-marks-length/user-id/{userId:long}")]
         [PrivilegeRoute(route: "/api2/profile/top-play-by-marks-length/user-id/{userId:long}")]
         [ProducesResponseType(StatusCodes.Status200OK,
-            Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewPlaysMarksLength>))]
+            Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewPlaysMarksLength>)
+        )]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> WebProfileTopPlaysByMarksLength([FromRoute] long userId) {
@@ -424,24 +454,30 @@ namespace OsuDroid.Controllers.Api2 {
                 transformHandler: new TransformAction<
                     ControllerGetWrapper<UserIdBox>,
                     ControllerGetWrapper<UserIdBox>>((i)
-                    => new ControllerGetWrapper<UserIdBox>(i.Controller, i.Get)),
+                    => new ControllerGetWrapper<UserIdBox>(i.Controller, i.Get)
+                ),
                 handler: new WebProfileTopPlaysByMarksLengthHandler(),
                 outputHandler: new ViewExistOrFoundInfoHandler<ViewPlaysMarksLength>(),
                 input: new ControllerGetWrapper<UserIdBox>(this.ControllerHandlerBuild(),
-                    new UserIdBox() { UserId = userId })
+                    new UserIdBox() { UserId = userId }
+                )
             );
 
             return TransactionToIResult(transaction);
         }
 
         [HttpGet(
-            "/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
+            "/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}"
+        )]
         [PrivilegeRoute(
             route:
-            "/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}")]
+            "/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}"
+        )]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewPlays>))]
         public async Task<IActionResult> WebProfileTopPlaysByMark(
-            [FromRoute] long userId, [FromRoute] string markString, [FromRoute] int page) {
+            [FromRoute] long userId,
+            [FromRoute] string markString,
+            [FromRoute] int page) {
             var request = new HttpGet.GetTopPlaysByMarkPageing() {
                 Page = page,
                 MarkString = markString,
@@ -461,11 +497,14 @@ namespace OsuDroid.Controllers.Api2 {
                     ControllerGetWrapper<HttpGet.GetTopPlaysByMarkPageing>,
                     ControllerGetWrapper<TopPlaysByMarkPageingDto>>((i)
                     => new ControllerGetWrapper<TopPlaysByMarkPageingDto>(i.Controller,
-                        DtoMapper.TopPlaysByMarkPageingToDto(i.Get))),
+                        DtoMapper.TopPlaysByMarkPageingToDto(i.Get)
+                    )
+                ),
                 handler: new WebProfileTopPlaysByMarkHandler(),
                 outputHandler: new ViewExistOrFoundInfoHandler<ViewPlays>(),
                 input: new ControllerGetWrapper<HttpGet.GetTopPlaysByMarkPageing>(this.ControllerHandlerBuild(),
-                    request)
+                    request
+                )
             );
 
             return TransactionToIResult(transaction);

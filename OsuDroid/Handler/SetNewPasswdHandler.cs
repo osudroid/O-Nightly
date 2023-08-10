@@ -13,7 +13,9 @@ public class SetNewPasswdHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<SetNewPasswdDto>,
         OptionHandlerOutput<ViewWebReplacePasswordWithToken>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewWebReplacePasswordWithToken>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<SetNewPasswdDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<SetNewPasswdDto> request) {
         var db = dbWrapper.Db;
         var prop = request.Post;
 
@@ -26,13 +28,15 @@ public class SetNewPasswdHandler
         if (found.Ok().IsNotSet())
             return Result<OptionHandlerOutput<ViewWebReplacePasswordWithToken>, string>.Ok(
                 OptionHandlerOutput<ViewWebReplacePasswordWithToken>.With(new ViewWebReplacePasswordWithToken {
-                    Work = false,
-                    ErrorMsg = "Token To Old"
-                }));
+                        Work = false,
+                        ErrorMsg = "Token To Old"
+                    }
+                )
+            );
 
         var key = found.Ok().Unwrap();
 
-        var hashPasswordResult = PasswordHash.HashWithBCryptPassword(prop.NewPasswd);
+        var hashPasswordResult = PasswordHash.HashWithBCryptPassword(prop.NewPassword);
         if (hashPasswordResult == EResult.Err)
             return found.ChangeOkType<OptionHandlerOutput<ViewWebReplacePasswordWithToken>>();
 
@@ -43,8 +47,10 @@ public class SetNewPasswdHandler
 
         return Result<OptionHandlerOutput<ViewWebReplacePasswordWithToken>, string>
             .Ok(OptionHandlerOutput<ViewWebReplacePasswordWithToken>.With(new ViewWebReplacePasswordWithToken {
-                Work = true,
-                ErrorMsg = ""
-            }));
+                        Work = true,
+                        ErrorMsg = ""
+                    }
+                )
+            );
     }
 }

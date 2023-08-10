@@ -34,13 +34,15 @@ public static class Program {
         }
 
         Environment.Exit(args switch {
-            ["--reload-user-stats" or "-s"] => (int)await ReloadUserStats(),
-            ["--transfer"] => (int)await RunTransferDb(),
-            ["--reload-timeline" or "-f"] => (int)await FullReloadRankingTimeline(),
-            ["--hashpass", var password] => (int)ParseAndPrint(() =>
-                PasswordHash.HashWithBCryptPassword(password)),
-            _ => (int)ParseAndPrintExistCode(EExitCode.ArgNotExist, "Argument Not Exist")
-        });
+                ["--reload-user-stats" or "-s"] => (int)await ReloadUserStats(),
+                ["--transfer"] => (int)await RunTransferDb(),
+                ["--reload-timeline" or "-f"] => (int)await FullReloadRankingTimeline(),
+                ["--hashpass", var password] => (int)ParseAndPrint(() =>
+                    PasswordHash.HashWithBCryptPassword(password)
+                ),
+                _ => (int)ParseAndPrintExistCode(EExitCode.ArgNotExist, "Argument Not Exist")
+            }
+        );
     }
 
     private static async Task<EExitCode> ReloadUserStats() {
@@ -53,7 +55,8 @@ public static class Program {
 
         await using (var db = await DbBuilder.BuildNpgsqlConnection()) {
             var result = await db.SafeQueryFirstOrDefaultAsync<Entities.PlayScore>(
-                "SELECT * FROM public.PlayScore ORDER BY date LIMIT 1");
+                "SELECT * FROM public.PlayScore ORDER BY date LIMIT 1"
+            );
 
             if (result == EResult.Err) {
                 WriteLine(result.Err());
@@ -94,31 +97,34 @@ public static class Program {
         services.AddSwaggerGen();
         services.AddMemoryCache();
         services.Configure<IpRateLimitOptions>(options => {
-            options.EnableEndpointRateLimiting = true;
-            options.HttpStatusCode = 429;
-            options.StackBlockedRequests = true;
-            options.ClientIdHeader = "X-ClientId";
-            options.RealIpHeader = "X-Real-IP";
-            options.GeneralRules = new List<RateLimitRule> {
-                new() {
-                    Endpoint = "POST:/api2/play/recent",
-                    Limit = 3,
-                    PeriodTimespan = TimeSpan.FromSeconds(20)
-                }
-            };
-        });
+                options.EnableEndpointRateLimiting = true;
+                options.HttpStatusCode = 429;
+                options.StackBlockedRequests = true;
+                options.ClientIdHeader = "X-ClientId";
+                options.RealIpHeader = "X-Real-IP";
+                options.GeneralRules = new List<RateLimitRule> {
+                    new() {
+                        Endpoint = "POST:/api2/play/recent",
+                        Limit = 3,
+                        PeriodTimespan = TimeSpan.FromSeconds(20)
+                    }
+                };
+            }
+        );
 
 
         services.AddRouting();
         services.AddCors(options => {
-            options.AddPolicy("_myAllowSpecificOrigins",
-                corsPolicyBuilder => {
-                    corsPolicyBuilder.WithOrigins("*");
-                    corsPolicyBuilder.WithHeaders("*");
-                    corsPolicyBuilder.WithMethods("*");
-                    corsPolicyBuilder.WithExposedHeaders("*");
-                });
-        });
+                options.AddPolicy("_myAllowSpecificOrigins",
+                    corsPolicyBuilder => {
+                        corsPolicyBuilder.WithOrigins("*");
+                        corsPolicyBuilder.WithHeaders("*");
+                        corsPolicyBuilder.WithMethods("*");
+                        corsPolicyBuilder.WithExposedHeaders("*");
+                    }
+                );
+            }
+        );
         services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
         services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
         services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
@@ -137,8 +143,9 @@ public static class Program {
         app.UseHttpsRedirection();
         // app.UseAuthorization();
         app.UsePrivilege(new List<ICookieHandler> {
-            new CookieHandlerBasic()
-        });
+                new CookieHandlerBasic()
+            }
+        );
         app.MapControllers();
         app.Run();
     }

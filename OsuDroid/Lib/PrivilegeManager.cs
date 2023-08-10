@@ -59,9 +59,7 @@ public static class PrivilegeManager {
             return;
         }
 
-        if (LastUpdate.AddMinutes(10) < DateTime.UtcNow) {
-            Update();
-        }
+        if (LastUpdate.AddMinutes(10) < DateTime.UtcNow) Update();
     }
 
     public static async Task<ResultErr<string>> Update() {
@@ -76,10 +74,13 @@ public static class PrivilegeManager {
             var result = (await db.SafeQueryAsync<Entities.Privilege>("SELECT * FROM privilege"))
                 .Map(x =>
                     x.Select(x => new PrivilegeDto {
-                        Id = x.PrivilegeId,
-                        Name = x.Name,
-                        Description = x.Description
-                    }).ToList());
+                             Id = x.PrivilegeId,
+                             Name = x.Name,
+                             Description = x.Description
+                         }
+                     )
+                     .ToList()
+                );
 
             if (result == EResult.Err)
                 return result;
@@ -94,13 +95,16 @@ public static class PrivilegeManager {
         return ResultErr<string>.Ok();
     }
 
-    public static Result<List<(string Name, Guid id, bool Has)>, string> UserCanUse(NpgsqlConnection db,
-        string needPrivilege, long userId) {
+    public static Result<List<(string Name, Guid id, bool Has)>, string> UserCanUse(
+        NpgsqlConnection db,
+        string needPrivilege,
+        long userId) {
         try {
             var res = new List<(string Name, Guid id, bool Has)>();
             var query = db.Query<dynamic>(@$"
 select * FROM user_check_need_privilege_by_name({userId}, @needPrivilege) as x(pri_name TEXT, need_privilege_id uuid, user_has_privilege bool)",
-                new { needPrivilege });
+                new { needPrivilege }
+            );
 
             return Result<List<(string Name, Guid id, bool Has)>, string>.Ok(res);
         }
@@ -109,13 +113,16 @@ select * FROM user_check_need_privilege_by_name({userId}, @needPrivilege) as x(p
         }
     }
 
-    public static Result<List<(string Name, Guid id, bool Has)>, string> UserCanUseById(NpgsqlConnection db,
-        Guid needPrivilegeId, long userId) {
+    public static Result<List<(string Name, Guid id, bool Has)>, string> UserCanUseById(
+        NpgsqlConnection db,
+        Guid needPrivilegeId,
+        long userId) {
         try {
             var res = new List<(string Name, Guid id, bool Has)>();
             var query = db.Query<dynamic>(@$"
 select * FROM user_check_need_privilege_by_id({userId}, @needPrivilegeId) as x(pri_name TEXT, need_privilege_id uuid, user_has_privilege bool)",
-                new { needPrivilegeId });
+                new { needPrivilegeId }
+            );
 
             return Result<List<(string Name, Guid id, bool Has)>, string>.Ok(res);
         }

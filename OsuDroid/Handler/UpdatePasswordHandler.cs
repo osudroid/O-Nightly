@@ -10,7 +10,9 @@ namespace OsuDroid.Handler;
 public class UpdatePasswordHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<UpdatePasswdDto>, WorkHandlerOutput> {
     public async ValueTask<Result<WorkHandlerOutput, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<UpdatePasswdDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<UpdatePasswdDto> request) {
         var db = dbWrapper.Db;
         var cookieTokenWithUserIdOption = request.Controller.GetCookieAndUserId(db);
         var updatePasswd = request.Post;
@@ -30,7 +32,7 @@ public class UpdatePasswordHandler
 
         var userInfo = userInfoOption.Unwrap();
         var rightPassword = PasswordHash
-            .IsRightPassword(updatePasswd.OldPasswd, userInfo.Password ?? "");
+            .IsRightPassword(updatePasswd.OldPassword, userInfo.Password ?? "");
 
         if (rightPassword == EResult.Err)
             return rightPassword.ChangeOkType<WorkHandlerOutput>();
@@ -38,7 +40,7 @@ public class UpdatePasswordHandler
         if (!rightPassword.Ok())
             return Result<WorkHandlerOutput, string>.Ok(WorkHandlerOutput.False);
 
-        var newPasswordResult = PasswordHash.HashWithBCryptPassword(updatePasswd.NewPasswd);
+        var newPasswordResult = PasswordHash.HashWithBCryptPassword(updatePasswd.NewPassword);
         if (newPasswordResult == EResult.Err)
             return rightPassword.ChangeOkType<WorkHandlerOutput>();
 

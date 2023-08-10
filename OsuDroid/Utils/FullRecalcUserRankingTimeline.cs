@@ -23,19 +23,24 @@ public static class FullRecalcUserRankingTimeline {
         await mainDb.SafeQueryAsync(@$"
 DELETE FROM public.GlobalRankingTimeline
 WHERE date >= '{dateStr}' 
-");
+"
+        );
 
 
         WriteLine("Get ALl User");
         userList = (await mainDb.SafeQueryAsync<Entities.UserInfo>(
-            "SELECT UserId, RegisterTime FROM UserInfo ORDER BY RegisterTime ASC")).Ok().ToArray();
+                "SELECT UserId, RegisterTime FROM UserInfo ORDER BY RegisterTime ASC"
+            )).Ok()
+              .ToArray();
 
 
         foreach (var bblUser in userList) scoreMapKeyUser.Add(bblUser.UserId, new List<Entities.PlayScore>(128));
 
         WriteLine("Get ALl Score");
         foreach (var bblScore in (await mainDb.SafeQueryAsync<Entities.PlayScore>(
-                     "SELECT PlayScoreId, Hash, UserId, Score, Date FROM public.PlayScore")).Ok().ToList()) {
+                     "SELECT PlayScoreId, Hash, UserId, Score, Date FROM public.PlayScore"
+                 )).Ok()
+                   .ToList()) {
             if (!scoreMapKeyUser.TryGetValue(bblScore.UserId, out var list)) continue;
             list.Add(bblScore);
         }
@@ -60,21 +65,25 @@ WHERE date >= '{dateStr}'
                 WriteLine($"FROM: {dates.Count} AT: {count} | Calc Rank For: Y{i.Year} M{i.Month} D{i.Day}");
                 var timeLineArr = GetFullRecalcUserRankingTimelineForThisDay(scoreMapKeyUser, userList, i);
                 WriteLine(
-                    $"FROM: {dates.Count} AT: {count} | Insert Values For: Y{i.Year} M{i.Month} D{i.Day} Start");
+                    $"FROM: {dates.Count} AT: {count} | Insert Values For: Y{i.Year} M{i.Month} D{i.Day} Start"
+                );
                 using var db = DbBuilder.BuildNpgsqlConnection().GetAwaiter().GetResult();
 
 
                 var lines = string.Join(
                     ", ",
                     timeLineArr.Select(
-                        x => $"({x.UserId}, {Time.ToScyllaString(x.Date)}, {x.GlobalRanking}, {x.Score})")
+                        x => $"({x.UserId}, {Time.ToScyllaString(x.Date)}, {x.GlobalRanking}, {x.Score})"
+                    )
                 );
                 db.QueryAsync(@$"
 INSERT INTO GlobalRankingTimeline
 (Userid, Date, Globalranking, Score) 
 VALUES
 {lines}
-").Wait();
+"
+                  )
+                  .Wait();
             }
             catch (Exception e) {
                 WriteLine(e);
@@ -83,11 +92,14 @@ VALUES
         }
 
         Parallel.For(0, dates.Count, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount + 2 },
-            MultiIter);
+            MultiIter
+        );
     }
 
     private static Entities.GlobalRankingTimeline[] GetFullRecalcUserRankingTimelineForThisDay(
-        Dictionary<long, List<Entities.PlayScore>> anyScoresKeyUserId, Span<Entities.UserInfo> users, DateTime end) {
+        Dictionary<long, List<Entities.PlayScore>> anyScoresKeyUserId,
+        Span<Entities.UserInfo> users,
+        DateTime end) {
         static (long UserId, long Score) CalcScore(long userId, List<Entities.PlayScore> bblScores, DateTime end) {
             var scoreMapUser = new Dictionary<string, long>(32);
 
@@ -126,7 +138,8 @@ VALUES
         var userAndScoreSumsArr = userAndScoreSumsList.Where(x => x.Score > 0).ToArray();
 
         Array.Sort(userAndScoreSumsArr,
-            delegate(UserIdAndScoreSum x, UserIdAndScoreSum y) { return x.Score.CompareTo(y.Score); });
+            delegate(UserIdAndScoreSum x, UserIdAndScoreSum y) { return x.Score.CompareTo(y.Score); }
+        );
 
         var res = new Entities.GlobalRankingTimeline[userAndScoreSumsArr.Length];
 

@@ -26,7 +26,8 @@ WHERE score > 0
 AND hash != ''
 AND hash is not null
 AND false = (mode Like '%|AR%')
-")).ToList();
+"
+            )).ToList();
 
             WriteLine($"oldScore Count: {oldScore.Count}");
         }
@@ -54,8 +55,7 @@ AND false = (mode Like '%|AR%')
             var playScore = new Entities.PlayScore {
                 PlayScoreId = score.id,
                 UserId = score.uid,
-                Filename = score.filename ??
-                           throw new NullReferenceException($"score.filename score.id: {score.id}"),
+                Filename = score.filename ?? throw new NullReferenceException($"score.filename score.id: {score.id}"),
                 Hash = score.hash ?? throw new NullReferenceException($"score.hash score.id: {score.id}"),
                 Mode = Mode.ModeAsSingleStringToModeArray(score.mode),
                 Score = score.score,
@@ -101,7 +101,8 @@ AND false = (mode Like '%|AR%')
         );
     }
 
-    private static async ValueTask InsertPlayScoreChunk((int i, int count, Entities.PlayScore[] arr) val,
+    private static async ValueTask InsertPlayScoreChunk(
+        (int i, int count, Entities.PlayScore[] arr) val,
         CancellationToken cancellationToken) {
         await using var db = await DbBuilder.BuildNpgsqlConnection();
 

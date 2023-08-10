@@ -1,7 +1,7 @@
 using Dapper.Contrib.Extensions;
 
 namespace OsuDroidLib.Database.Entities;
-#nullable enable
+
 [Table("PlayScorePreSubmit")]
 public class PlayScorePreSubmit {
     [ExplicitKey] public long PlayScoreId { get; set; }

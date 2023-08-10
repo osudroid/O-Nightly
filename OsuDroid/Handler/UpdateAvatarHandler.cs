@@ -13,14 +13,17 @@ namespace OsuDroid.Handler;
 public class UpdateAvatarHandler : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<UpdateAvatarDto>,
     OptionHandlerOutput<ViewUpdateAvatar>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewUpdateAvatar>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<UpdateAvatarDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<UpdateAvatarDto> request) {
         var db = dbWrapper.Db;
         var cookieTokenWithUserIdOption = request.Controller.GetCookieAndUserId(db);
         var updateAvatar = request.Post;
 
         if (cookieTokenWithUserIdOption.IsNotSet())
             return Result<OptionHandlerOutput<ViewUpdateAvatar>, string>.Ok(OptionHandlerOutput<ViewUpdateAvatar>
-                .Empty);
+                .Empty
+            );
         var userId = cookieTokenWithUserIdOption.Unwrap().UserId;
 
 
@@ -35,23 +38,26 @@ public class UpdateAvatarHandler : IHandler<NpgsqlCreates.DbWrapper, LogWrapper,
 
         var userInfo = userInfoResult.Ok().Unwrap();
         var resultValidatePassword = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
-            db, userInfo.UserId, updateAvatar.Passwd, userInfo.Password!);
+            db, userInfo.UserId, updateAvatar.Password, userInfo.Password!
+        );
 
         if (resultValidatePassword == EResult.Err)
             return resultValidatePassword.ChangeOkType<OptionHandlerOutput<ViewUpdateAvatar>>();
 
         if (!resultValidatePassword.Ok().PasswordIsValid)
             return Result<OptionHandlerOutput<ViewUpdateAvatar>, string>.Ok(OptionHandlerOutput<ViewUpdateAvatar>.With(
-                new ViewUpdateAvatar {
-                    PasswdFalse = true,
-                    ImageToBig = false,
-                    IsNotAImage = false
-                }));
+                    new ViewUpdateAvatar {
+                        PasswdFalse = true,
+                        ImageToBig = false,
+                        IsNotAImage = false
+                    }
+                )
+            );
 
 
         var imageBytes = Array.Empty<byte>();
         try {
-            var charArr = updateAvatar.ImageBase64.AsSpan(updateAvatar.ImageBase64!.IndexOf(',') + 1).ToArray();
+            var charArr = updateAvatar.ImageBase64.AsSpan(updateAvatar.ImageBase64.IndexOf(',') + 1).ToArray();
             // TODO Write one Convert.FromBase64String With Span
             imageBytes = Convert.FromBase64CharArray(charArr, 0, charArr.Length);
         }
@@ -65,10 +71,12 @@ public class UpdateAvatarHandler : IHandler<NpgsqlCreates.DbWrapper, LogWrapper,
             return result.ConvertTo<OptionHandlerOutput<ViewUpdateAvatar>>();
 
         return Result<OptionHandlerOutput<ViewUpdateAvatar>, string>.Ok(OptionHandlerOutput<ViewUpdateAvatar>.With(
-            new ViewUpdateAvatar {
-                PasswdFalse = false,
-                ImageToBig = false,
-                IsNotAImage = false
-            }));
+                new ViewUpdateAvatar {
+                    PasswdFalse = false,
+                    ImageToBig = false,
+                    IsNotAImage = false
+                }
+            )
+        );
     }
 }

@@ -12,7 +12,9 @@ public class WebProfileTopPlaysHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerGetWrapper<UserIdBoxDto>,
         OptionHandlerOutput<ViewPlays>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewPlays>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerGetWrapper<UserIdBoxDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerGetWrapper<UserIdBoxDto> request) {
         var db = dbWrapper.Db;
         var userId = request.Get.UserId;
 
@@ -25,10 +27,13 @@ FROM (
      ) x
 ORDER BY score DESC 
 LIMIT 50;
-")).Map(x => OptionHandlerOutput<ViewPlays>.With(new ViewPlays {
-            Found = true,
-            Scores = x.Select(ViewPlayScore.FromPlayScore).ToList()
-        }));
+"
+        )).Map(x => OptionHandlerOutput<ViewPlays>.With(new ViewPlays {
+                    Found = true,
+                    Scores = x.Select(ViewPlayScore.FromPlayScore).ToList()
+                }
+            )
+        );
 
         return res;
     }

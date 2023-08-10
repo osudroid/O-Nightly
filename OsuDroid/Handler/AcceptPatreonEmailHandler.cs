@@ -9,8 +9,10 @@ namespace OsuDroid.Handler;
 public class
     AcceptPatreonEmailHandler : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerGetWrapper<Guid>,
         WorkHandlerOutput> {
-    public async ValueTask<Result<WorkHandlerOutput, string>> Handel(NpgsqlCreates.DbWrapper dbWrapper,
-        LogWrapper logger, ControllerGetWrapper<Guid> request) {
+    public async ValueTask<Result<WorkHandlerOutput, string>> Handel(
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerGetWrapper<Guid> request) {
         var db = dbWrapper.Db;
         var cookieTokenWithUserIdOption = request.Controller.GetCookieAndUserId(db);
         var token = request.Get;

@@ -15,16 +15,18 @@ public sealed class PostLeaderBoard : Api2.IValuesAreGood, Api2.ISingleString, A
 
     public string PrintHashOrder() {
         return ErrorText.HashBodyDataAreFalse(new List<string> {
-            nameof(Limit),
-            nameof(Region)
-        });
+                nameof(Limit),
+                nameof(Region)
+            }
+        );
     }
 
     public string ToSingleString() {
         return Merge.ObjectsToString(new object[] {
-            Limit,
-            Region ?? ""
-        });
+                Limit,
+                Region ?? ""
+            }
+        );
     }
 
     public bool ValuesAreGood() {

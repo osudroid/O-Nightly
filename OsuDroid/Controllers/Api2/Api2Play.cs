@@ -13,7 +13,7 @@ using OsuDroidAttachment.DbBuilder;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 
-namespace OsuDroid.Controllers.Api2; 
+namespace OsuDroid.Controllers.Api2;
 
 public class Api2Play : ControllerExtensions {
     [HttpPost("/api2/play/by-id")]
@@ -28,7 +28,8 @@ public class Api2Play : ControllerExtensions {
             new TransformAction<
                 ControllerPostWrapper<PostApi.PostApi2GroundWithHash<PostApi2PlayById>>,
                 ControllerPostWrapper<Api2PlayByIdDto>>(i
-                => new ControllerPostWrapper<Api2PlayByIdDto>(i.Controller, DtoMapper.Api2PlayByIdToDto(i.Post.Body!))),
+                => new ControllerPostWrapper<Api2PlayByIdDto>(i.Controller, DtoMapper.Api2PlayByIdToDto(i.Post.Body!))
+            ),
             new GetPlayByIdHandler(),
             new ViewExistOrFoundInfoHandler<ViewPlayInfoById>(),
             new ControllerPostWrapper<PostApi.PostApi2GroundWithHash<PostApi2PlayById>>(ControllerHandlerBuild(), prop)
@@ -39,7 +40,8 @@ public class Api2Play : ControllerExtensions {
     [HttpPost("/api2/play/recent")]
     [PrivilegeRoute("/api2/play/recent")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewPlayScoreWithUsername>>))]
+        Type = typeof(ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewPlayScoreWithUsername>>)
+    )]
     public async Task<IActionResult> GetRecentPlay([FromBody] PostApi.PostApi2GroundNoHeader<PostRecentPlays> prop) {
         var transaction = await Service.AttachmentServiceApi(
             new NpgsqlCreates(),
@@ -48,7 +50,8 @@ public class Api2Play : ControllerExtensions {
             new TransformAction<
                 ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostRecentPlays>>,
                 ControllerPostWrapper<RecentPlaysDto>>(i
-                => new ControllerPostWrapper<RecentPlaysDto>(i.Controller, DtoMapper.RecentPlaysToDto(i.Post.Body!))),
+                => new ControllerPostWrapper<RecentPlaysDto>(i.Controller, DtoMapper.RecentPlaysToDto(i.Post.Body!))
+            ),
             new GetRecentPlayHandler(),
             new ViewExistOrFoundInfoHandler<IReadOnlyList<ViewPlayScoreWithUsername>>(),
             new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostRecentPlays>>(ControllerHandlerBuild(), prop)

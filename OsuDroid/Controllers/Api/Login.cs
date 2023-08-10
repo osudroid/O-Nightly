@@ -27,7 +27,8 @@ public sealed class Login : ControllerExtensions {
             new LogCreates(),
             new WebLoginValidation(),
             new TransformAction<ControllerPostWrapper<PostWebLogin>, ControllerPostWrapper<WebLoginDto>>(
-                post => new ControllerPostWrapper<WebLoginDto>(post.Controller, DtoMapper.WebLoginToDto(post.Post))),
+                post => new ControllerPostWrapper<WebLoginDto>(post.Controller, DtoMapper.WebLoginToDto(post.Post))
+            ),
             new WebLoginHandler(),
             new ViewExistOrFoundInfoHandler<ViewWebLogin>(),
             new ControllerPostWrapper<PostWebLogin>(ControllerHandlerBuild(), prop)
@@ -47,7 +48,9 @@ public sealed class Login : ControllerExtensions {
             new TransformAction<ControllerPostWrapper<PostWebLoginWithUsername>,
                 ControllerPostWrapper<WebLoginWithUsernameDto>>(
                 post => new ControllerPostWrapper<WebLoginWithUsernameDto>(post.Controller,
-                    DtoMapper.WebLoginWithUsernameToDto(post.Post))),
+                    DtoMapper.WebLoginWithUsernameToDto(post.Post)
+                )
+            ),
             new WebLoginWithUsernameHandler(),
             new ViewExistOrFoundInfoHandler<ViewWebLogin>(),
             new ControllerPostWrapper<PostWebLoginWithUsername>(ControllerHandlerBuild(), prop)
@@ -68,7 +71,9 @@ public sealed class Login : ControllerExtensions {
             new WebRegisterValidation(),
             new TransformAction<ControllerPostWrapper<PostWebRegister>, ControllerPostWrapper<WebRegisterDto>>(
                 post => new ControllerPostWrapper<WebRegisterDto>(post.Controller,
-                    DtoMapper.WebRegisterToDto(post.Post))),
+                    DtoMapper.WebRegisterToDto(post.Post)
+                )
+            ),
             new WebRegisterHandler(),
             new ViewExistOrFoundInfoHandler<ViewWebLogin>(),
             new ControllerPostWrapper<PostWebRegister>(ControllerHandlerBuild(), prop)
@@ -115,7 +120,8 @@ public sealed class Login : ControllerExtensions {
     [HttpPost("/api/webresetpasswdandsendemail")]
     [PrivilegeRoute("/api/webresetpasswdandsendemail")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewResetPasswdAndSendEmail>))]
+        Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewResetPasswdAndSendEmail>)
+    )]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ResetPasswdAndSendEmail([FromBody] PostResetPasswdAndSendEmail prop) {
@@ -126,7 +132,9 @@ public sealed class Login : ControllerExtensions {
             new TransformAction<ControllerPostWrapper<PostResetPasswdAndSendEmail>,
                 ControllerPostWrapper<ResetPasswdAndSendEmailDto>>(
                 i => new ControllerPostWrapper<ResetPasswdAndSendEmailDto>(i.Controller,
-                    DtoMapper.ResetPasswdAndSendEmailToDto(i.Post))),
+                    DtoMapper.ResetPasswdAndSendEmailToDto(i.Post)
+                )
+            ),
             new ResetPasswdAndSendEmailHandler(),
             new ViewExistOrFoundInfoHandler<ViewResetPasswdAndSendEmail>(),
             new ControllerPostWrapper<PostResetPasswdAndSendEmail>(ControllerHandlerBuild(), prop)
@@ -138,7 +146,8 @@ public sealed class Login : ControllerExtensions {
     [HttpPost("/api/token/newpasswdwithtoken")]
     [PrivilegeRoute("/api/token/newpasswdwithtoken")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewWebReplacePasswordWithToken>))]
+        Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewWebReplacePasswordWithToken>)
+    )]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> SetNewPasswd([FromBody] PostApi.PostApi2GroundNoHeader<PostSetNewPasswd> prop) {
@@ -149,7 +158,8 @@ public sealed class Login : ControllerExtensions {
             new TransformAction<
                 ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostSetNewPasswd>>,
                 ControllerPostWrapper<SetNewPasswdDto>>(i =>
-                new ControllerPostWrapper<SetNewPasswdDto>(i.Controller, DtoMapper.SetNewPasswdToDto(i.Post.Body!))),
+                new ControllerPostWrapper<SetNewPasswdDto>(i.Controller, DtoMapper.SetNewPasswdToDto(i.Post.Body!))
+            ),
             new SetNewPasswdHandler(),
             new ViewExistOrFoundInfoHandler<ViewWebReplacePasswordWithToken>(),
             new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostSetNewPasswd>>(ControllerHandlerBuild(), prop)

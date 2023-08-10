@@ -29,7 +29,7 @@ public class ServiceManager<T> : IDisposable, IServiceModeRun {
     }
 
     public static ServiceManager<T> DefaultStetting() {
-        return new();
+        return new ServiceManager<T>();
     }
 
     private async Task Loop() {

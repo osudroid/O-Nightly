@@ -14,7 +14,8 @@ public class ResetPasswdAndSendEmailHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<ResetPasswdAndSendEmailDto>,
         OptionHandlerOutput<ViewResetPasswdAndSendEmail>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewResetPasswdAndSendEmail>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger,
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
         ControllerPostWrapper<ResetPasswdAndSendEmailDto> request) {
         var controller = request.Controller;
         var prop = request.Post;
@@ -35,7 +36,9 @@ public class ResetPasswdAndSendEmailHandler
         if (userInfoOption.IsNotSet())
             return Result<OptionHandlerOutput<ViewResetPasswdAndSendEmail>, string>
                 .Ok(OptionHandlerOutput<ViewResetPasswdAndSendEmail>.With(
-                    new ViewResetPasswdAndSendEmail { Work = false, TimeOut = false }));
+                        new ViewResetPasswdAndSendEmail { Work = false, TimeOut = false }
+                    )
+                );
 
         var userInfo = userInfoOption.Unwrap();
         var token = RandomText.NextAZ09(12);
@@ -44,18 +47,21 @@ public class ResetPasswdAndSendEmailHandler
         if (sendResult == EResult.Err) return sendResult.ConvertTo<OptionHandlerOutput<ViewResetPasswdAndSendEmail>>();
 
         var insertResult = await ResetPasswordKeyManager.InsertAsync(db, new Entities.ResetPasswordKey {
-            UserId = userInfo.UserId,
-            Token = token,
-            CreateTime = DateTime.UtcNow
-        });
+                UserId = userInfo.UserId,
+                Token = token,
+                CreateTime = DateTime.UtcNow
+            }
+        );
 
         if (insertResult == EResult.Err)
             return insertResult.ConvertTo<OptionHandlerOutput<ViewResetPasswdAndSendEmail>>();
 
         return Result<OptionHandlerOutput<ViewResetPasswdAndSendEmail>, string>
             .Ok(OptionHandlerOutput<ViewResetPasswdAndSendEmail>.With(new ViewResetPasswdAndSendEmail {
-                Work = true,
-                TimeOut = false
-            }));
+                        Work = true,
+                        TimeOut = false
+                    }
+                )
+            );
     }
 }

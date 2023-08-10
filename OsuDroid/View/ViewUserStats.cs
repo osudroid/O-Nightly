@@ -1,5 +1,6 @@
 namespace OsuDroid.View;
 
+// ReSharper disable All
 public class ViewUserStats : IView {
     public long UserId { get; set; }
     public long OverallPlaycount { get; set; }

@@ -1,4 +1,3 @@
 namespace OsuDroidLib.Manager;
 
-public static class LeaderBoardUserManager {
-}
+public static class LeaderBoardUserManager;

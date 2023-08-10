@@ -142,9 +142,10 @@ public abstract class ControllerExtensions : ControllerBase {
 
     private Option<string> ECookieToString(ECookie eCookie) {
         return Option<string>.NullSplit(eCookie switch {
-            ECookie.LoginCookie => "LoginCookie",
-            _ => null
-        });
+                ECookie.LoginCookie => "LoginCookie",
+                _ => null
+            }
+        );
     }
 
     public Dictionary<ECookie, string> GetCookies() {
@@ -180,12 +181,13 @@ public abstract class ControllerExtensions : ControllerBase {
         // TODO SET SITE NAME
         var cookie = eCookieToString.Unwrap();
         Response.Cookies.Append(cookie, value, new CookieOptions {
-            Secure = false,
-            HttpOnly = false,
-            SameSite = SameSiteMode.Lax,
-            Domain = Setting.Domain_Name!.Value,
-            MaxAge = new TimeSpan(TimeSpan.TicksPerDay * 30)
-        });
+                Secure = false,
+                HttpOnly = false,
+                SameSite = SameSiteMode.Lax,
+                Domain = Setting.Domain_Name!.Value,
+                MaxAge = new TimeSpan(TimeSpan.TicksPerDay * 30)
+            }
+        );
     }
 
     public ResultErr<string> RemoveCookieByEName(ECookie eCookie) {
@@ -194,9 +196,10 @@ public abstract class ControllerExtensions : ControllerBase {
             return ResultErr<string>.Err("Can Not Convert Cookie To String");
 
         Response.Cookies.Delete(cookieToString.Unwrap(), new CookieOptions {
-            Domain = Setting.Domain_Name!.Value,
-            SameSite = SameSiteMode.Lax
-        });
+                Domain = Setting.Domain_Name!.Value,
+                SameSite = SameSiteMode.Lax
+            }
+        );
         return ResultErr<string>.Ok();
     }
 

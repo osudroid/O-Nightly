@@ -30,7 +30,8 @@ public static class Service {
             : Result<ServiceState, string>.Err(resp.Err());
     }
 
-    private static async Task<ResultErr<string>> UpdatePatreonStatusLoop(IAdapterPatreon adapterPatreon,
+    private static async Task<ResultErr<string>> UpdatePatreonStatusLoop(
+        IAdapterPatreon adapterPatreon,
         NpgsqlConnection db) {
         var emailsActivePatronEmails = await adapterPatreon.GetOnlyActivePatronEmails();
 

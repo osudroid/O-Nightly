@@ -1,17 +1,15 @@
 using Dapper;
 using LamLogger;
 using Npgsql;
-using OsuDroidLib.Database;
-using OsuDroidLib.Extension;
 
 namespace OsuDroidLib;
 
 public static class Log {
-    private static bool _settingsSet = false;
+    private static readonly bool _settingsSet = false;
 
-    public static LamLogger.LamLog GetLog(NpgsqlConnection db) {
-        if (_settingsSet == false) {
-            LamLog.Settings = new() {
+    public static LamLog GetLog(NpgsqlConnection db) {
+        if (_settingsSet == false)
+            LamLog.Settings = new LamLogSettings {
                 DbTable = Setting.Log_DbName!.Value,
                 LazyDbPrint = true,
                 LazyTextWriterPrint = false,
@@ -21,9 +19,8 @@ public static class Log {
                 PrintUseError = Setting.Log_Error!.Value,
                 PrintDBUseOk = Setting.Log_Ok.Value,
                 PrintDBUseDebug = Setting.Log_Debug.Value,
-                PrintDBUseError = Setting.Log_Error.Value,
+                PrintDBUseError = Setting.Log_Error.Value
             };
-        }
 
         async Task InsertAsync(LamLogTable[] tables) {
             for (var index = 0; index < tables.Length; index++) {
@@ -36,14 +33,15 @@ VALUES (@Id, @Number, @DateTime, @Message, @Status, @Stack, @Trigger)
 ";
 
                     await db.QueryAsync(sql, new {
-                        Id = log.DateUuid.ToGuild(),
-                        Number = index,
-                        DateTime = DateTime.SpecifyKind(log.DateTime, DateTimeKind.Utc),
-                        Message = log.Message ?? "",
-                        Status = log.Status.ToString(),
-                        Stack = log.Stack.Or(""),
-                        Trigger = log.Trigger ?? ""
-                    });
+                            Id = log.DateUuid.ToGuild(),
+                            Number = index,
+                            DateTime = DateTime.SpecifyKind(log.DateTime, DateTimeKind.Utc),
+                            Message = log.Message,
+                            Status = log.Status.ToString(),
+                            Stack = log.Stack.Or(""),
+                            Trigger = log.Trigger
+                        }
+                    );
                 }
                 catch (Exception e) {
                     WriteLine(e);

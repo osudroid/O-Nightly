@@ -8,8 +8,10 @@ namespace OsuDroid.Handler;
 
 public class DropAccountWithTokenAsyncHandler : IHandler<NpgsqlCreates.DbWrapper, LogWrapper,
     ControllerPostWrapper<Guid>, WorkHandlerOutput> {
-    public async ValueTask<Result<WorkHandlerOutput, string>> Handel(NpgsqlCreates.DbWrapper dbWrapper,
-        LogWrapper logger, ControllerPostWrapper<Guid> request) {
+    public async ValueTask<Result<WorkHandlerOutput, string>> Handel(
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<Guid> request) {
         var db = dbWrapper.Db;
         var token = request.Post;
         var log = logger.Logger;

@@ -9,7 +9,9 @@ public class CookieHandlerBasic : ICookieHandler {
     public string Name { get; } = "BASIC";
 
     public async Task<Result<(bool IsOk, long UserId, Guid Token), string>> HandleCookieAsync(
-        NpgsqlConnection db, IRequestCookieCollection requestCookie, IResponseCookies responseCookies) {
+        NpgsqlConnection db,
+        IRequestCookieCollection requestCookie,
+        IResponseCookies responseCookies) {
         var cookieOption = GetCookie(requestCookie);
         if (cookieOption.IsSet() == false)
             return Result<(bool IsOk, long UserId, Guid Token), string>.Ok((false, -1, default));
@@ -34,7 +36,8 @@ public class CookieHandlerBasic : ICookieHandler {
             token.ToString(),
             new CookieOptions {
                 Expires = new DateTimeOffset(DateTime.UtcNow, new TimeSpan(30, 0, 0, 0))
-            });
+            }
+        );
 
         return Result<(bool IsOk, long UserId, Guid Token), string>.Ok((true, tokenInfo.UserId, token));
     }

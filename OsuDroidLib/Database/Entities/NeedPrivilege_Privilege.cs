@@ -3,7 +3,7 @@ using Dapper.Contrib.Extensions;
 namespace OsuDroidLib.Database.Entities;
 
 /// <summary>
-/// Table NeedPrivilege_Privilege
+///     Table NeedPrivilege_Privilege
 /// </summary>
 [Table("NeedPrivilege_Privilege")]
 public class NeedPrivilege_Privilege {

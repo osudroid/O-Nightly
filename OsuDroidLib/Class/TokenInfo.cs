@@ -1,6 +1,6 @@
 using OsuDroidLib.Database.Entities;
 
-namespace OsuDroidLib.Class; 
+namespace OsuDroidLib.Class;
 
 public struct TokenInfo {
     public required long UserId { get; init; }

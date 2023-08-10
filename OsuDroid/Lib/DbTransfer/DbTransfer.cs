@@ -1,5 +1,6 @@
 namespace OsuDroid.Lib.DbTransfer;
 
+// ReSharper disable All
 public class DbTransfer {
     public bool CleanDb { get; private set; }
 

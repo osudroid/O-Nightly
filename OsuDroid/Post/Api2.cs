@@ -55,10 +55,12 @@ public static class Api2 {
             if (Header is null) return false;
             if (Body is null) return false;
 
-            return Security.GetSecurity().Api2HashValidate(
-                Header.HashBodyData ?? "",
-                Body.ToSingleString(),
-                Setting.RequestHash_Keyword!.Value);
+            return Security.GetSecurity()
+                           .Api2HashValidate(
+                               Header.HashBodyData ?? "",
+                               Body.ToSingleString(),
+                               Setting.RequestHash_Keyword!.Value
+                           );
         }
     }
 

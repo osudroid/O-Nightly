@@ -23,9 +23,11 @@ public static class Service {
 
     private static async Task<List<DateTime>> GetCalcDays(NpgsqlConnection db) {
         var lastTimeVResult = await db.SafeQueryFirstOrDefaultAsync<Entities.GlobalRankingTimeline>(
-            "SELECT * FROM GlobalRankingTimeline ORDER BY date DESC LIMIT 1");
+            "SELECT * FROM GlobalRankingTimeline ORDER BY date DESC LIMIT 1"
+        );
         var firstScoreResult = await db.SafeQueryFirstOrDefaultAsync<Entities.PlayScore>(
-            "SELECT * FROM PlayScore ORDER BY date ASC LIMIT 1");
+            "SELECT * FROM PlayScore ORDER BY date ASC LIMIT 1"
+        );
 
         if (lastTimeVResult == EResult.Err) {
             WriteLine(lastTimeVResult.Err());
@@ -105,7 +107,8 @@ FROM (
          GROUP BY UserId
      ) ScoreBuilder
 ORDER BY global_ranking;
-");
+"
+        );
         return com;
     }
 }

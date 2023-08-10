@@ -12,7 +12,9 @@ public class WebProfileStatsTimeLineHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerGetWrapper<UserIdBoxDto>,
         OptionHandlerOutput<ViewUserRankTimeLine>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewUserRankTimeLine>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerGetWrapper<UserIdBoxDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerGetWrapper<UserIdBoxDto> request) {
         var db = dbWrapper.Db;
         var userId = request.Get.UserId;
 
@@ -25,15 +27,19 @@ public class WebProfileStatsTimeLineHandler
         var rankingTimeline = result
                               .Ok()
                               .Select(x => new ViewUserRankTimeLine.RankTimeLineValue {
-                                  Date = x.Date,
-                                  Score = x.Score,
-                                  Rank = x.GlobalRanking
-                              }).ToList();
+                                      Date = x.Date,
+                                      Score = x.Score,
+                                      Rank = x.GlobalRanking
+                                  }
+                              )
+                              .ToList();
 
         return Result<OptionHandlerOutput<ViewUserRankTimeLine>, string>
             .Ok(OptionHandlerOutput<ViewUserRankTimeLine>.With(new ViewUserRankTimeLine {
-                UserId = userId,
-                List = rankingTimeline
-            }));
+                        UserId = userId,
+                        List = rankingTimeline
+                    }
+                )
+            );
     }
 }

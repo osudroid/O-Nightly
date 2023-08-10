@@ -21,8 +21,10 @@ public static class ModelApi2Profile {
     private static readonly TimeoutTokenDictionary<Guid, (long UserId, string Email)> _deleteAccMailToken =
         new(TimeSpan.FromMinutes(5), 10000, 10000);
 
-    public static async Task<Result<ModelResult<ViewProfileStats>, string>> WebProfileStatsAsync(NpgsqlConnection db,
-        LamLog log, long userId) {
+    public static async Task<Result<ModelResult<ViewProfileStats>, string>> WebProfileStatsAsync(
+        NpgsqlConnection db,
+        LamLog log,
+        long userId) {
         var optionUserAndStatsResult = await Query.GetUserInfoAndBblUserStatsByUserIdAsync(db, userId);
 
         if (optionUserAndStatsResult == EResult.Err)
@@ -45,46 +47,51 @@ public static class ModelApi2Profile {
         var optionBblPatron = Option<Entities.Patron>.Empty;
         if ((userInfoAndStats.Email ?? "").Length == 0)
             optionBblPatron = (await log.AddResultAndTransformAsync(await QueryPatron
-                    .GetByPatronEmailAsync(db, userInfoAndStats.Email ?? "")))
+                    .GetByPatronEmailAsync(db, userInfoAndStats.Email ?? "")
+                ))
                 .OkOrDefault();
 
         return Result<ModelResult<ViewProfileStats>, string>
             .Ok(ModelResult<ViewProfileStats>.Ok(new ViewProfileStats {
-                Username = userInfoAndStats.Username,
-                Id = userInfoAndStats.UserId,
-                Found = true,
-                OverallPlaycount = userInfoAndStats.OverallPlaycount,
-                Region = userInfoAndStats.Region,
-                Active = userInfoAndStats.Active,
-                Supporter = optionBblPatron.IsSet() && optionBblPatron.Unwrap().ActiveSupporter,
-                GlobalRanking = rankOpt.Unwrap().GlobalRank,
-                CountryRanking = rankOpt.Unwrap().CountryRank,
-                OverallScore = userInfoAndStats.OverallScore,
-                OverallAccuracy = userInfoAndStats.OverallAccuracy,
-                OverallCombo = userInfoAndStats.OverallCombo,
-                OverallXss = userInfoAndStats.OverallXss,
-                OverallSs = userInfoAndStats.OverallSs,
-                OverallXs = userInfoAndStats.OverallXs,
-                OverallS = userInfoAndStats.OverallS,
-                OverallA = userInfoAndStats.OverallA,
-                OverallB = userInfoAndStats.OverallB,
-                OverallC = userInfoAndStats.OverallC,
-                OverallD = userInfoAndStats.OverallD,
-                OverallHits = userInfoAndStats.OverallHits,
-                OverallPerfect = userInfoAndStats.OverallPlaycount,
-                Overall300 = userInfoAndStats.Overall300,
-                Overall100 = userInfoAndStats.Overall100,
-                Overall50 = userInfoAndStats.Overall50,
-                OverallGeki = userInfoAndStats.OverallGeki,
-                OverallKatu = userInfoAndStats.OverallKatu,
-                OverallMiss = userInfoAndStats.OverallMiss,
-                RegistTime = userInfoAndStats.RegisterTime,
-                LastLoginTime = userInfoAndStats.LastLoginTime
-            }));
+                        Username = userInfoAndStats.Username,
+                        Id = userInfoAndStats.UserId,
+                        Found = true,
+                        OverallPlaycount = userInfoAndStats.OverallPlaycount,
+                        Region = userInfoAndStats.Region,
+                        Active = userInfoAndStats.Active,
+                        Supporter = optionBblPatron.IsSet() && optionBblPatron.Unwrap().ActiveSupporter,
+                        GlobalRanking = rankOpt.Unwrap().GlobalRank,
+                        CountryRanking = rankOpt.Unwrap().CountryRank,
+                        OverallScore = userInfoAndStats.OverallScore,
+                        OverallAccuracy = userInfoAndStats.OverallAccuracy,
+                        OverallCombo = userInfoAndStats.OverallCombo,
+                        OverallXss = userInfoAndStats.OverallXss,
+                        OverallSs = userInfoAndStats.OverallSs,
+                        OverallXs = userInfoAndStats.OverallXs,
+                        OverallS = userInfoAndStats.OverallS,
+                        OverallA = userInfoAndStats.OverallA,
+                        OverallB = userInfoAndStats.OverallB,
+                        OverallC = userInfoAndStats.OverallC,
+                        OverallD = userInfoAndStats.OverallD,
+                        OverallHits = userInfoAndStats.OverallHits,
+                        OverallPerfect = userInfoAndStats.OverallPlaycount,
+                        Overall300 = userInfoAndStats.Overall300,
+                        Overall100 = userInfoAndStats.Overall100,
+                        Overall50 = userInfoAndStats.Overall50,
+                        OverallGeki = userInfoAndStats.OverallGeki,
+                        OverallKatu = userInfoAndStats.OverallKatu,
+                        OverallMiss = userInfoAndStats.OverallMiss,
+                        RegistTime = userInfoAndStats.RegisterTime,
+                        LastLoginTime = userInfoAndStats.LastLoginTime
+                    }
+                )
+            );
     }
 
     public static async Task<Result<ModelResult<ViewUserRankTimeLine>, string>> WebProfileStatsTimeLineAsync(
-        ControllerExtensions controller, NpgsqlConnection db, long userId) {
+        ControllerExtensions controller,
+        NpgsqlConnection db,
+        long userId) {
         var result = await QueryGlobalRankingTimeline
             .BuildTimeLineAsync(db, userId, DateTime.UtcNow - TimeSpan.FromDays(90));
 
@@ -94,20 +101,27 @@ public static class ModelApi2Profile {
         var rankingTimeline = result
                               .Ok()
                               .Select(x => new ViewUserRankTimeLine.RankTimeLineValue {
-                                  Date = x.Date,
-                                  Score = x.Score,
-                                  Rank = x.GlobalRanking
-                              }).ToList();
+                                      Date = x.Date,
+                                      Score = x.Score,
+                                      Rank = x.GlobalRanking
+                                  }
+                              )
+                              .ToList();
 
         return Result<ModelResult<ViewUserRankTimeLine>, string>
             .Ok(ModelResult<ViewUserRankTimeLine>.Ok(new ViewUserRankTimeLine {
-                UserId = userId,
-                List = rankingTimeline
-            }));
+                        UserId = userId,
+                        List = rankingTimeline
+                    }
+                )
+            );
     }
 
     public static async Task<Result<ModelResult<ApiTypes.ViewWork>, string>> UpdateEmailAsync(
-        ControllerExtensions controller, NpgsqlConnection db, LamLog log, UpdateEmailDto updateEmail,
+        ControllerExtensions controller,
+        NpgsqlConnection db,
+        LamLog log,
+        UpdateEmailDto updateEmail,
         UserIdAndToken cookieToken) {
         var userInfoResult = await QueryUserInfo.GetByUserIdAsync(db, cookieToken.UserId);
         if (userInfoResult == EResult.Err)
@@ -120,7 +134,8 @@ public static class ModelApi2Profile {
         var userInfo = userInfoResult.Ok().Unwrap();
 
         var result = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
-            db, userInfo.UserId, updateEmail.Passwd, userInfo.Password ?? "");
+            db, userInfo.UserId, updateEmail.Password, userInfo.Password ?? ""
+        );
 
         if (result == EResult.Err)
             return Result<ModelResult<ApiTypes.ViewWork>, string>.Err(result.Err());
@@ -133,7 +148,8 @@ public static class ModelApi2Profile {
             case { PasswordIsValid: false }:
                 return Result<ModelResult<ApiTypes.ViewWork>, string>
                     .Ok(ModelResult<ApiTypes.ViewWork>
-                        .Ok(new ApiTypes.ViewWork { HasWork = false }));
+                        .Ok(new ApiTypes.ViewWork { HasWork = false })
+                    );
             default:
                 if (result.Ok().RehashPassword)
                     await log.AddLogDebugAsync($"RehashPassword For UserId: {userInfo.UserId}");
@@ -147,7 +163,9 @@ public static class ModelApi2Profile {
     }
 
     public static async Task<Result<ModelResult<ApiTypes.ViewWork>, string>> UpdatePasswdAsync(
-        ControllerExtensions controller, NpgsqlConnection db, UpdatePasswdDto updatePasswd,
+        ControllerExtensions controller,
+        NpgsqlConnection db,
+        UpdatePasswdDto updatePasswd,
         UserIdAndToken cookieToken) {
         var resultUserInfo = await UserInfoManager.GetByUserIdAsync(db, cookieToken.UserId);
         if (resultUserInfo == EResult.Err)
@@ -162,7 +180,7 @@ public static class ModelApi2Profile {
 
         var userInfo = userInfoOption.Unwrap();
         var rightPassword = PasswordHash
-            .IsRightPassword(updatePasswd.OldPasswd, userInfo.Password ?? "");
+            .IsRightPassword(updatePasswd.OldPassword, userInfo.Password ?? "");
 
         if (rightPassword == EResult.Err)
             return rightPassword.ChangeOkType<ModelResult<ApiTypes.ViewWork>>();
@@ -171,7 +189,7 @@ public static class ModelApi2Profile {
             return Result<ModelResult<ApiTypes.ViewWork>, string>
                 .Ok(ModelResult<ApiTypes.ViewWork>.Ok(new ApiTypes.ViewWork { HasWork = false }));
 
-        var newPasswordResult = PasswordHash.HashWithBCryptPassword(updatePasswd.NewPasswd);
+        var newPasswordResult = PasswordHash.HashWithBCryptPassword(updatePasswd.NewPassword);
         if (newPasswordResult == EResult.Err)
             return rightPassword.ChangeOkType<ModelResult<ApiTypes.ViewWork>>();
 
@@ -184,7 +202,9 @@ public static class ModelApi2Profile {
 
 
     public static async Task<Result<ModelResult<ViewUpdateUsernameRes>, string>> UpdateUsernameAsync(
-        ControllerExtensions controller, NpgsqlConnection db, UpdateUsernameDto updateUsername,
+        ControllerExtensions controller,
+        NpgsqlConnection db,
+        UpdateUsernameDto updateUsername,
         UserIdAndToken cookieToken) {
         var userInfoResult = await QueryUserInfo.GetByUserIdAsync(db, cookieToken.UserId);
 
@@ -198,14 +218,16 @@ public static class ModelApi2Profile {
 
         var userInfo = userInfoResult.Ok().Unwrap();
         var resultValidatePassword = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
-            db, userInfo.UserId, updateUsername.Passwd, userInfo.Password!);
+            db, userInfo.UserId, updateUsername.Password, userInfo.Password!
+        );
 
         if (resultValidatePassword == EResult.Err)
             return resultValidatePassword.ChangeOkType<ModelResult<ViewUpdateUsernameRes>>();
 
         if (!resultValidatePassword.Ok().PasswordIsValid)
             return Result<ModelResult<ViewUpdateUsernameRes>, string>.Ok(ModelResult<ViewUpdateUsernameRes>
-                .Ok(new ViewUpdateUsernameRes { HasWork = false }));
+                .Ok(new ViewUpdateUsernameRes { HasWork = false })
+            );
 
         var checkUsername = await UserInfoManager.UsernameIsInUse(db, updateUsername.NewUsername);
 
@@ -214,7 +236,8 @@ public static class ModelApi2Profile {
 
         if (checkUsername.Ok())
             return Result<ModelResult<ViewUpdateUsernameRes>, string>.Ok(ModelResult<ViewUpdateUsernameRes>
-                .Ok(new ViewUpdateUsernameRes { HasWork = false }));
+                .Ok(new ViewUpdateUsernameRes { HasWork = false })
+            );
 
         var result = await UserInfoManager.UpdateUsernameAsync(db, userInfo.UserId, updateUsername.NewUsername);
 
@@ -222,11 +245,14 @@ public static class ModelApi2Profile {
             return result.ConvertTo<ModelResult<ViewUpdateUsernameRes>>();
 
         return Result<ModelResult<ViewUpdateUsernameRes>, string>.Ok(ModelResult<ViewUpdateUsernameRes>
-            .Ok(new ViewUpdateUsernameRes { HasWork = true }));
+            .Ok(new ViewUpdateUsernameRes { HasWork = true })
+        );
     }
 
     public static async Task<Result<ModelResult<ViewUpdateAvatar>, string>> UpdateAvatarAsync(
-        ControllerExtensions controller, NpgsqlConnection db, UpdateAvatarDto updateAvatar,
+        ControllerExtensions controller,
+        NpgsqlConnection db,
+        UpdateAvatarDto updateAvatar,
         UserIdAndToken cookieToken) {
         var userInfoResult = await QueryUserInfo.GetByUserIdAsync(db, cookieToken.UserId);
 
@@ -239,19 +265,21 @@ public static class ModelApi2Profile {
 
         var userInfo = userInfoResult.Ok().Unwrap();
         var resultValidatePassword = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
-            db, userInfo.UserId, updateAvatar.Passwd, userInfo.Password!);
+            db, userInfo.UserId, updateAvatar.Password, userInfo.Password!
+        );
 
         if (resultValidatePassword == EResult.Err)
             return resultValidatePassword.ChangeOkType<ModelResult<ViewUpdateAvatar>>();
 
         if (!resultValidatePassword.Ok().PasswordIsValid)
             return Result<ModelResult<ViewUpdateAvatar>, string>.Ok(ModelResult<ViewUpdateAvatar>
-                .Ok(new ViewUpdateAvatar { PasswdFalse = true, ImageToBig = false, IsNotAImage = false }));
+                .Ok(new ViewUpdateAvatar { PasswdFalse = true, ImageToBig = false, IsNotAImage = false })
+            );
 
 
         var imageBytes = Array.Empty<byte>();
         try {
-            var charArr = updateAvatar.ImageBase64.AsSpan(updateAvatar.ImageBase64!.IndexOf(',') + 1).ToArray();
+            var charArr = updateAvatar.ImageBase64.AsSpan(updateAvatar.ImageBase64.IndexOf(',') + 1).ToArray();
             // TODO Write one Convert.FromBase64String With Span
             imageBytes = Convert.FromBase64CharArray(charArr, 0, charArr.Length);
         }
@@ -266,15 +294,19 @@ public static class ModelApi2Profile {
 
         return Result<ModelResult<ViewUpdateAvatar>, string>
             .Ok(ModelResult<ViewUpdateAvatar>.Ok(new ViewUpdateAvatar {
-                PasswdFalse = false,
-                ImageToBig = false,
-                IsNotAImage = false
-            }));
+                        PasswdFalse = false,
+                        ImageToBig = false,
+                        IsNotAImage = false
+                    }
+                )
+            );
     }
 
     public static async Task<Result<ModelResult<ApiTypes.ViewWork>, string>> UpdatePatreonEmailAsync(
         ControllerExtensions controller,
-        NpgsqlConnection db, UpdatePatreonEmailDto updatePatreonEmail, UserIdAndToken cookieToken) {
+        NpgsqlConnection db,
+        UpdatePatreonEmailDto updatePatreonEmail,
+        UserIdAndToken cookieToken) {
         var userInfoResult = await QueryUserInfo.GetByUserIdAsync(db, cookieToken.UserId);
 
         if (userInfoResult == EResult.Err)
@@ -286,18 +318,20 @@ public static class ModelApi2Profile {
 
         var userInfo = userInfoResult.Ok().Unwrap();
         var resultValidatePassword = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
-            db, userInfo.UserId, updatePatreonEmail.Passwd, userInfo.Password!);
+            db, userInfo.UserId, updatePatreonEmail.Password, userInfo.Password!
+        );
 
         if (resultValidatePassword == EResult.Err)
             return resultValidatePassword.ChangeOkType<ModelResult<ApiTypes.ViewWork>>();
 
         if (!resultValidatePassword.Ok().PasswordIsValid)
             return Result<ModelResult<ApiTypes.ViewWork>, string>.Ok(ModelResult<ApiTypes.ViewWork>
-                .Ok(new ApiTypes.ViewWork { HasWork = false }));
+                .Ok(new ApiTypes.ViewWork { HasWork = false })
+            );
 
         var token = Guid.NewGuid();
 
-        _patreoneMailToken.Add(token, (cookieToken.UserId, updatePatreonEmail.Email!));
+        _patreoneMailToken.Add(token, (cookieToken.UserId, updatePatreonEmail.Email));
 
         SendEmail.MainSendPatreonVerifyLinkToken(userInfo.Username!, userInfo.Email!, token);
 
@@ -306,7 +340,9 @@ public static class ModelApi2Profile {
     }
 
     public static async Task<Result<ModelResult<ApiTypes.ViewWork>, string>> AcceptPatreonEmailAsync(
-        ControllerExtensions controller, NpgsqlConnection db, Guid token) {
+        ControllerExtensions controller,
+        NpgsqlConnection db,
+        Guid token) {
         var response = _patreoneMailToken.Pop(token);
 
         if (response.IsNotSet())
@@ -328,8 +364,10 @@ public static class ModelApi2Profile {
     }
 
     public static async Task<Result<ModelResult<ViewCreateDropAccountTokenRes>, string>> CreateDropAccountTokenAsync(
-        ControllerExtensions controller, NpgsqlConnection db,
-        CreateDropAccountTokenDto createDropAccountToken, UserIdAndToken cookieToken) {
+        ControllerExtensions controller,
+        NpgsqlConnection db,
+        CreateDropAccountTokenDto createDropAccountToken,
+        UserIdAndToken cookieToken) {
         var optionBblUserResult = await QueryUserInfo.GetByUserIdAsync(db, cookieToken.UserId);
 
         if (optionBblUserResult == EResult.Err)
@@ -350,7 +388,8 @@ public static class ModelApi2Profile {
 
         var userInfo = userInfoResult.Ok().Unwrap();
         var resultValidatePassword = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
-            db, userInfo.UserId, createDropAccountToken.Password, userInfo.Password!);
+            db, userInfo.UserId, createDropAccountToken.Password, userInfo.Password!
+        );
 
         if (resultValidatePassword == EResult.Err)
             return resultValidatePassword.ChangeOkType<ModelResult<ViewCreateDropAccountTokenRes>>();
@@ -358,20 +397,25 @@ public static class ModelApi2Profile {
         if (!resultValidatePassword.Ok().PasswordIsValid)
             return Result<ModelResult<ViewCreateDropAccountTokenRes>, string>.Ok(
                 ModelResult<ViewCreateDropAccountTokenRes>
-                    .Ok(ViewCreateDropAccountTokenRes.PasswordIsFalse()));
+                    .Ok(ViewCreateDropAccountTokenRes.PasswordIsFalse())
+            );
 
 
         var deleteAccToken = Guid.NewGuid();
         _deleteAccMailToken.Add(deleteAccToken, (userInfo.UserId, userInfo.Email ?? ""));
         SendEmail.MainSendDropAccountVerifyLinkToken(userInfo.Username ?? "", userInfo.Email ?? "",
-            deleteAccToken);
+            deleteAccToken
+        );
 
         return Result<ModelResult<ViewCreateDropAccountTokenRes>, string>
             .Ok(ModelResult<ViewCreateDropAccountTokenRes>.Ok(ViewCreateDropAccountTokenRes.NoError()));
     }
 
     public static async Task<Result<ModelResult<ApiTypes.ViewWork>, string>> DropAccountWithTokenAsync(
-        ControllerExtensions controller, NpgsqlConnection db, Guid token, UserIdAndToken cookieToken) {
+        ControllerExtensions controller,
+        NpgsqlConnection db,
+        Guid token,
+        UserIdAndToken cookieToken) {
         _deleteAccMailToken.CleanDeadTokens();
 
 
@@ -388,11 +432,14 @@ public static class ModelApi2Profile {
             return deleteAccountResponse.ConvertTo<ModelResult<ApiTypes.ViewWork>>();
 
         return Result<ModelResult<ApiTypes.ViewWork>, string>.Ok(
-            ModelResult<ApiTypes.ViewWork>.Ok(ApiTypes.ViewWork.True));
+            ModelResult<ApiTypes.ViewWork>.Ok(ApiTypes.ViewWork.True)
+        );
     }
 
     public static async Task<Result<ModelResult<ViewPlaysMarksLength>, string>> WebProfileTopPlaysByMarksLengthAsync(
-        ControllerExtensions controller, NpgsqlConnection db, long userId) {
+        ControllerExtensions controller,
+        NpgsqlConnection db,
+        long userId) {
         var result = await QueryPlayScore.CountMarkPlaysByUserIdAsync(db, userId);
         if (result == EResult.Err)
             return result.ChangeOkType<ModelResult<ViewPlaysMarksLength>>();

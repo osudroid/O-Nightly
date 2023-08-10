@@ -2,6 +2,7 @@ using OsuDroid.Utils;
 
 namespace OsuDroid.Lib.OdrZip;
 
+// ReSharper disable All
 public class OdrEntry {
     public int Version { get; set; }
     public OdrReplay? Replay { get; set; }

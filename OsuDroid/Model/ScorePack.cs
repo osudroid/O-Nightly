@@ -6,7 +6,8 @@ namespace OsuDroid.Model;
 public static class ScorePack {
     public static async Task<Result<Option<(Entities.PlayScore Score, string Username, string Region)>, string>>
         GetByPlayIdAsync(
-            NpgsqlConnection db, long playId) {
+            NpgsqlConnection db,
+            long playId) {
         var resultScore = await QueryPlayScore.GetPlayScoreByIdAsync(db, playId);
 
         if (resultScore == EResult.Err)
@@ -25,7 +26,8 @@ public static class ScorePack {
         var resultUser = await QueryUserInfo.GetUsernameAndRegionByUserId(db, score.UserId);
         if (resultUser == EResult.Err)
             return Result<Option<(Entities.PlayScore Score, string Username, string Region)>, string>.Err(
-                resultUser.Err());
+                resultUser.Err()
+            );
 
         if (resultUser.Ok().IsSet() == false)
             return Result<Option<(Entities.PlayScore Score, string Username, string Region)>, string>
@@ -34,6 +36,8 @@ public static class ScorePack {
         var user = resultUser.Ok().Unwrap();
         return Result<Option<(Entities.PlayScore Score, string Username, string Region)>, string>
             .Ok(Option<(Entities.PlayScore Score, string Username, string Region)>.With((score, user.Username!,
-                user.Region!)));
+                        user.Region!)
+                )
+            );
     }
 }

@@ -9,9 +9,10 @@ public class GlobalRankingTimeline {
     public long GlobalRanking { get; set; }
     public long Score { get; set; }
 
-    public static Database.Entities.GlobalRankingTimeline FromLeaderBoardUser(
-        Database.Entities.LeaderBoardUser leaderBoardUser, DateTime dateTime) {
-        return new Database.Entities.GlobalRankingTimeline {
+    public static GlobalRankingTimeline FromLeaderBoardUser(
+        LeaderBoardUser leaderBoardUser,
+        DateTime dateTime) {
+        return new GlobalRankingTimeline {
             UserId = leaderBoardUser.UserId,
             Date = dateTime,
             Score = leaderBoardUser.OverallScore,

@@ -9,11 +9,12 @@ public sealed class ViewCreateDropAccountTokenRes : IView, PostApi.IValuesAreGoo
 
     public string ToSingleString() {
         return Merge.ListToString(new[] {
-            Work.ToString(),
-            PasswordFalse.ToString(),
-            CookieDead.ToString(),
-            ElseError.ToString()
-        });
+                Work.ToString(),
+                PasswordFalse.ToString(),
+                CookieDead.ToString(),
+                ElseError.ToString()
+            }
+        );
     }
 
     public bool ValuesAreGood() {

@@ -1,4 +1,4 @@
-namespace OsuDroidLib.Database.Entities; 
+namespace OsuDroidLib.Database.Entities;
 
 public class PatreonDeleteAccEmailToken {
     public long UserId { get; set; }

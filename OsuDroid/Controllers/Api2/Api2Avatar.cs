@@ -72,11 +72,14 @@ public class Api2Avatar : ControllerExtensions {
             new TransformAction<ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostAvatarHashesByUserIds>>,
                 ControllerPostWrapper<AvatarHashesByUserIdsDto>>(
                 i => new ControllerPostWrapper<AvatarHashesByUserIdsDto>(
-                    i.Controller, DtoMapper.AvatarHashesByUserIdsToDto(i.Post.Body!))),
+                    i.Controller, DtoMapper.AvatarHashesByUserIdsToDto(i.Post.Body!)
+                )
+            ),
             new GetAvatarHashesByUserIdsHandler(),
             new ViewExistOrFoundInfoHandler<ViewAvatarHashes>(),
             new ControllerPostWrapper<PostApi.PostApi2GroundNoHeader<PostAvatarHashesByUserIds>>(
-                ControllerHandlerBuild(), prop)
+                ControllerHandlerBuild(), prop
+            )
         );
         return TransactionToIResult(transaction);
     }

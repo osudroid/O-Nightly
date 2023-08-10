@@ -68,7 +68,8 @@ public class Api2Submit : ControllerExtensions {
                     tokenInfoResp.Unwrap().UserId,
                     prop.Body!.Filename!,
                     prop.Body!.FileHash!
-                ));
+                )
+            );
 
             if (result == EResult.Err) {
                 if (!isComplete) {
@@ -164,7 +165,8 @@ public class Api2Submit : ControllerExtensions {
             }
 
             var result = await log.AddResultAndTransformAsync(await ModelApi2Submit
-                .InsertFinishPlayAndUpdateUserScoreAsync(db, tokenInfoResp.Unwrap().UserId, prop.Body!));
+                .InsertFinishPlayAndUpdateUserScoreAsync(db, tokenInfoResp.Unwrap().UserId, prop.Body!)
+            );
 
             if (result == EResult.Err) {
                 if (!isComplete) {
@@ -226,8 +228,9 @@ public class Api2Submit : ControllerExtensions {
         try {
             try {
                 var value =
-                    JsonConvert.DeserializeObject<PostApi.PostApi2GroundWithHash<PostApi2UploadReplayFile>>(form.Prop ??
-                        "");
+                    JsonConvert.DeserializeObject<PostApi.PostApi2GroundWithHash<PostApi2UploadReplayFile>>(
+                        form.Prop ?? ""
+                    );
                 if (value is null) {
                     if (!isComplete) {
                         isComplete = true;
@@ -279,7 +282,8 @@ public class Api2Submit : ControllerExtensions {
 
             var tokenInfoResult = await log
                 .AddResultAndTransformAsync(await TokenHandlerManger.GetOrCreateCacheDatabase()
-                                                                    .GetTokenInfoAsync(db, prop.Header!.Token));
+                                                                    .GetTokenInfoAsync(db, prop.Header!.Token)
+                );
 
             if (tokenInfoResult == EResult.Err) {
                 if (!isComplete) {
@@ -301,11 +305,12 @@ public class Api2Submit : ControllerExtensions {
 
 
             var resp = await log.AddResultAndTransformAsync(await Upload.UploadReplayAsync(
-                db,
-                prop.Body!.MapHash ?? "",
-                prop.Body!.ReplayId,
-                tokenInfoResult.Ok().Unwrap().UserId,
-                form.File)
+                    db,
+                    prop.Body!.MapHash ?? "",
+                    prop.Body!.ReplayId,
+                    tokenInfoResult.Ok().Unwrap().UserId,
+                    form.File
+                )
             );
 
             if (resp == EResult.Err) {

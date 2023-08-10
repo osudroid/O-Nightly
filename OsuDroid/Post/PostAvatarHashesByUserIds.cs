@@ -7,9 +7,10 @@ public class PostAvatarHashesByUserIds : Api2.IValuesAreGood, Api2.ISingleString
 
     public string ToSingleString() {
         return Merge.ListToString(new object[] {
-            Size,
-            Merge.ListToString(UserIds ?? Array.Empty<long>())
-        });
+                Size,
+                Merge.ListToString(UserIds ?? Array.Empty<long>())
+            }
+        );
     }
 
     public bool ValuesAreGood() {

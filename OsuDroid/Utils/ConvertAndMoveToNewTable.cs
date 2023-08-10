@@ -70,8 +70,8 @@ public class ConvertAndMoveToNewTable {
                         var bblScore = new Entities.PlayScore {
                             PlayScoreId = score.id,
                             UserId = score.id,
-                            Filename = score.filename ??
-                                       throw new NullReferenceException($"score.filename score.id: {score.id}"),
+                            Filename = score.filename
+                                       ?? throw new NullReferenceException($"score.filename score.id: {score.id}"),
                             Hash = score.hash ?? throw new NullReferenceException($"score.hash score.id: {score.id}"),
                             Mode = Mode.ModeAsSingleStringToModeArray(score.mode),
                             Score = score.score,
@@ -148,7 +148,8 @@ VALUES                (@PlayScoreId, @UserId, @Filename, @Hash, @Mode, @Score, @
                         var scores = pair.Value.ToArray();
                         var userStats = CreateUserStats(userId, scores);
                         WriteLine(
-                            $"Calc Stats UserId: {userId}, Score: {userStats.OverallScore}, ScoresRows: {scores.Length}");
+                            $"Calc Stats UserId: {userId}, Score: {userStats.OverallScore}, ScoresRows: {scores.Length}"
+                        );
                         stats.Add(userStats);
                     }
                 );
@@ -181,7 +182,8 @@ VALUES (
         @OverallKatu, 
         @OverallMiss
 );
-", x);
+", x
+                    );
                 }
             }
 
@@ -329,7 +331,8 @@ INTO UserStats (
             Entities.PlayScore[] scores;
             await using var db = await DbBuilder.BuildNpgsqlConnection();
             scores = (await db.QueryAsync<Entities.PlayScore>(
-                    $"SELECT * FROM public.PlayScore WHERE UserId = {user.UserId}"))
+                    $"SELECT * FROM public.PlayScore WHERE UserId = {user.UserId}"
+                ))
                 .ToArray();
             var userStats = CreateUserStats(user.UserId, scores);
             WriteLine($"SET Stats UserId: {user.UserId}, Score: {userStats.OverallScore}, ScoresRows: {scores.Length}");
@@ -403,7 +406,8 @@ VALUES (
         @UsernameLastChange, 
         @PatronEmail, 
         @PatronEmailAccept)
-", users);
+", users
+        );
     }
 
     private static async ValueTask SingleTransfer(Entities.UserInfo userInfo, CancellationToken token) {
@@ -454,7 +458,8 @@ VALUES (
         @Miss,
         @Date,
         @Accuracy)
-", scores);
+", scores
+        );
     }
 
     private static bool IsNullOrEmptyOrNULLOrNullOrWhitespace(string? value) {
@@ -506,22 +511,23 @@ VALUES (
         }
 
         var bblUsers = bblUsersOld.Select(bblUser => new Entities.UserInfo {
-            Active = bblUser.active == 1,
-            Banned = bblUser.banned == 1,
-            DeviceId = "",
-            Email = bblUser.email,
-            UserId = bblUser.id,
-            Password = bblUser.password,
-            Region = (bblUser.region ?? "").ToUpper(),
-            Username = bblUser.username,
-            PatronEmail = null,
-            LatestIp = bblUser.regist_ip ?? "",
-            RegisterTime = DateTime.SpecifyKind(bblUser.regist_time, DateTimeKind.Utc),
-            RestrictMode = false,
-            LastLoginTime = DateTime.SpecifyKind(bblUser.last_login_time, DateTimeKind.Utc),
-            PatronEmailAccept = false,
-            UsernameLastChange = DateTime.SpecifyKind(bblUser.regist_time, DateTimeKind.Utc)
-        });
+                Active = bblUser.active == 1,
+                Banned = bblUser.banned == 1,
+                DeviceId = "",
+                Email = bblUser.email,
+                UserId = bblUser.id,
+                Password = bblUser.password,
+                Region = (bblUser.region ?? "").ToUpper(),
+                Username = bblUser.username,
+                PatronEmail = null,
+                LatestIp = bblUser.regist_ip ?? "",
+                RegisterTime = DateTime.SpecifyKind(bblUser.regist_time, DateTimeKind.Utc),
+                RestrictMode = false,
+                LastLoginTime = DateTime.SpecifyKind(bblUser.last_login_time, DateTimeKind.Utc),
+                PatronEmailAccept = false,
+                UsernameLastChange = DateTime.SpecifyKind(bblUser.regist_time, DateTimeKind.Utc)
+            }
+        );
 
         return RemoveAllEqUsername(RemoveAllEqEmails(bblUsers)).ToArray();
     }
@@ -610,19 +616,19 @@ VALUES (
 
     private static async Task RemoveAllRowsFromNewTables(NpgsqlConnection db) {
         WriteLine("Start DELETE FROM public.Patron");
-        await db.ExecuteAsync("DELETE FROM public.Patron", null, 4000);
+        await db.ExecuteAsync("DELETE FROM public.Patron", null);
         WriteLine("Start DELETE FROM public.PlayScore");
-        await db.ExecuteAsync("DELETE FROM public.PlayScore", null, 4000);
+        await db.ExecuteAsync("DELETE FROM public.PlayScore", null);
         WriteLine("Start DELETE FROM public.PlayscoreBanned");
-        await db.ExecuteAsync("DELETE FROM public.PlayscoreBanned", null, 4000);
+        await db.ExecuteAsync("DELETE FROM public.PlayscoreBanned", null);
         WriteLine("Start DELETE FROM public.PlayScorePreSubmit");
-        await db.ExecuteAsync("DELETE FROM public.PlayScorePreSubmit", null, 4000);
+        await db.ExecuteAsync("DELETE FROM public.PlayScorePreSubmit", null);
         WriteLine("Start DELETE FROM public.UserStats");
-        await db.ExecuteAsync("DELETE FROM public.UserStats", null, 4000);
+        await db.ExecuteAsync("DELETE FROM public.UserStats", null);
         WriteLine("Start DELETE FROM public.UserInfo");
         // await db.ExecuteAsync("DELETE FROM public.UserInfo", null, null, commandTimeout: 4000);
         WriteLine("Start DELETE FROM public.GlobalRankingTimeLine");
-        await db.ExecuteAsync("DELETE FROM public.GlobalRankingTimeLine", null, 4000);
+        await db.ExecuteAsync("DELETE FROM public.GlobalRankingTimeLine", null);
     }
 
 
@@ -675,9 +681,12 @@ VALUES (
 
         foreach (var (key, bblScore) in dictionary) {
             if (EPlayScoreMarkExtensions.TryParse(PlayScoreDto.OldMarkOrMarkToMark(bblScore.Mark ?? ""),
-                    out var mark) == false)
+                    out var mark
+                )
+                == false)
                 throw new Exception(
-                    $"Can Not Convert To Play PlayScoreDto UserId: {bblScore.UserId}, PlayScoreId: {bblScore.PlayScoreId}");
+                    $"Can Not Convert To Play PlayScoreDto UserId: {bblScore.UserId}, PlayScoreId: {bblScore.PlayScoreId}"
+                );
             var dto = PlayScoreDto.ToPlayScoreDto(bblScore).Unwrap();
 
             bblUserStats.OverallScore += bblScore.Score;

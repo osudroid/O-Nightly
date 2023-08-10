@@ -4,5 +4,5 @@ namespace OsuDroid.Class.Dto;
 public sealed class UpdateUsernameDto : IDto {
     public required string NewUsername { get; init; }
     public required string OldUsername { get; init; }
-    public required string Passwd { get; init; }
+    public required string Password { get; init; }
 }

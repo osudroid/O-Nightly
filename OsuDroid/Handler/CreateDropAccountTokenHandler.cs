@@ -12,7 +12,8 @@ namespace OsuDroid.Handler;
 public class CreateDropAccountTokenHandler : IHandler<NpgsqlCreates.DbWrapper, LogWrapper,
     ControllerPostWrapper<CreateDropAccountTokenDto>, OptionHandlerOutput<ViewCreateDropAccountTokenRes>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewCreateDropAccountTokenRes>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger,
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
         ControllerPostWrapper<CreateDropAccountTokenDto> request) {
         var db = dbWrapper.Db;
         var createDropAccountToken = request.Post;
@@ -21,7 +22,8 @@ public class CreateDropAccountTokenHandler : IHandler<NpgsqlCreates.DbWrapper, L
 
         if (cookieTokenWithUserIdOption.IsNotSet())
             return Result<OptionHandlerOutput<ViewCreateDropAccountTokenRes>, string>.Err(
-                TraceMsg.WithMessage("Cookie Error"));
+                TraceMsg.WithMessage("Cookie Error")
+            );
         var userId = cookieTokenWithUserIdOption.Unwrap().UserId;
 
 
@@ -32,7 +34,8 @@ public class CreateDropAccountTokenHandler : IHandler<NpgsqlCreates.DbWrapper, L
 
         if (optionBblUserResult.Ok().IsNotSet())
             return Result<OptionHandlerOutput<ViewCreateDropAccountTokenRes>, string>.Err(
-                TraceMsg.WithMessage("User Not Found"));
+                TraceMsg.WithMessage("User Not Found")
+            );
 
         var userInfoResult = await QueryUserInfo.GetByUserIdAsync(db, userId);
 
@@ -45,7 +48,8 @@ public class CreateDropAccountTokenHandler : IHandler<NpgsqlCreates.DbWrapper, L
 
         var userInfo = userInfoResult.Ok().Unwrap();
         var resultValidatePassword = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
-            db, userInfo.UserId, createDropAccountToken.Password, userInfo.Password!);
+            db, userInfo.UserId, createDropAccountToken.Password, userInfo.Password!
+        );
 
         if (resultValidatePassword == EResult.Err)
             return resultValidatePassword.ChangeOkType<OptionHandlerOutput<ViewCreateDropAccountTokenRes>>();
@@ -53,18 +57,22 @@ public class CreateDropAccountTokenHandler : IHandler<NpgsqlCreates.DbWrapper, L
         if (!resultValidatePassword.Ok().PasswordIsValid)
             return Result<OptionHandlerOutput<ViewCreateDropAccountTokenRes>, string>.Ok(
                 OptionHandlerOutput<ViewCreateDropAccountTokenRes>.With(ViewCreateDropAccountTokenRes
-                    .PasswordIsFalse()));
+                    .PasswordIsFalse()
+                )
+            );
 
         var deleteAccToken = Guid.NewGuid();
         var res = await PatreonDeleteAccEmailTokenManager.InsertAsync(db, new Entities.PatreonDeleteAccEmailToken {
-            UserId = userInfo.UserId,
-            Email = userInfo.Email,
-            CreateTime = DateTime.UtcNow,
-            Token = deleteAccToken
-        });
+                UserId = userInfo.UserId,
+                Email = userInfo.Email,
+                CreateTime = DateTime.UtcNow,
+                Token = deleteAccToken
+            }
+        );
 
         if (res == EResult.Err) return res.ConvertTo<OptionHandlerOutput<ViewCreateDropAccountTokenRes>>();
         return Result<OptionHandlerOutput<ViewCreateDropAccountTokenRes>, string>.Ok(
-            OptionHandlerOutput<ViewCreateDropAccountTokenRes>.With(ViewCreateDropAccountTokenRes.NoError()));
+            OptionHandlerOutput<ViewCreateDropAccountTokenRes>.With(ViewCreateDropAccountTokenRes.NoError())
+        );
     }
 }

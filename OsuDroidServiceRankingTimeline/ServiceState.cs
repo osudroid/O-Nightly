@@ -1,4 +1,3 @@
 namespace OsuDroidServiceRankingTimeline;
 
-public class ServiceState {
-}
+public class ServiceState;

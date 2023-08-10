@@ -11,17 +11,19 @@ public sealed class PostWebLoginWithUsername : Api2.IValuesAreGood, Api2.ISingle
 
     public string ToSingleString() {
         return Merge.ListToString(new[] {
-            Math.ToString(),
-            Token.ToString(),
-            Username ?? "",
-            Password ?? ""
-        });
+                Math.ToString(),
+                Token.ToString(),
+                Username ?? "",
+                Password ?? ""
+            }
+        );
     }
 
     public bool ValuesAreGood() {
-        return Token != default
-               && ValidationUsername.Validation(Username)
-               && ValidationPassword.ValidationOldVersion(Password)
-            ;
+        if (Token == default) return false;
+        if (!ValidationUsername.Validation(Username)) return false;
+        if (!ValidationPassword.ValidationOldVersion(Password)) return false;
+
+        return true;
     }
 }

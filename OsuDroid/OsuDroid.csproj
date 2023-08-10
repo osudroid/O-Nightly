@@ -25,14 +25,14 @@
 
     <ItemGroup>
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3"/>
-        <PackageReference Include="Mediator.Abstractions" Version="2.1.5" />
+        <PackageReference Include="Mediator.Abstractions" Version="2.1.5"/>
         <PackageReference Include="Mediator.SourceGenerator" Version="2.1.5">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0-preview.5.23302.2"/>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0"/>
         <PackageReference Include="Riok.Mapperly" Version="2.9.0-next.2"/>
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0"/>
 
@@ -47,10 +47,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\OsuDroidAttachment\OsuDroidAttachment.csproj" />
+        <ProjectReference Include="..\OsuDroidAttachment\OsuDroidAttachment.csproj"/>
         <ProjectReference Include="..\OsuDroidExtraInterface\OsuDroidExtraInterface.csproj"/>
         <ProjectReference Include="..\OsuDroidLib\OsuDroidLib.csproj"/>
-<!--        <ProjectReference Include="..\OsuDroidMediator\OsuDroidMediator.csproj" />-->
+        <!--        <ProjectReference Include="..\OsuDroidMediator\OsuDroidMediator.csproj" />-->
         <ProjectReference Include="..\Patreon.NET\Patreon.NET.csproj"/>
     </ItemGroup>
 

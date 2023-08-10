@@ -1,5 +1,6 @@
 namespace OsuDroid.View;
 
+// ReSharper disable All
 public sealed class ViewPlayScore : IView {
     public long PlayScoreId { get; set; }
     public long UserId { get; set; }

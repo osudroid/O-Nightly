@@ -1,4 +1,4 @@
-namespace OsuDroidLib.Database.Entities; 
+namespace OsuDroidLib.Database.Entities;
 
 public class WebLoginMathResult {
     public Guid WebLoginMathResultId { get; set; }

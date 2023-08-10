@@ -1,5 +1,5 @@
-namespace OsuDroidAttachment.Interface; 
+namespace OsuDroidAttachment.Interface;
 
-public interface ILogger: IAsyncDisposable {
+public interface ILogger : IAsyncDisposable {
     public ValueTask CommitAsync();
 }

@@ -1,5 +1,4 @@
-namespace OsuDroidAttachment.Interface; 
+namespace OsuDroidAttachment.Interface;
 
 public interface IInput {
-    
 }

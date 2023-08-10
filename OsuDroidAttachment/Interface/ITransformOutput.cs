@@ -1,3 +1,4 @@
-namespace OsuDroidAttachment.Interface; 
+namespace OsuDroidAttachment.Interface;
 
-public interface ITransformOutput { }
+public interface ITransformOutput {
+}

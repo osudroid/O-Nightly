@@ -14,7 +14,9 @@ public class WebRegisterHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<WebRegisterDto>,
         OptionHandlerOutput<ViewWebLogin>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewWebLogin>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<WebRegisterDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<WebRegisterDto> request) {
         var now = DateTime.UtcNow;
         var data = request.Post;
         var db = dbWrapper.Db;
@@ -28,12 +30,14 @@ public class WebRegisterHandler
             || tokenResult.Ok().Unwrap().MathResult != data.MathRes
            )
             return Result<OptionHandlerOutput<ViewWebLogin>, string>.Ok(OptionHandlerOutput<ViewWebLogin>.With(
-                new ViewWebLogin {
-                    Work = false,
-                    EmailFalse = false,
-                    UsernameFalse = false,
-                    UserOrPasswdOrMathIsFalse = true
-                }));
+                    new ViewWebLogin {
+                        Work = false,
+                        EmailFalse = false,
+                        UsernameFalse = false,
+                        UserOrPasswdOrMathIsFalse = true
+                    }
+                )
+            );
 
         var findResult = await QueryUserInfo.GetEmailAndUsernameByEmailAndUsername(db, data.Email, data.Username);
 
@@ -49,7 +53,8 @@ public class WebRegisterHandler
             if (find.Unwrap().Email == data.Email)
                 return Result<OptionHandlerOutput<ViewWebLogin>, string>
                     .Ok(OptionHandlerOutput<ViewWebLogin>
-                        .With(new ViewWebLogin { EmailFalse = true }));
+                        .With(new ViewWebLogin { EmailFalse = true })
+                    );
         }
 
 
@@ -65,8 +70,8 @@ public class WebRegisterHandler
             Active = true,
             Banned = false,
             DeviceId = "",
-            Email = (data.Email ?? "").ToLower(),
-            Password = PasswordHash.HashWithBCryptPassword(data.Passwd).Ok(),
+            Email = data.Email.ToLower(),
+            Password = PasswordHash.HashWithBCryptPassword(data.Password).Ok(),
             Username = data.Username,
             Region = optionCountry.IsSet() ? optionCountry.Unwrap().NameShort : "",
             LatestIp = ip.ToString(),

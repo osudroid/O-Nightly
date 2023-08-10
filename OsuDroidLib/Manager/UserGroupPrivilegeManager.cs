@@ -1,4 +1,3 @@
 namespace OsuDroidLib.Manager;
 
-public static class UserGroupPrivilegeManager {
-}
+public static class UserGroupPrivilegeManager;

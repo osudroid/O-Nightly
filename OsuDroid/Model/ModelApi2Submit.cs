@@ -18,7 +18,8 @@ public static class ModelApi2Submit {
         var optionHistory = resultHistory.Ok();
         if (optionHistory.IsSet() == false)
             return Result<ModelResult<ViewPushReplayResult200>, string>.Ok(ModelResult<ViewPushReplayResult200>
-                .BadRequest());
+                .BadRequest()
+            );
 
         var history = optionHistory.Unwrap();
 
@@ -70,7 +71,8 @@ public static class ModelApi2Submit {
             return Result<ModelResult<ViewPushReplayResult200>, string>.Err(resultErrDb.Err());
 
         var resultUserTopScore = await QueryPlayScore.GetUserTopScoreAsync(
-            db, history.UserId, history.Filename!, history.Hash!);
+            db, history.UserId, history.Filename!, history.Hash!
+        );
 
         if (resultUserTopScore == EResult.Err)
             return Result<ModelResult<ViewPushReplayResult200>, string>.Err(resultUserTopScore.Err());
@@ -79,7 +81,8 @@ public static class ModelApi2Submit {
 
         if (optionUserTopScore.IsSet() == false)
             return Result<ModelResult<ViewPushReplayResult200>, string>.Ok(ModelResult<ViewPushReplayResult200>
-                .BadRequest());
+                .BadRequest()
+            );
 
         var newScoreInsertDto = PlayScoreDto.ToPlayScoreDto(newScoreInsert).Unwrap();
 
@@ -89,9 +92,11 @@ public static class ModelApi2Submit {
             if (userTopScore.Score > newScoreInsert.Score)
                 return Result<ModelResult<ViewPushReplayResult200>, string>
                     .Ok(ModelResult<ViewPushReplayResult200>.Ok(new ViewPushReplayResult200 {
-                        BestPlayScoreId = userTopScore.UserId,
-                        UserStats = ViewUserStats.FromUserStats(userStats.Unwrap())
-                    }));
+                                BestPlayScoreId = userTopScore.UserId,
+                                UserStats = ViewUserStats.FromUserStats(userStats.Unwrap())
+                            }
+                        )
+                    );
 
 
             var result = await QueryUserStats.UpdateStatsFromScoreAsync(
@@ -107,10 +112,14 @@ public static class ModelApi2Submit {
 
             return Result<ModelResult<ViewPushReplayResult200>, string>
                 .Ok(ModelResult<ViewPushReplayResult200>.Ok(new ViewPushReplayResult200 {
-                    BestPlayScoreId = newScoreInsert.PlayScoreId,
-                    UserStats = ViewUserStats.FromUserStats((await QueryUserStats
-                        .GetBblUserStatsByUserIdAsync(db, userId)).Ok().Unwrap())
-                }));
+                            BestPlayScoreId = newScoreInsert.PlayScoreId,
+                            UserStats = ViewUserStats.FromUserStats((await QueryUserStats
+                                    .GetBblUserStatsByUserIdAsync(db, userId)).Ok()
+                                                                              .Unwrap()
+                            )
+                        }
+                    )
+                );
         }
 
         var resultErr = await QueryUserStats.UpdateStatsFromScoreAsync(db, newScoreInsert.UserId, newScoreInsertDto);
@@ -122,26 +131,34 @@ public static class ModelApi2Submit {
         return Result<ModelResult<ViewPushReplayResult200>, string>
             .Ok(ModelResult<ViewPushReplayResult200>
                 .Ok(new ViewPushReplayResult200 {
-                    BestPlayScoreId = newScoreInsert.UserId,
-                    UserStats = ViewUserStats.FromUserStats(
-                        (await QueryUserStats.GetBblUserStatsByUserIdAsync(db, userId)).Ok().Unwrap())
-                }));
+                        BestPlayScoreId = newScoreInsert.UserId,
+                        UserStats = ViewUserStats.FromUserStats(
+                            (await QueryUserStats.GetBblUserStatsByUserIdAsync(db, userId)).Ok().Unwrap()
+                        )
+                    }
+                )
+            );
     }
 
     public static async Task<Result<ModelResult<ViewPushPlayStartResult200>, string>> InsertPreBuildPlayAsync(
-        NpgsqlConnection db, long userId, string filename, string fileHash) {
+        NpgsqlConnection db,
+        long userId,
+        string filename,
+        string fileHash) {
         var idBblScorePreSubmit = await QueryPlayScorePreSubmit
             .PreAddScoreAsync(
                 db,
                 userId,
                 filename,
-                fileHash);
+                fileHash
+            );
 
         if (idBblScorePreSubmit == EResult.Err)
             return idBblScorePreSubmit.ChangeOkType<ModelResult<ViewPushPlayStartResult200>>();
 
         return Result<ModelResult<ViewPushPlayStartResult200>, string>.Ok(ModelResult<ViewPushPlayStartResult200>.Ok(
-            new ViewPushPlayStartResult200 { PlayId = idBblScorePreSubmit.Ok().PlayScoreId })
+                new ViewPushPlayStartResult200 { PlayId = idBblScorePreSubmit.Ok().PlayScoreId }
+            )
         );
     }
 

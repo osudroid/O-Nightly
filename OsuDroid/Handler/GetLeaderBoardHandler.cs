@@ -12,7 +12,9 @@ public class GetLeaderBoardHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<LeaderBoardDto>,
         OptionHandlerOutput<List<ViewLeaderBoardUser>>> {
     public async ValueTask<Result<OptionHandlerOutput<List<ViewLeaderBoardUser>>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<LeaderBoardDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<LeaderBoardDto> request) {
         var leaderBoard = request.Post;
         var allRegion = leaderBoard.IsRegionAll();
         var db = dbWrapper.Db;
@@ -22,7 +24,8 @@ public class GetLeaderBoardHandler
         switch (allRegion) {
             case true:
                 rep = (await LeaderBoard.AnyRegionAsync(db, leaderBoard.Limit)).Map(x =>
-                    x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
+                    x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList()
+                );
                 break;
             default: {
                 var countyRep = leaderBoard.GetRegionAsCountry();
@@ -31,7 +34,8 @@ public class GetLeaderBoardHandler
                         .Ok(OptionHandlerOutput<List<ViewLeaderBoardUser>>.Empty);
 
                 rep = (await LeaderBoard.FilterRegionAsync(db, leaderBoard.Limit, countyRep.Unwrap())).Map(x =>
-                    x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
+                    x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList()
+                );
                 break;
             }
         }

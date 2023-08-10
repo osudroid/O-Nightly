@@ -8,6 +8,6 @@ public sealed class WebRegisterDto : IDto, ITransformOutput {
     public required int MathRes { get; init; }
     public required Guid MathToken { get; init; }
     public required string Region { get; init; }
-    public required string Passwd { get; init; }
+    public required string Password { get; init; }
     public required string Username { get; init; }
 }

@@ -1,7 +1,6 @@
 using Dapper.Contrib.Extensions;
 
 namespace OsuDroidLib.Database.Entities;
-#nullable enable
 #pragma warning disable CS0660, CS0661
 [Table("PlayScore")]
 public class PlayScore {

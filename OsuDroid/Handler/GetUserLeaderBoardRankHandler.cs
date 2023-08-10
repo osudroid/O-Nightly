@@ -12,7 +12,9 @@ public class GetUserLeaderBoardRankHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<LeaderBoardUserDto>,
         OptionHandlerOutput<ViewLeaderBoardUser>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewLeaderBoardUser>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<LeaderBoardUserDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<LeaderBoardUserDto> request) {
         var result = await QueryUserStats.LeaderBoardUserRank(dbWrapper.Db, request.Post.UserId);
         if (result == EResult.Err) return result.ChangeOkType<OptionHandlerOutput<ViewLeaderBoardUser>>();
 

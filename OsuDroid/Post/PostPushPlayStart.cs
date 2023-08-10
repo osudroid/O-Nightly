@@ -12,17 +12,19 @@ public sealed class PostPushPlayStart : ModelApi2Submit.ScoreProp, Api2.IValuesA
 
     public string PrintHashOrder() {
         return ErrorText.HashBodyDataAreFalse(new List<string> {
-            nameof(Filename),
-            nameof(FileHash)
-        });
+                nameof(Filename),
+                nameof(FileHash)
+            }
+        );
     }
 
     public string ToSingleString() {
         return Merge
             .ObjectsToString(new object[] {
-                Filename ?? "",
-                FileHash ?? ""
-            });
+                    Filename ?? "",
+                    FileHash ?? ""
+                }
+            );
     }
 
     public bool ValuesAreGood() {

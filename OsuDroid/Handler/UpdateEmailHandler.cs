@@ -10,7 +10,9 @@ namespace OsuDroid.Handler;
 public class UpdateEmailHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<UpdateEmailDto>, WorkHandlerOutput> {
     public async ValueTask<Result<WorkHandlerOutput, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<UpdateEmailDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<UpdateEmailDto> request) {
         var db = dbWrapper.Db;
         var updateEmail = request.Post;
         var cookieTokenOption = request.Controller.GetCookieAndUserId(db);
@@ -31,7 +33,8 @@ public class UpdateEmailHandler
         var userInfo = userInfoResult.Ok().Unwrap();
 
         var result = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
-            db, userInfo.UserId, updateEmail.Passwd, userInfo.Password ?? "");
+            db, userInfo.UserId, updateEmail.Password, userInfo.Password ?? ""
+        );
 
         if (result == EResult.Err)
             return Result<WorkHandlerOutput, string>.Err(result.Err());

@@ -8,16 +8,18 @@ public class PostApi2MapFileRank : Api2.IValuesAreGood, Api2.ISingleString, Api2
 
     public string PrintHashOrder() {
         return ErrorText.HashBodyDataAreFalse(new List<string> {
-            nameof(Filename),
-            nameof(FileHash)
-        });
+                nameof(Filename),
+                nameof(FileHash)
+            }
+        );
     }
 
     public string ToSingleString() {
         return Merge.ObjectsToString(new object[] {
-            Filename ?? "",
-            FileHash ?? ""
-        });
+                Filename ?? "",
+                FileHash ?? ""
+            }
+        );
     }
 
     public bool ValuesAreGood() {

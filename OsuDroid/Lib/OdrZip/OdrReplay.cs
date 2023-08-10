@@ -1,3 +1,5 @@
+// ReSharper disable All
+
 namespace OsuDroid.Lib.OdrZip;
 
 public class OdrReplay {

@@ -8,8 +8,9 @@ public sealed class PostApi2PlayById : Api2.IValuesAreGood, Api2.ISingleString, 
 
     public string PrintHashOrder() {
         return ErrorText.HashBodyDataAreFalse(new List<string> {
-            nameof(PlayId)
-        });
+                nameof(PlayId)
+            }
+        );
     }
 
     public string ToSingleString() {

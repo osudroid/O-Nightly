@@ -15,30 +15,40 @@ public static class ModelStatistic {
             return Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>>, string>
                 .Ok(ModelResult<ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>>
                     .Ok(ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>.Exist(
-                        ViewStatisticActiveUser.FromStatisticActiveUser(new QueryUserInfo.StatisticActiveUser {
-                            RegisterUser = Buffer.Value.Register,
-                            ActiveUserLast1Day = Buffer.Value.Last1Day,
-                            ActiveUserLast1H = Buffer.Value.Last1h
-                        }))));
+                            ViewStatisticActiveUser.FromStatisticActiveUser(new QueryUserInfo.StatisticActiveUser {
+                                    RegisterUser = Buffer.Value.Register,
+                                    ActiveUserLast1Day = Buffer.Value.Last1Day,
+                                    ActiveUserLast1H = Buffer.Value.Last1h
+                                }
+                            )
+                        )
+                    )
+                );
 
         var result = await QueryUserInfo.GetStatisticActiveUser(db);
 
         if (result == EResult.Err)
             return result.ChangeOkType<ModelResult<ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>>>();
 
-        var rep = result.Ok().Or(new QueryUserInfo.StatisticActiveUser
-            { RegisterUser = 0, ActiveUserLast1Day = 0, ActiveUserLast1H = 0 });
+        var rep = result.Ok()
+                        .Or(new QueryUserInfo.StatisticActiveUser
+                            { RegisterUser = 0, ActiveUserLast1Day = 0, ActiveUserLast1H = 0 }
+                        );
 
         Buffer = (DateTime.UtcNow, (rep.ActiveUserLast1H, rep.ActiveUserLast1Day, rep.RegisterUser));
 
         return Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>>, string>
             .Ok(ModelResult<ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>>
                 .Ok(ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>.Exist(
-                    ViewStatisticActiveUser.FromStatisticActiveUser(new QueryUserInfo.StatisticActiveUser {
-                        RegisterUser = Buffer.Value.Register,
-                        ActiveUserLast1Day = Buffer.Value.Last1Day,
-                        ActiveUserLast1H = Buffer.Value.Last1h
-                    }))));
+                        ViewStatisticActiveUser.FromStatisticActiveUser(new QueryUserInfo.StatisticActiveUser {
+                                RegisterUser = Buffer.Value.Register,
+                                ActiveUserLast1Day = Buffer.Value.Last1Day,
+                                ActiveUserLast1H = Buffer.Value.Last1h
+                            }
+                        )
+                    )
+                )
+            );
     }
 
     public static async Task<Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>>, string>>
@@ -49,9 +59,14 @@ public static class ModelStatistic {
 
         return Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>>, string>
             .Ok(ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>>.Ok(ApiTypes
-                .ViewExistOrFoundInfo<List<ViewUsernameAndId>>
-                .Exist(result.Ok().Select(x =>
-                                 new ViewUsernameAndId { Id = x.UserId, Username = x.Username })
-                             .ToList())));
+                    .ViewExistOrFoundInfo<List<ViewUsernameAndId>>
+                    .Exist(result.Ok()
+                                 .Select(x =>
+                                     new ViewUsernameAndId { Id = x.UserId, Username = x.Username }
+                                 )
+                                 .ToList()
+                    )
+                )
+            );
     }
 }

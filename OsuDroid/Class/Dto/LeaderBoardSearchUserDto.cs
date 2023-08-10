@@ -9,7 +9,7 @@ public sealed class LeaderBoardSearchUserDto : IDto {
     public required string Query { get; init; }
 
     public Option<CountryInfo.Country> GetRegionAsCountry() {
-        return CountryInfo.FindByName(Region ?? "");
+        return CountryInfo.FindByName(Region);
     }
 
     public bool IsRegionAll() {

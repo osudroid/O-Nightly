@@ -1,9 +1,7 @@
 using Npgsql;
 using OsuDroidLib.Class;
 
-namespace OsuDroidLib.Interface; 
-
-
+namespace OsuDroidLib.Interface;
 
 public interface ITokenHandlerDb : IRefreshAuto {
     public DateTime LastCleanTime { get; }

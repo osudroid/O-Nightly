@@ -16,7 +16,8 @@ public static class ModelLeaderBoard {
         switch (allRegion) {
             case true:
                 rep = (await LeaderBoard.AnyRegionAsync(db, leaderBoard.Limit)).Map(x =>
-                    x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
+                    x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList()
+                );
                 break;
             default: {
                 var countyRep = leaderBoard.GetRegionAsCountry();
@@ -25,7 +26,8 @@ public static class ModelLeaderBoard {
                         .Ok(ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>.BadRequest());
 
                 rep = (await LeaderBoard.FilterRegionAsync(db, leaderBoard.Limit, countyRep.Unwrap())).Map(x =>
-                    x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
+                    x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList()
+                );
                 break;
             }
         }
@@ -34,7 +36,9 @@ public static class ModelLeaderBoard {
             .Ok(ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>
                 .Ok(rep == EResult.Err
                     ? ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.NotExist()
-                    : ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.Ok())));
+                    : ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(rep.Ok())
+                )
+            );
     }
 
     public static async Task<Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>, string>>
@@ -47,10 +51,13 @@ public static class ModelLeaderBoard {
 
         var rep = (leaderBoardSearch.IsRegionAll() switch {
             true => await log.AddResultAndTransformAsync(await LeaderBoard
-                .SearchUserAsync(db, search.Limit, search.Query)),
+                .SearchUserAsync(db, search.Limit, search.Query)
+            ),
             _ => await log.AddResultAndTransformAsync(await LeaderBoard
                 .SearchUserWithRegionAsync(db, search.Limit, search.Query,
-                    search.GetRegionAsCountry().Unwrap()))
+                    search.GetRegionAsCountry().Unwrap()
+                )
+            )
         }).Map(x => x.Select(ViewLeaderBoardUser.FromLeaderBoardUser).ToList());
 
         return Result<ModelResult<ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>>, string>
@@ -58,6 +65,9 @@ public static class ModelLeaderBoard {
                 .Ok(rep == EResult.Err
                     ? ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.NotExist()
                     : ApiTypes.ViewExistOrFoundInfo<List<ViewLeaderBoardUser>>.Exist(
-                        rep.OkOr(new List<ViewLeaderBoardUser>()))));
+                        rep.OkOr(new List<ViewLeaderBoardUser>())
+                    )
+                )
+            );
     }
 }

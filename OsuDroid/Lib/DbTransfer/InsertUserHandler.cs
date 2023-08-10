@@ -19,7 +19,8 @@ public static class InsertUserHandler {
 
         WriteLine("Fetch Old Users");
         var bblUsersOld = (await db.QueryAsync<bbl_user>(
-                $"SELECT * FROM {Setting.OldDatabase}.bbl_user"))
+                $"SELECT * FROM {Setting.OldDatabase}.bbl_user"
+            ))
             .ToList();
         WriteLine("Fetch Old Users Count: " + bblUsersOld.Count);
 
@@ -44,22 +45,23 @@ public static class InsertUserHandler {
         var userInfoList = new List<Entities.UserInfo>(bblUsersOld.Count);
         foreach (var bblUser in bblUsersOld)
             userInfoList.Add(new Entities.UserInfo {
-                Active = bblUser.active == 1,
-                Banned = bblUser.banned == 1,
-                DeviceId = "",
-                Email = bblUser.email,
-                UserId = bblUser.id,
-                Password = bblUser.password,
-                Region = (bblUser.region ?? "").ToUpper(),
-                Username = bblUser.username,
-                PatronEmail = null,
-                LatestIp = bblUser.regist_ip ?? "",
-                RegisterTime = DateTime.SpecifyKind(bblUser.regist_time, DateTimeKind.Utc),
-                RestrictMode = false,
-                LastLoginTime = DateTime.SpecifyKind(bblUser.last_login_time, DateTimeKind.Utc),
-                PatronEmailAccept = false,
-                UsernameLastChange = DateTime.SpecifyKind(bblUser.regist_time, DateTimeKind.Utc)
-            });
+                    Active = bblUser.active == 1,
+                    Banned = bblUser.banned == 1,
+                    DeviceId = "",
+                    Email = bblUser.email,
+                    UserId = bblUser.id,
+                    Password = bblUser.password,
+                    Region = (bblUser.region ?? "").ToUpper(),
+                    Username = bblUser.username,
+                    PatronEmail = null,
+                    LatestIp = bblUser.regist_ip ?? "",
+                    RegisterTime = DateTime.SpecifyKind(bblUser.regist_time, DateTimeKind.Utc),
+                    RestrictMode = false,
+                    LastLoginTime = DateTime.SpecifyKind(bblUser.last_login_time, DateTimeKind.Utc),
+                    PatronEmailAccept = false,
+                    UsernameLastChange = DateTime.SpecifyKind(bblUser.regist_time, DateTimeKind.Utc)
+                }
+            );
 
         WriteLine("Remove Equals");
         return RemoveAllEqUsername(RemoveAllEqEmails(userInfoList.ToArray()));
@@ -128,7 +130,8 @@ VALUES (
         @UsernameLastChange, 
         @PatronEmail, 
         @PatronEmailAccept)
-", users);
+", users
+        );
     }
 }
 

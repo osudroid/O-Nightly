@@ -13,8 +13,10 @@ namespace OsuDroid.Handler;
 public class WebLoginWithUsernameHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<WebLoginWithUsernameDto>,
         OptionHandlerOutput<ViewWebLogin>> {
-    public async ValueTask<Result<OptionHandlerOutput<ViewWebLogin>, string>> Handel(NpgsqlCreates.DbWrapper dbWrapper,
-        LogWrapper logger, ControllerPostWrapper<WebLoginWithUsernameDto> request) {
+    public async ValueTask<Result<OptionHandlerOutput<ViewWebLogin>, string>> Handel(
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<WebLoginWithUsernameDto> request) {
         var db = dbWrapper.Db;
         var data = request.Post;
         var controller = request.Controller;
@@ -28,12 +30,14 @@ public class WebLoginWithUsernameHandler
             || tokenResult.Ok().Unwrap().MathResult != data.Math
            )
             return Result<OptionHandlerOutput<ViewWebLogin>, string>.Ok(OptionHandlerOutput<ViewWebLogin>.With(
-                new ViewWebLogin {
-                    Work = false,
-                    EmailFalse = false,
-                    UsernameFalse = false,
-                    UserOrPasswdOrMathIsFalse = true
-                }));
+                    new ViewWebLogin {
+                        Work = false,
+                        EmailFalse = false,
+                        UsernameFalse = false,
+                        UserOrPasswdOrMathIsFalse = true
+                    }
+                )
+            );
 
         var userInfoResult = await UserInfoManager.GetIdUsernamePasswordByLowerUsernameAsync(db, data.Username);
 
@@ -43,12 +47,14 @@ public class WebLoginWithUsernameHandler
         // Email Not Found
         if (userInfoResult.Ok().IsNotSet())
             return Result<OptionHandlerOutput<ViewWebLogin>, string>.Ok(OptionHandlerOutput<ViewWebLogin>.With(
-                new ViewWebLogin {
-                    EmailFalse = false,
-                    UsernameFalse = true,
-                    UserOrPasswdOrMathIsFalse = false,
-                    Work = false
-                }));
+                    new ViewWebLogin {
+                        EmailFalse = false,
+                        UsernameFalse = true,
+                        UserOrPasswdOrMathIsFalse = false,
+                        Work = false
+                    }
+                )
+            );
 
         var userInfo = userInfoResult.Ok().Unwrap();
 
@@ -60,12 +66,14 @@ public class WebLoginWithUsernameHandler
 
         if (passwordValid == false)
             return Result<OptionHandlerOutput<ViewWebLogin>, string>.Ok(OptionHandlerOutput<ViewWebLogin>.With(
-                new ViewWebLogin {
-                    Work = false,
-                    EmailFalse = false,
-                    UsernameFalse = false,
-                    UserOrPasswdOrMathIsFalse = true
-                }));
+                    new ViewWebLogin {
+                        Work = false,
+                        EmailFalse = false,
+                        UsernameFalse = false,
+                        UserOrPasswdOrMathIsFalse = true
+                    }
+                )
+            );
 
         if (PasswordHash.IsBCryptHash(userInfo.Password ?? "") == false) {
             var passwordHashResult = PasswordHash.HashWithBCryptPassword(data.Password);
@@ -86,12 +94,16 @@ public class WebLoginWithUsernameHandler
 
         request.Controller.SetCookie(userIdTokenResult.Ok());
 
-        return Result<OptionHandlerOutput<ViewWebLogin>, string>
+        var send = Result<OptionHandlerOutput<ViewWebLogin>, string>
             .Ok(OptionHandlerOutput<ViewWebLogin>.With(new ViewWebLogin {
-                Work = true,
-                EmailFalse = false,
-                UsernameFalse = false,
-                UserOrPasswdOrMathIsFalse = false
-            }));
+                        Work = true,
+                        EmailFalse = false,
+                        UsernameFalse = false,
+                        UserOrPasswdOrMathIsFalse = false
+                    }
+                )
+            );
+
+        return send;
     }
 }

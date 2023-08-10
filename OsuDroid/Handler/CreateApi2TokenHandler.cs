@@ -22,7 +22,7 @@ public class CreateApi2TokenHandler
         var createApi2Token = request.Post;
         var log = logger.Logger;
 
-        var result = await QueryUserInfo.GetIdUsernamePasswordByLowerUsernameAsync(db, createApi2Token.Username ?? "");
+        var result = await QueryUserInfo.GetIdUsernamePasswordByLowerUsernameAsync(db, createApi2Token.Username);
         if (result == EResult.Err)
             return result.ChangeOkType<OptionHandlerOutput<ViewCreateApi2TokenResult>>();
 
@@ -34,33 +34,42 @@ public class CreateApi2TokenHandler
             return Result<OptionHandlerOutput<ViewCreateApi2TokenResult>, string>.Ok(
                 new OptionHandlerOutput<ViewCreateApi2TokenResult>(Option<ViewCreateApi2TokenResult>
                     .With(new ViewCreateApi2TokenResult {
-                        Token = Guid.Empty,
-                        PasswdFalse = false,
-                        UsernameFalse = true
-                    })));
+                            Token = Guid.Empty,
+                            PasswdFalse = false,
+                            UsernameFalse = true
+                        }
+                    )
+                )
+            );
         }
 
         var user = userOption.Unwrap();
 
-        var passwordIsRight = PasswordHash.IsRightPassword(createApi2Token.Passwd, user.Password!);
+        var passwordIsRight = PasswordHash.IsRightPassword(createApi2Token.Password, user.Password!);
         if (passwordIsRight == EResult.Err)
             return Result<OptionHandlerOutput<ViewCreateApi2TokenResult>, string>.Ok(
                 new OptionHandlerOutput<ViewCreateApi2TokenResult>(Option<ViewCreateApi2TokenResult>
                     .With(new ViewCreateApi2TokenResult {
-                        Token = Guid.Empty,
-                        PasswdFalse = true,
-                        UsernameFalse = false
-                    })));
+                            Token = Guid.Empty,
+                            PasswdFalse = true,
+                            UsernameFalse = false
+                        }
+                    )
+                )
+            );
 
         if (passwordIsRight.Ok()) {
             await log.AddLogDebugAsync("User Password False");
             return Result<OptionHandlerOutput<ViewCreateApi2TokenResult>, string>.Ok(
                 new OptionHandlerOutput<ViewCreateApi2TokenResult>(Option<ViewCreateApi2TokenResult>
                     .With(new ViewCreateApi2TokenResult {
-                        Token = Guid.Empty,
-                        PasswdFalse = true,
-                        UsernameFalse = false
-                    })));
+                            Token = Guid.Empty,
+                            PasswdFalse = true,
+                            UsernameFalse = false
+                        }
+                    )
+                )
+            );
         }
 
         switch (PasswordHash.IsBCryptHash(user.Password!)) {
@@ -68,7 +77,7 @@ public class CreateApi2TokenHandler
                 if (!PasswordHash.BCryptNeedRehash(user.Password!).Ok()) break;
 
                 await log.AddLogDebugAsync("Rehash Password");
-                var newBcryptRehash = PasswordHash.HashWithBCryptPassword(createApi2Token.Passwd);
+                var newBcryptRehash = PasswordHash.HashWithBCryptPassword(createApi2Token.Password);
                 if (newBcryptRehash == EResult.Err)
                     return newBcryptRehash.ChangeOkType<OptionHandlerOutput<ViewCreateApi2TokenResult>>();
 
@@ -76,7 +85,7 @@ public class CreateApi2TokenHandler
                     .UpdatePasswordAsync(db, user.UserId, newBcryptRehash.Ok());
                 break;
             default:
-                var newBcrypt = PasswordHash.HashWithBCryptPassword(createApi2Token.Passwd);
+                var newBcrypt = PasswordHash.HashWithBCryptPassword(createApi2Token.Password);
                 if (newBcrypt == EResult.Err)
                     return newBcrypt.ChangeOkType<OptionHandlerOutput<ViewCreateApi2TokenResult>>();
 
@@ -94,9 +103,12 @@ public class CreateApi2TokenHandler
         return Result<OptionHandlerOutput<ViewCreateApi2TokenResult>, string>.Ok(
             new OptionHandlerOutput<ViewCreateApi2TokenResult>(Option<ViewCreateApi2TokenResult>
                 .With(new ViewCreateApi2TokenResult {
-                    Token = resultToken.Ok(),
-                    PasswdFalse = false,
-                    UsernameFalse = false
-                })));
+                        Token = resultToken.Ok(),
+                        PasswdFalse = false,
+                        UsernameFalse = false
+                    }
+                )
+            )
+        );
     }
 }

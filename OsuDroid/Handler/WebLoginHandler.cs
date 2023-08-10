@@ -14,7 +14,9 @@ public class WebLoginHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<WebLoginDto>,
         OptionHandlerOutput<ViewWebLogin>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewWebLogin>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<WebLoginDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<WebLoginDto> request) {
         var db = dbWrapper.Db;
         var data = request.Post;
         var controller = request.Controller;
@@ -27,12 +29,14 @@ public class WebLoginHandler
             || tokenResult.Ok().Unwrap().MathResult != data.Math
            )
             return Result<OptionHandlerOutput<ViewWebLogin>, string>.Ok(OptionHandlerOutput<ViewWebLogin>.With(
-                new ViewWebLogin {
-                    Work = false,
-                    EmailFalse = false,
-                    UsernameFalse = false,
-                    UserOrPasswdOrMathIsFalse = true
-                }));
+                    new ViewWebLogin {
+                        Work = false,
+                        EmailFalse = false,
+                        UsernameFalse = false,
+                        UserOrPasswdOrMathIsFalse = true
+                    }
+                )
+            );
 
         var userInfoResult = await UserInfoManager.GetByEmailAsync(db, data.Email);
 
@@ -47,12 +51,14 @@ public class WebLoginHandler
 
         if (!string.Equals(userInfo.Email!, data.Email, StringComparison.CurrentCultureIgnoreCase))
             return Result<OptionHandlerOutput<ViewWebLogin>, string>.Ok(OptionHandlerOutput<ViewWebLogin>.With(
-                new ViewWebLogin {
-                    Work = false,
-                    EmailFalse = false,
-                    UsernameFalse = false,
-                    UserOrPasswdOrMathIsFalse = true
-                }));
+                    new ViewWebLogin {
+                        Work = false,
+                        EmailFalse = false,
+                        UsernameFalse = false,
+                        UserOrPasswdOrMathIsFalse = true
+                    }
+                )
+            );
 
         var passwordValidResult = PasswordHash.IsRightPassword(data.Password, userInfo.Password ?? "");
         if (passwordValidResult == EResult.Err)
@@ -62,12 +68,14 @@ public class WebLoginHandler
 
         if (passwordValid == false)
             return Result<OptionHandlerOutput<ViewWebLogin>, string>.Ok(OptionHandlerOutput<ViewWebLogin>.With(
-                new ViewWebLogin {
-                    Work = false,
-                    EmailFalse = false,
-                    UsernameFalse = false,
-                    UserOrPasswdOrMathIsFalse = true
-                }));
+                    new ViewWebLogin {
+                        Work = false,
+                        EmailFalse = false,
+                        UsernameFalse = false,
+                        UserOrPasswdOrMathIsFalse = true
+                    }
+                )
+            );
 
         if (PasswordHash.IsBCryptHash(userInfo.Password ?? "") == false) {
             var passwordHashResult = PasswordHash.HashWithBCryptPassword(data.Password);
@@ -90,10 +98,12 @@ public class WebLoginHandler
 
         return Result<OptionHandlerOutput<ViewWebLogin>, string>
             .Ok(OptionHandlerOutput<ViewWebLogin>.With(new ViewWebLogin {
-                Work = true,
-                EmailFalse = false,
-                UsernameFalse = false,
-                UserOrPasswdOrMathIsFalse = false
-            }));
+                        Work = true,
+                        EmailFalse = false,
+                        UsernameFalse = false,
+                        UserOrPasswdOrMathIsFalse = false
+                    }
+                )
+            );
     }
 }

@@ -1,7 +1,7 @@
 using Dapper;
 using Npgsql;
-using OsuDroidLib.Dto;
 using OsuDroidLib.Database.Entities;
+using OsuDroidLib.Dto;
 
 namespace OsuDroidLib.Query;
 
@@ -15,41 +15,43 @@ FROM privilege p
          join GroupPrivilege_Privilege gpp on p.PrivilegeId = gpp.PrivilegeId
          join GroupPrivilege gp on gpp.GroupPrivilegeId = gp.GroupPrivilegeId
 WHERE gp.GroupPrivilegeId IN (SELECT UserGroupPrivilege.GroupPrivilegeId FROM UserGroupPrivilege WHERE UserId = {userId});
-").ToArray();
+"
+                      )
+                      .ToArray();
 
-            UserGroupPrivilegeDto userDto = new UserGroupPrivilegeDto() {
+            var userDto = new UserGroupPrivilegeDto {
                 UserId = userId,
-                GroupPrivileges = new(2)
+                GroupPrivileges = new Dictionary<Guid, GroupPrivilegeDto>(2)
             };
 
             foreach (var rowD in s) {
-                var row = ((IDictionary<string, Object>)rowD).Values.ToList();
-                var privilege = new Privilege() {
+                var row = ((IDictionary<string, object>)rowD).Values.ToList();
+                var privilege = new Privilege {
                     PrivilegeId = (Guid)row[0],
                     Name = (string)row[1],
                     Description = (string)row[2]
                 };
 
-                var groupPrivilegePrivilege = new GroupPrivilegePrivilege() {
+                var groupPrivilegePrivilege = new GroupPrivilegePrivilege {
                     GroupPrivilegeId = (Guid)row[3],
                     ModeAllow = (bool)row[4],
-                    PrivilegeId = (Guid)row[5],
+                    PrivilegeId = (Guid)row[5]
                 };
 
-                var groupPrivilege = new GroupPrivilege() {
+                var groupPrivilege = new GroupPrivilege {
                     GroupPrivilegeId = (Guid)row[6],
                     Name = (string)row[7],
                     Description = (string)row[8]
                 };
 
                 GroupPrivilegeDto? groupPrivilegesDto;
-                if (userDto.GroupPrivileges.TryGetValue(groupPrivilege.GroupPrivilegeId, out groupPrivilegesDto) ==
-                    false) {
-                    groupPrivilegesDto = new GroupPrivilegeDto() {
+                if (userDto.GroupPrivileges.TryGetValue(groupPrivilege.GroupPrivilegeId, out groupPrivilegesDto)
+                    == false) {
+                    groupPrivilegesDto = new GroupPrivilegeDto {
                         Id = groupPrivilege.GroupPrivilegeId,
                         Description = groupPrivilege.Description,
                         Name = groupPrivilege.Name,
-                        Privileges = new(2)
+                        Privileges = new Dictionary<Guid, (bool ModeAllow, PrivilegeDto Privilege)>(2)
                     };
 
                     userDto.GroupPrivileges[groupPrivilege.GroupPrivilegeId] = groupPrivilegesDto;
@@ -57,7 +59,7 @@ WHERE gp.GroupPrivilegeId IN (SELECT UserGroupPrivilege.GroupPrivilegeId FROM Us
 
                 (bool ModeAllow, PrivilegeDto Privilege) privilegeDto = default;
                 if (groupPrivilegesDto.Privileges.TryGetValue(privilege.PrivilegeId, out privilegeDto) == false) {
-                    privilegeDto = (groupPrivilegePrivilege.ModeAllow, new PrivilegeDto() {
+                    privilegeDto = (groupPrivilegePrivilege.ModeAllow, new PrivilegeDto {
                         Id = privilege.PrivilegeId,
                         Description = privilege.Description,
                         Name = privilege.Name

@@ -7,12 +7,15 @@ namespace OsuDroid.Validation;
 
 public class WebLoginWithUsernameValidation
     : IValidationHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<PostWebLoginWithUsername>> {
-    public ValueTask<Result<bool, string>> Validate(NpgsqlCreates.DbWrapper db, LogWrapper logger,
+    public ValueTask<Result<bool, string>> Validate(
+        NpgsqlCreates.DbWrapper db,
+        LogWrapper logger,
         ControllerPostWrapper<PostWebLoginWithUsername> input) {
         return ValueTask.FromResult(Result<bool, string>.Ok(input.Post.ValuesAreGood()));
     }
 
-    public ValueTask<Result<bool, string>> HashMatch(LogWrapper logger,
+    public ValueTask<Result<bool, string>> HashMatch(
+        LogWrapper logger,
         ControllerPostWrapper<PostWebLoginWithUsername> input) {
         return ValueTask.FromResult(Result<bool, string>.Ok(true));
     }

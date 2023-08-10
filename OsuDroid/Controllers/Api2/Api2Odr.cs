@@ -55,7 +55,8 @@ public class Api2Odr : ControllerExtensions {
 
     [HttpGet("/api2/odr/fullname/{replayId:long}/{fullname}.zip")]
     [PrivilegeRoute("/api2/odr/fullname/{replayId:long}/{fullname}.zip")]
-    public async Task<IActionResult> GetOdrZipFileWithName([FromRoute(Name = "replayId")] long replayId,
+    public async Task<IActionResult> GetOdrZipFileWithName(
+        [FromRoute(Name = "replayId")] long replayId,
         [FromRoute(Name = "fullname")] string fullname) {
         await using var dbN = await DbBuilder.BuildNpgsqlConnection();
         await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -91,7 +92,8 @@ public class Api2Odr : ControllerExtensions {
 
         try {
             var bblScoreOption = (await log.AddResultAndTransformAsync(await QueryPlayScore
-                    .GetByIdAsync(db, replayId)))
+                    .GetByIdAsync(db, replayId)
+                ))
                 .OkOr(Option<Entities.PlayScore>.Empty);
 
             if (bblScoreOption.IsNotSet())

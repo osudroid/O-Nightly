@@ -15,7 +15,8 @@ public class CreateDropAccountTokenValidation
         return ValueTask.FromResult(Result<bool, string>.Ok(input.Post.ValuesAreGood()));
     }
 
-    public ValueTask<Result<bool, string>> HashMatch(LogWrapper logger,
+    public ValueTask<Result<bool, string>> HashMatch(
+        LogWrapper logger,
         ControllerPostWrapper<Api2.PostApi2GroundNoHeader<PostCreateDropAccountToken>> input) {
         return ValueTask.FromResult(Result<bool, string>.Ok(true));
     }

@@ -1,4 +1,4 @@
-namespace OsuDroidLib.Database.Entities; 
+namespace OsuDroidLib.Database.Entities;
 
 public class PatreonEmailToken {
     public long UserId { get; set; }

@@ -1,1 +1,1 @@
-namespace OsuDroidLib; 
+namespace OsuDroidLib;

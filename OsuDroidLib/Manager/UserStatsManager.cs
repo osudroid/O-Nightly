@@ -1,4 +1,3 @@
 namespace OsuDroidLib.Manager;
 
-public static class UserStatsManager {
-}
+public static class UserStatsManager;

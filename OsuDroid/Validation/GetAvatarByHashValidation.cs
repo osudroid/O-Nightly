@@ -7,7 +7,9 @@ namespace OsuDroid.Validation;
 
 public class GetAvatarByHashValidation
     : IValidationHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerGetWrapper<GetAvatarWithHash>> {
-    public ValueTask<Result<bool, string>> Validate(NpgsqlCreates.DbWrapper db, LogWrapper logger,
+    public ValueTask<Result<bool, string>> Validate(
+        NpgsqlCreates.DbWrapper db,
+        LogWrapper logger,
         ControllerGetWrapper<GetAvatarWithHash> input) {
         return ValueTask.FromResult(Result<bool, string>.Ok(!string.IsNullOrEmpty(input.Get.Hash.Trim())));
     }

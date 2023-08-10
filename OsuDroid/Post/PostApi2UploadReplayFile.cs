@@ -10,15 +10,17 @@ public sealed class PostApi2UploadReplayFile : Api2.IValuesAreGood, Api2.ISingle
 
     public string PrintHashOrder() {
         return ErrorText.HashBodyDataAreFalse(new List<string> {
-            nameof(MapHash),
-            nameof(ReplayId)
-        });
+                nameof(MapHash),
+                nameof(ReplayId)
+            }
+        );
     }
 
     public string ToSingleString() {
         return Merge.ListToString(new object[] {
-            MapHash ?? "", ReplayId
-        });
+                MapHash ?? "", ReplayId
+            }
+        );
     }
 
     public bool ValuesAreGood() {

@@ -12,11 +12,12 @@ public sealed class PostWebLogin : Api2.IValuesAreGood, Api2.ISingleString, IInp
 
     public string ToSingleString() {
         return Merge.ListToString(new[] {
-            Math.ToString(),
-            Token.ToString(),
-            Email ?? "",
-            Password ?? ""
-        });
+                Math.ToString(),
+                Token.ToString(),
+                Email ?? "",
+                Password ?? ""
+            }
+        );
     }
 
     public bool ValuesAreGood() {

@@ -2,7 +2,7 @@ namespace OsuDroidLib.Lib;
 
 public static class PasswordHash {
     public static bool IsBCryptHash(string hash) {
-        return Lib.HashParser.IsValidHash(hash);
+        return HashParser.IsValidHash(hash);
     }
 
     public static Result<string, string> HashWithBCryptPassword(string password) {
@@ -20,9 +20,7 @@ public static class PasswordHash {
     }
 
     public static Result<bool, string> IsRightPassword(string password, string hashFromDb) {
-        if (IsBCryptHash(hashFromDb)) {
-            return Result<bool, string>.Ok(BCrypt.Net.BCrypt.Verify(password, hashFromDb));
-        }
+        if (IsBCryptHash(hashFromDb)) return Result<bool, string>.Ok(BCrypt.Net.BCrypt.Verify(password, hashFromDb));
 
         return Result<bool, string>.Ok(HashWithOldPassword(password) == hashFromDb);
     }
@@ -30,9 +28,10 @@ public static class PasswordHash {
     public static Result<bool, string> BCryptNeedRehash(string hashFromDb) {
         try {
             return Result<bool, string>.Ok(BCrypt.Net.BCrypt.PasswordNeedsRehash(
-                hashFromDb,
-                Setting.Password_BCryptSalt!.Value
-            ));
+                    hashFromDb,
+                    Setting.Password_BCryptSalt!.Value
+                )
+            );
         }
         catch (Exception e) {
             return Result<bool, string>.Err(e.ToString());

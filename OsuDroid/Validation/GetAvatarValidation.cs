@@ -7,7 +7,9 @@ namespace OsuDroid.Validation;
 
 public class GetAvatarValidation
     : IValidationHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerGetWrapper<GetAvatar>> {
-    public ValueTask<Result<bool, string>> Validate(NpgsqlCreates.DbWrapper db, LogWrapper logger,
+    public ValueTask<Result<bool, string>> Validate(
+        NpgsqlCreates.DbWrapper db,
+        LogWrapper logger,
         ControllerGetWrapper<GetAvatar> input) {
         return ValueTask.FromResult(Result<bool, string>.Ok(input.Get is { Id: >= 0, Size: >= 1 }));
     }

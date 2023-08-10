@@ -156,34 +156,37 @@ CREATE INDEX IF NOT EXISTS idx_bbl_bbl_score_pre_submit_uid ON PlayScorePreSubmi
 
 
 CREATE TABLE IF NOT EXISTS
-    ResetPasswordKey(
-                        Token      TEXT      NOT NULL,
-                        UserId     BIGINT    NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
-                        CreateTime TIMESTAMP NOT NULL,
-                        PRIMARY KEY (UserId, token)
+    ResetPasswordKey
+(
+    Token      TEXT      NOT NULL,
+    UserId     BIGINT    NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
+    CreateTime TIMESTAMP NOT NULL,
+    PRIMARY KEY (UserId, token)
 );
 
 
 
 CREATE TABLE IF NOT EXISTS
-    PatreonEmailToken (
-                          UserId BIGINT        NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
-                          Token UUID           NOT NULL PRIMARY KEY,
-                          CreateTime TIMESTAMP NOT NULL ,
-                          Email TEXT           NOT NULL UNIQUE
+    PatreonEmailToken
+(
+    UserId     BIGINT    NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
+    Token      UUID      NOT NULL PRIMARY KEY,
+    CreateTime TIMESTAMP NOT NULL,
+    Email      TEXT      NOT NULL UNIQUE
 );
-CREATE INDEX IF NOT EXISTS idx_patreon_email_token_token_create_time ON PatreonEmailToken(Token, CreateTime);
+CREATE INDEX IF NOT EXISTS idx_patreon_email_token_token_create_time ON PatreonEmailToken (Token, CreateTime);
 
 
 
 CREATE TABLE IF NOT EXISTS
-    PatreonDeleteAccEmailToken (
-                          UserId BIGINT        NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
-                          Token UUID           NOT NULL PRIMARY KEY,
-                          CreateTime TIMESTAMP NOT NULL ,
-                          Email TEXT           NOT NULL UNIQUE
+    PatreonDeleteAccEmailToken
+(
+    UserId     BIGINT    NOT NULL REFERENCES UserInfo (UserId) ON DELETE CASCADE,
+    Token      UUID      NOT NULL PRIMARY KEY,
+    CreateTime TIMESTAMP NOT NULL,
+    Email      TEXT      NOT NULL UNIQUE
 );
-CREATE INDEX IF NOT EXISTS idx_patreon_delete_acc_email_token_token_create_time ON PatreonDeleteAccEmailToken(Token, CreateTime);
+CREATE INDEX IF NOT EXISTS idx_patreon_delete_acc_email_token_token_create_time ON PatreonDeleteAccEmailToken (Token, CreateTime);
 
 
 
@@ -257,15 +260,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_user_avatar_userid_pixelsize on UserAvatar
 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_avatar_hash on UserAvatar (hash);
 
 
-CREATE TABLE IF NOT EXISTS WebLoginMathResult (
+CREATE TABLE IF NOT EXISTS WebLoginMathResult
+(
     WebLoginMathResultId uuid,
-    CreateTime TIMESTAMP,
-    MathResult INT,
+    CreateTime           TIMESTAMP,
+    MathResult           INT,
     PRIMARY KEY (WebLoginMathResultId)
 );
 
 CREATE INDEX IF NOT EXISTS idx_web_login_math_result on WebLoginToken (CreateTime);
-
 
 
 -- Only IN Production (Need Space)
@@ -376,6 +379,24 @@ CREATE TABLE IF NOT EXISTS RouterSetting
     PRIMARY KEY (Path)
 );
 
+CREATE TABLE IF NOT EXISTS
+    OldMarkNewMark
+(
+    Old TEXT PRIMARY KEY,
+    New TEXT UNIQUE
+);
+
+INSERT INTO OldMarkNewMark
+    (Old, New)
+VALUES ('XH', 'XSS'),
+       ('X', 'SS'),
+       ('SH', 'XS'),
+       ('S', 'S'),
+       ('A', 'A'),
+       ('B', 'B'),
+       ('C', 'C'),
+       ('D', 'D')
+;
 
 
 CREATE OR REPLACE function user_check_need_privilege_by_name(CheckUserId BIGINT, NeedPrivilegeName text)
@@ -575,7 +596,9 @@ SELECT router_settings_with_privilege('/api2/profile/accept/patreonemail/token/{
 SELECT router_settings_with_privilege('/api2/profile/drop-account/sendMail}', true, 'BASE');
 SELECT router_settings_with_privilege('/api2/profile/drop-account/token/{token:guid}', true, 'BASE');
 SELECT router_settings_with_privilege('/api2/profile/top-play-by-marks-length/user-id/{userId:long}', false, null);
-SELECT router_settings_with_privilege('/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}',false, null);
+SELECT router_settings_with_privilege(
+               '/api2/profile/top-play-by-marks-length/user-id/{userId:long}/mark/{markString:alpha}/page/{page:int}',
+               false, null);
 SELECT router_settings_with_privilege('/api2/apk/version/{dirNameNumber:long}.apk', false, null);
 SELECT router_settings_with_privilege('/api2/avatar/hash', false, null);
 SELECT router_settings_with_privilege('/api2/avatar/hash/{hash:alpha}', false, null);
@@ -628,3 +651,5 @@ SELECT setting_update('Log', 'Error', '');
 SELECT setting_update('Log', 'RequestJsonPrint', '');
 SELECT setting_update('UserAvatar', 'SizeLow', '');
 SELECT setting_update('UserAvatar', 'SizeHigh', '');
+SELECT setting_update('LoginToken', 'ValidTimeInMin', '');
+SELECT setting_update('LoginToken', 'TokenSize', '');

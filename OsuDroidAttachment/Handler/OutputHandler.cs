@@ -1,5 +1,4 @@
-namespace OsuDroidAttachment.Handler; 
+namespace OsuDroidAttachment.Handler;
 
 public class OutputHandler {
-    
 }

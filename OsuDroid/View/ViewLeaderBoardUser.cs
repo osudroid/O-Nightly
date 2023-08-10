@@ -1,5 +1,6 @@
 namespace OsuDroid.View;
 
+// ReSharper disable All
 public class ViewLeaderBoardUser : IView {
     public long RankNumber { get; set; }
     public long UserId { get; set; }

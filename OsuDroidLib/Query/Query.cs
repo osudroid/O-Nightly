@@ -1,4 +1,3 @@
-using Dapper;
 using Npgsql;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
@@ -63,7 +62,8 @@ OFFSET {startAt}
     }
 
     public static async Task<Result<Option<UserInfoAndBblUserStats>, string>> GetUserInfoAndBblUserStatsByUserIdAsync(
-        NpgsqlConnection db, long userId) {
+        NpgsqlConnection db,
+        long userId) {
         var sql = $@"
 SELECT 
     bus.UserId as UserId,
@@ -99,23 +99,26 @@ SELECT
     Overall50,
     OverallGeki,
     OverallKatu,
-    OverallMiss,
+    OverallMiss
 FROM UserInfo 
     JOIN UserStats bus on bus.UserId = UserInfo.UserId 
 WHERE UserInfo.UserId = {userId}
 ";
-        return await db.SafeQueryFirstOrDefaultAsync<UserInfoAndBblUserStats>(sql);
+        var res = await db.SafeQueryFirstOrDefaultAsync<UserInfoAndBblUserStats>(sql);
+        return res;
     }
 
     public static async Task<Result<Option<UserInfo.UserRank>, string>> GetUserRankAsync(
-        NpgsqlConnection db, long userId, long userOverallScore) {
+        NpgsqlConnection db,
+        long userId,
+        long userOverallScore) {
         var sql = @$"
 SELECT t.GlobalRank as globalRank, t.CountryRank as CountryRank
 FROM (
-         SELECT UserId,
+         SELECT UserStats.UserId,
                 rank() OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as GlobalRank,
                 rank() OVER (PARTITION BY bu.Region ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as CountryRank
-         FROM UserStats
+         FROM UserStats 
                   FULL JOIN UserInfo bu on bu.UserId = UserStats.UserId
          WHERE region IS NOT NULL
          AND OverallScore >= {userOverallScore} AND banned = false
@@ -127,7 +130,9 @@ WHERE UserId = {userId}
 
 
     public static async Task<Result<List<LeaderBoardUser>, string>> LeaderBoardUsersCountry(
-        NpgsqlConnection db, int limit, CountryInfo.Country country) {
+        NpgsqlConnection db,
+        int limit,
+        CountryInfo.Country country) {
         var sql = @$"
 SELECT rank() OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as RankNumber, 
        bu.UserId as UserId,
@@ -152,7 +157,9 @@ LIMIT {limit};
     }
 
     public static async Task<Result<List<LeaderBoardUser>, string>> LeaderBoardUserLikeUserQuery(
-        NpgsqlConnection db, int limit, string likeUserQuery) {
+        NpgsqlConnection db,
+        int limit,
+        string likeUserQuery) {
         var sql = @$"
 SELECT RankNumber,
        bu.UserId as UserId,
@@ -179,7 +186,8 @@ LIMIT {limit}
             .Map(x => x.ToList());
     }
 
-    public static async Task<Result<List<LeaderBoardUser>, string>> LeaderBoardUserNormal(NpgsqlConnection db,
+    public static async Task<Result<List<LeaderBoardUser>, string>> LeaderBoardUserNormal(
+        NpgsqlConnection db,
         int limit) {
         var sql = @$"
 SELECT rank() OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as RankNumber, 
@@ -202,7 +210,8 @@ LIMIT {limit};
             .Map(x => x.ToList());
     }
 
-    public static async Task<Result<Option<LeaderBoardUser>, string>> LeaderBoardUserSingleUser(NpgsqlConnection db,
+    public static async Task<Result<Option<LeaderBoardUser>, string>> LeaderBoardUserSingleUser(
+        NpgsqlConnection db,
         long userId) {
         var sql = $@"
 SELECT RankNumber,

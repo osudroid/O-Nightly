@@ -11,7 +11,9 @@ namespace OsuDroid.Handler;
 public class RemoveCookieHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerWrapper, OptionHandlerOutput<ApiTypes.ViewWork>> {
     public async ValueTask<Result<OptionHandlerOutput<ApiTypes.ViewWork>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerWrapper request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerWrapper request) {
         var db = dbWrapper.Db;
         var controller = request.Controller;
 
@@ -19,8 +21,10 @@ public class RemoveCookieHandler
         if (cookieOption.IsNotSet())
             return Result<OptionHandlerOutput<ApiTypes.ViewWork>, string>.Ok(
                 OptionHandlerOutput<ApiTypes.ViewWork>.With(new ApiTypes.ViewWork {
-                    HasWork = true
-                }));
+                        HasWork = true
+                    }
+                )
+            );
 
         var cookie = cookieOption.Unwrap();
 

@@ -1,5 +1,6 @@
 using OsuDroidLib.Query;
 
+// ReSharper disable All
 namespace OsuDroid.View;
 
 public class ViewMapTopPlays : IView {

@@ -23,26 +23,34 @@ public class ActiveUserHandler : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, C
             return Result<OptionHandlerOutput<ViewStatisticActiveUser>, string>
                 .Ok(OptionHandlerOutput<ViewStatisticActiveUser>
                     .With(ViewStatisticActiveUser.FromStatisticActiveUser(new QueryUserInfo.StatisticActiveUser {
-                        RegisterUser = Buffer.Value.Register,
-                        ActiveUserLast1Day = Buffer.Value.Last1Day,
-                        ActiveUserLast1H = Buffer.Value.Last1h
-                    })));
+                                RegisterUser = Buffer.Value.Register,
+                                ActiveUserLast1Day = Buffer.Value.Last1Day,
+                                ActiveUserLast1H = Buffer.Value.Last1h
+                            }
+                        )
+                    )
+                );
 
         var result = await QueryUserInfo.GetStatisticActiveUser(db);
 
         if (result == EResult.Err) return result.ChangeOkType<OptionHandlerOutput<ViewStatisticActiveUser>>();
 
-        var rep = result.Ok().Or(new QueryUserInfo.StatisticActiveUser
-            { RegisterUser = 0, ActiveUserLast1Day = 0, ActiveUserLast1H = 0 });
+        var rep = result.Ok()
+                        .Or(new QueryUserInfo.StatisticActiveUser
+                            { RegisterUser = 0, ActiveUserLast1Day = 0, ActiveUserLast1H = 0 }
+                        );
 
         Buffer = (DateTime.UtcNow, (rep.ActiveUserLast1H, rep.ActiveUserLast1Day, rep.RegisterUser));
 
         return Result<OptionHandlerOutput<ViewStatisticActiveUser>, string>
             .Ok(OptionHandlerOutput<ViewStatisticActiveUser>
                 .With(ViewStatisticActiveUser.FromStatisticActiveUser(new QueryUserInfo.StatisticActiveUser {
-                    RegisterUser = Buffer.Value.Register,
-                    ActiveUserLast1Day = Buffer.Value.Last1Day,
-                    ActiveUserLast1H = Buffer.Value.Last1h
-                })));
+                            RegisterUser = Buffer.Value.Register,
+                            ActiveUserLast1Day = Buffer.Value.Last1Day,
+                            ActiveUserLast1H = Buffer.Value.Last1h
+                        }
+                    )
+                )
+            );
     }
 }

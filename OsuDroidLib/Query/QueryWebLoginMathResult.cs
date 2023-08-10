@@ -1,24 +1,29 @@
-using Npgsql;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
-using Db = Npgsql.NpgsqlConnection; 
-namespace OsuDroidLib.Query; 
+using Db = Npgsql.NpgsqlConnection;
+
+namespace OsuDroidLib.Query;
 
 public static class QueryWebLoginMathResult {
-    public static async ValueTask<ResultErr<string>> AddWebLoginTokenAsync(Db db, WebLoginMathResult webLoginMathResult) {
+    public static async ValueTask<ResultErr<string>>
+        AddWebLoginTokenAsync(Db db, WebLoginMathResult webLoginMathResult) {
         return await db.SafeExecuteAsync(@"
-INSERT INTO WebLoginMathResult (WebLoginMathResultId, CreateTime, MathResult) VALUES (@WebLoginMathResultId, @CreateTime, @UserId)
-",webLoginMathResult);
+INSERT INTO WebLoginMathResult (WebLoginMathResultId, CreateTime, MathResult) VALUES (@WebLoginMathResultId, @CreateTime, @MathResult)
+", new {
+                WebLoginMathResultId = webLoginMathResult.WebLoginMathResultId,
+                CreateTime = webLoginMathResult.CreateTime,
+                MathResult = webLoginMathResult.MathResult
+            }
+        );
     }
 
     public static async ValueTask<ResultErr<string>> DeleteWebLoginTokenAsync(Db db, Guid id) {
-
         return await db.SafeExecuteAsync(@"
 DELETE 
 FROM WebLoginMathResult 
 WHERE WebLoginMathResultId = @WebLoginMathResultId
-", new { WebLoginMathResultId = id });
-        
+", new { WebLoginMathResultId = id }
+        );
     }
 
     public static async ValueTask<Result<Option<WebLoginMathResult>, string>> GetWebLoginTokenAsync(Db db, Guid id) {
@@ -26,7 +31,8 @@ WHERE WebLoginMathResultId = @WebLoginMathResultId
 SELECT *
 FROM WebLoginMathResult 
 WHERE WebLoginMathResultId = @WebLoginMathResultId
-", new { WebLoginMathResultId = id });
+", new { WebLoginMathResultId = id }
+        );
 
         return result;
     }
@@ -38,8 +44,9 @@ WHERE WebLoginMathResultId = @WebLoginMathResultId
 DELETE 
 FROM WebLoginMathResult
 WHERE CreateTime <= @Date 
-", new { Date = time });
-        
+", new { Date = time }
+        );
+
         return result;
     }
 }

@@ -6,7 +6,7 @@ public class GroupPrivilegeDto {
     public string? Description { get; set; }
 
     /// <summary>
-    /// Key Privileges.Id
+    ///     Key Privileges.Id
     /// </summary>
     public Dictionary<Guid, (bool ModeAllow, PrivilegeDto Privilege)> Privileges { get; set; }
 }

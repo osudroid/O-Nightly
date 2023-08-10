@@ -1,4 +1,3 @@
 namespace OsuDroidServicePatreon;
 
-public class ServiceState {
-}
+public class ServiceState;

@@ -17,18 +17,20 @@ public sealed class PostLeaderBoardSearchUser : Api2.IValuesAreGood, Api2.ISingl
 
     public string PrintHashOrder() {
         return ErrorText.HashBodyDataAreFalse(new List<string> {
-            nameof(Limit),
-            nameof(Query),
-            nameof(Region)
-        });
+                nameof(Limit),
+                nameof(Query),
+                nameof(Region)
+            }
+        );
     }
 
     public string ToSingleString() {
         return Merge.ObjectsToString(new object[] {
-            Limit.ToString(),
-            Query ?? "",
-            Region
-        });
+                Limit.ToString(),
+                Query ?? "",
+                Region
+            }
+        );
     }
 
     public bool ValuesAreGood() {
@@ -38,7 +40,7 @@ public sealed class PostLeaderBoardSearchUser : Api2.IValuesAreGood, Api2.ISingl
     }
 
     public Option<CountryInfo.Country> GetRegionAsCountry() {
-        return CountryInfo.FindByName(Region ?? "");
+        return CountryInfo.FindByName(Region);
     }
 
     public bool IsRegionAll() {

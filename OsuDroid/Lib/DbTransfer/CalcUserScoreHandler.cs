@@ -46,7 +46,8 @@ internal static class CalcUserScoreHandler {
     }
 
     private static List<Entities.UserStats> CalcUserStats(
-        List<PlayScoreDto> playScoreList, List<Entities.UserInfo> userInfoList) {
+        List<PlayScoreDto> playScoreList,
+        List<Entities.UserInfo> userInfoList) {
         Dictionary<long, ConcurrentBag<PlayScoreDto>> dic = new(userInfoList.Count);
 
         foreach (var userInfo in userInfoList) dic.Add(userInfo.UserId, new ConcurrentBag<PlayScoreDto>());
@@ -73,7 +74,8 @@ internal static class CalcUserScoreHandler {
             pair => {
                 WriteLine("Calc User: " + pair.Key);
                 userStatsList.Add(CreateUserStats(pair.Key, pair.Value.ToArray()));
-            });
+            }
+        );
 
         return userStatsList;
     }
@@ -106,7 +108,8 @@ VALUES (
         @OverallKatu, 
         @OverallMiss
 );
-", userStatsList);
+", userStatsList
+        );
     }
 
     private static Entities.UserStats CreateUserStats(long userId, PlayScoreDto[] playScoreDtoList) {

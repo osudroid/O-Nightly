@@ -7,7 +7,9 @@ namespace OsuDroid.Validation;
 
 public struct UserIdBoxValidation
     : IValidationHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerGetWrapper<UserIdBox>> {
-    public ValueTask<Result<bool, string>> Validate(NpgsqlCreates.DbWrapper db, LogWrapper logger,
+    public ValueTask<Result<bool, string>> Validate(
+        NpgsqlCreates.DbWrapper db,
+        LogWrapper logger,
         ControllerGetWrapper<UserIdBox> input) {
         return ValueTask.FromResult(Result<bool, string>.Ok(input.Get.UserId >= 0));
     }

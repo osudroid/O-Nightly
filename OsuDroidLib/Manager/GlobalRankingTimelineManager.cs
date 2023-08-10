@@ -1,4 +1,3 @@
 namespace OsuDroidLib.Manager;
 
-public static class GlobalRankingTimelineManager {
-}
+public static class GlobalRankingTimelineManager;

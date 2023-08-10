@@ -1,4 +1,3 @@
-using Dapper.Contrib.Extensions;
 using Npgsql;
 using OsuDroidLib.Class;
 using OsuDroidLib.Database.Entities;
@@ -26,7 +25,10 @@ WHERE UserId = {userId};
     }
 
     public static async Task<ResultErr<string>> UpdateStatsFromScoreAsync(
-        NpgsqlConnection db, long userId, PlayScoreDto now, PlayScoreDto? old = null) {
+        NpgsqlConnection db,
+        long userId,
+        PlayScoreDto now,
+        PlayScoreDto? old = null) {
         var dif = old is null ? now : now - old;
         var playcount = old is null ? 1 : 0;
 
@@ -53,21 +55,26 @@ SET
     OverallKatu = OverallKatu + {dif.Katu}, 
     OverallMiss = OverallMiss + {dif.Miss}
 WHERE USERID = {userId}
-");
+"
+        );
     }
 
 
     public static async Task<Result<Option<UserStats>, string>> GetBblUserStatsByUserIdAsync(
-        NpgsqlConnection db, long userId) {
+        NpgsqlConnection db,
+        long userId) {
         return await db.SafeQueryFirstOrDefaultAsync<UserStats>(@$"
 SELECT * FROM UserStats
          WHERE UserId = {userId}
          LIMIT 1
-");
+"
+        );
     }
 
     public static async Task<Result<IEnumerable<LeaderBoardUser>, string>> LeaderBoardFilterCountry(
-        NpgsqlConnection db, int limit, string countryNameShort) {
+        NpgsqlConnection db,
+        int limit,
+        string countryNameShort) {
         var sql = @$"
 SELECT rank() OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as RankNumber, 
        bu.UserId as UserId,
@@ -80,8 +87,8 @@ SELECT rank() OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as RankNu
        OverallA,
        OverallAccuracy
 FROM UserStats
-         FULL JOIN UserInfo bu on bu.UserId = UserStats.UserId = bu.UserId
-WHERE Banned = false AND bu.Region = @Region
+         JOIN UserInfo bu on bu.UserId = UserStats.UserId
+WHERE Banned = false AND bu.Region = 'DE'
 ORDER BY RankNumber ASC
 LIMIT {limit};
 ";
@@ -92,7 +99,8 @@ LIMIT {limit};
     }
 
     public static async Task<Result<Option<LeaderBoardUser>, string>> LeaderBoardUserRank(
-        NpgsqlConnection db, long userId) {
+        NpgsqlConnection db,
+        long userId) {
         var sql = @"
 SELECT UserId,
        RankNumber,
@@ -108,7 +116,7 @@ FROM (SELECT rank()
              OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as RankNumber,
              bu.UserId, Username, bu.Region
       FROM UserStats
-               FULL JOIN UserInfo bu on bu.UserId = UserStats.UserId
+               JOIN UserInfo bu on bu.UserId = UserStats.UserId
       WHERE Banned = false
       ORDER BY RankNumber ASC) xx FULL JOIN UserStats bu on bu.UserId = xx.UserId
 WHERE xx.UserId = @0
@@ -117,7 +125,8 @@ WHERE xx.UserId = @0
     }
 
     public static async Task<Result<IEnumerable<LeaderBoardUser>, string>> LeaderBoardNoFilter(
-        NpgsqlConnection db, int limit) {
+        NpgsqlConnection db,
+        int limit) {
         var sql = @$"
 SELECT rank() OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as RankNumber, 
        bu.UserId as UserId,
@@ -130,7 +139,7 @@ SELECT rank() OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as RankNu
        OverallA,
        OverallAccuracy
 FROM UserStats
-         FULL JOIN UserInfo bu on bu.UserId = UserStats.UserId
+         JOIN UserInfo bu on bu.UserId = UserStats.UserId
 WHERE banned = false
 ORDER BY RankNumber ASC
 LIMIT {limit};
@@ -139,7 +148,9 @@ LIMIT {limit};
     }
 
     public static async Task<Result<IEnumerable<LeaderBoardUser>, string>> LeaderBoardSearchUser(
-        NpgsqlConnection db, long limit, string query) {
+        NpgsqlConnection db,
+        long limit,
+        string query) {
         var sql = @$"
 SELECT RankNumber,
        bu.UserId as UserId,
@@ -155,10 +166,10 @@ FROM (SELECT rank()
              OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as RankNumber,
              bu.UserId, Username, bu.Region
       FROM UserStats
-               FULL JOIN UserInfo bu on bu.UserId = UserStats.UserId
+               JOIN UserInfo bu on bu.UserId = UserStats.UserId
       WHERE Banned = false
       ORDER BY RankNumber ASC) xx FULL JOIN UserStats bu on bu.UserId = xx.UserId
-WHERE lower(xx.username) LIKE CONCAT('%',@Query,'%');
+WHERE lower(xx.username) LIKE CONCAT('%',@Query,'%')
 LIMIT {limit}
 ;
 ";
@@ -166,7 +177,10 @@ LIMIT {limit}
     }
 
     public static async Task<Result<IEnumerable<LeaderBoardUser>, string>> LeaderBoardSearchUser(
-        NpgsqlConnection db, long limit, string query, string countryNameShortInfo) {
+        NpgsqlConnection db,
+        long limit,
+        string query,
+        string countryNameShortInfo) {
         var sql = @$"
 SELECT RankNumber,
        bu.UserId as UserId,
@@ -182,7 +196,7 @@ FROM (SELECT rank()
              OVER (ORDER BY OverallScore DESC, bu.LastLoginTime DESC) as RankNumber,
              bu.UserId, Username, bu.Region
       FROM UserStats
-               FULL JOIN UserInfo bu on bu.UserId = UserStats.UserId
+               JOIN UserInfo bu on bu.UserId = UserStats.UserId
       WHERE banned = false
       ORDER BY RankNumber ASC) xx FULL JOIN UserStats bu on bu.UserId = xx.UserId
 WHERE lower(xx.username) LIKE CONCAT('%',@Query,'%')

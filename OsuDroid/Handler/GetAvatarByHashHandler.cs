@@ -10,7 +10,9 @@ namespace OsuDroid.Handler;
 public class GetAvatarByHashHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerGetWrapper<GetAvatarWithHash>, ImageWrapper> {
     public async ValueTask<Result<ImageWrapper, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerGetWrapper<GetAvatarWithHash> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerGetWrapper<GetAvatarWithHash> request) {
         var db = dbWrapper.Db;
         var controller = request.Controller;
         var prop = request.Get;
@@ -28,6 +30,8 @@ public class GetAvatarByHashHandler
 
         return Result<ImageWrapper, string>
             .Ok(new ImageWrapper(Option<(byte[] Bytes, string Ext)>
-                .With((image.Bytes!, image.TypeExt!))));
+                    .With((image.Bytes!, image.TypeExt!))
+                )
+            );
     }
 }

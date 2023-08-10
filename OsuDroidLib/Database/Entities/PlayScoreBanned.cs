@@ -1,8 +1,7 @@
 using Dapper.Contrib.Extensions;
 
-
 namespace OsuDroidLib.Database.Entities;
-#nullable enable
+
 [Table("PlayScoreBanned")]
 public class PlayScoreBanned {
     [ExplicitKey] public long PlayScoreId { get; set; }

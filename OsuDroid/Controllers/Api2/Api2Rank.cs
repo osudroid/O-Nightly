@@ -11,13 +11,14 @@ using OsuDroid.View;
 using OsuDroidAttachment;
 using OsuDroidAttachment.DbBuilder;
 
-namespace OsuDroid.Controllers.Api2; 
+namespace OsuDroid.Controllers.Api2;
 
 public class Api2Rank : ControllerExtensions {
     [HttpPost("/api2/rank/map-file")]
     [PrivilegeRoute("/api2/rank/map-file")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewMapTopPlays>>))]
+        Type = typeof(ApiTypes.ViewExistOrFoundInfo<IReadOnlyList<ViewMapTopPlays>>)
+    )]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> MapFileRank([FromBody] PostApi.PostApi2GroundWithHash<PostApi2MapFileRank> prop) {
@@ -29,11 +30,14 @@ public class Api2Rank : ControllerExtensions {
                 ControllerPostWrapper<PostApi.PostApi2GroundWithHash<PostApi2MapFileRank>>,
                 ControllerPostWrapper<Api2MapFileRankDto>>(i
                 => new ControllerPostWrapper<Api2MapFileRankDto>(i.Controller,
-                    DtoMapper.Api2MapFileRankToDto(i.Post.Body!))),
+                    DtoMapper.Api2MapFileRankToDto(i.Post.Body!)
+                )
+            ),
             new MapFileRankHandler(),
             new ViewExistOrFoundInfoHandler<IReadOnlyList<ViewMapTopPlays>>(),
             new ControllerPostWrapper<PostApi.PostApi2GroundWithHash<PostApi2MapFileRank>>(ControllerHandlerBuild(),
-                prop)
+                prop
+            )
         );
 
         return TransactionToIResult(transaction);

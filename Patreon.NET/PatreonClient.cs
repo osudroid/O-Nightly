@@ -139,7 +139,9 @@ public sealed class PatreonClient : IDisposable {
         var url = CampaignURL(campaignId);
 
         url = AppendQuery(url, GenerateFieldsAndIncludes(typeof(CampaignRelationships),
-            typeof(CampaignAttributes), typeof(UserAttributes), typeof(TierAttributes)));
+                typeof(CampaignAttributes), typeof(UserAttributes), typeof(TierAttributes)
+            )
+        );
 
         var document = await GET<DocumentRoot<Campaign>>(url).ConfigureAwait(false);
 
@@ -163,7 +165,9 @@ public sealed class PatreonClient : IDisposable {
             var url = next;
 
             url = AppendQuery(url, GenerateFieldsAndIncludes(typeof(MemberRelationships),
-                typeof(MemberAttributes), typeof(UserAttributes)));
+                    typeof(MemberAttributes), typeof(UserAttributes)
+                )
+            );
 
             var document = await GET<DocumentRoot<Member[]>>(url).ConfigureAwait(false);
 
@@ -176,7 +180,8 @@ public sealed class PatreonClient : IDisposable {
                 next = link.Href;
             else
                 next = null;
-        } while (next != null);
+        }
+        while (next != null);
 
         return list;
     }

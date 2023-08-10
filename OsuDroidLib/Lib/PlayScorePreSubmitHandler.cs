@@ -1,6 +1,5 @@
 using Npgsql;
 using OsuDroidLib.Database.Entities;
-using OsuDroidLib.Extension;
 using OsuDroidLib.Query;
 
 namespace OsuDroidLib.Lib;

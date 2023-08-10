@@ -11,13 +11,16 @@ namespace OsuDroid.Handler;
 public class WebUpdateCookieHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerWrapper, OptionHandlerOutput<ViewUpdateCookieInfo>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewUpdateCookieInfo>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerWrapper request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerWrapper request) {
         var db = dbWrapper.Db;
 
         var cookieOpt = request.Controller.GetCookie();
         if (cookieOpt.IsNotSet())
             return Result<OptionHandlerOutput<ViewUpdateCookieInfo>, string>.Ok(
-                OptionHandlerOutput<ViewUpdateCookieInfo>.Empty);
+                OptionHandlerOutput<ViewUpdateCookieInfo>.Empty
+            );
 
         var tokenId = cookieOpt.Unwrap();
 
@@ -29,21 +32,25 @@ public class WebUpdateCookieHandler
 
         if (userIdAndTokenResult.Ok().IsNotSet())
             return Result<OptionHandlerOutput<ViewUpdateCookieInfo>, string>.Ok(
-                OptionHandlerOutput<ViewUpdateCookieInfo>.Empty);
+                OptionHandlerOutput<ViewUpdateCookieInfo>.Empty
+            );
 
         var info = userIdAndTokenResult.Ok().Unwrap();
 
         var updateResult = await tokenHandler.SetOverwriteAsync(db, new TokenInfoWithGuid {
-            Token = tokenId,
-            TokenInfo = new TokenInfo { CreateDay = DateTime.UtcNow, UserId = info.UserId }
-        });
+                Token = tokenId,
+                TokenInfo = new TokenInfo { CreateDay = DateTime.UtcNow, UserId = info.UserId }
+            }
+        );
 
         if (updateResult == EResult.Err)
             return updateResult.ConvertTo<OptionHandlerOutput<ViewUpdateCookieInfo>>();
 
         return Result<OptionHandlerOutput<ViewUpdateCookieInfo>, string>.Ok(
             OptionHandlerOutput<ViewUpdateCookieInfo>.With(new ViewUpdateCookieInfo {
-                UserId = info.UserId
-            }));
+                    UserId = info.UserId
+                }
+            )
+        );
     }
 }

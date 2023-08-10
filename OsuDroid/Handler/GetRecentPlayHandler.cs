@@ -11,7 +11,9 @@ namespace OsuDroid.Handler;
 public class GetRecentPlayHandler : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<RecentPlaysDto>,
     OptionHandlerOutput<IReadOnlyList<ViewPlayScoreWithUsername>>> {
     public async ValueTask<Result<OptionHandlerOutput<IReadOnlyList<ViewPlayScoreWithUsername>>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<RecentPlaysDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<RecentPlaysDto> request) {
         var log = logger.Logger;
         var db = dbWrapper.Db;
         var prop = request.Post;
@@ -21,13 +23,15 @@ public class GetRecentPlayHandler : IHandler<NpgsqlCreates.DbWrapper, LogWrapper
             prop.FilterPlays,
             prop.OrderBy,
             prop.Limit,
-            prop.StartAt)).Map(x => x.Select(ViewPlayScoreWithUsername.FromPlayScoreWithUsername).ToList());
+            prop.StartAt
+        )).Map(x => x.Select(ViewPlayScoreWithUsername.FromPlayScoreWithUsername).ToList());
 
         if (result == EResult.Err)
             return result.ChangeOkType<OptionHandlerOutput<IReadOnlyList<ViewPlayScoreWithUsername>>>();
 
         return Result<OptionHandlerOutput<IReadOnlyList<ViewPlayScoreWithUsername>>, string>
             .Ok(OptionHandlerOutput<IReadOnlyList<ViewPlayScoreWithUsername>>
-                .With(result.Ok()));
+                .With(result.Ok())
+            );
     }
 }

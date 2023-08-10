@@ -11,20 +11,22 @@ public sealed class PostRecentPlays : Api2.IValuesAreGood, Api2.ISingleString, A
 
     public string PrintHashOrder() {
         return ErrorText.HashBodyDataAreFalse(new List<string> {
-            nameof(FilterPlays),
-            nameof(OrderBy),
-            nameof(Limit),
-            nameof(StartAt)
-        });
+                nameof(FilterPlays),
+                nameof(OrderBy),
+                nameof(Limit),
+                nameof(StartAt)
+            }
+        );
     }
 
     public string ToSingleString() {
         return Merge.ObjectsToString(new object[] {
-            FilterPlays ?? "",
-            OrderBy ?? "",
-            Limit,
-            StartAt
-        });
+                FilterPlays ?? "",
+                OrderBy ?? "",
+                Limit,
+                StartAt
+            }
+        );
     }
 
     public bool ValuesAreGood() {
@@ -73,14 +75,10 @@ public sealed class PostRecentPlays : Api2.IValuesAreGood, Api2.ISingleString, A
     }
 
     private bool ValidateLimit() {
-        if (Limit > 100 || Limit < 1)
-            return false;
-        return true;
+        return Limit <= 100 && Limit >= 1;
     }
 
     private bool ValidateStartAt() {
-        if (StartAt < 0)
-            return false;
-        return true;
+        return StartAt >= 0;
     }
 }

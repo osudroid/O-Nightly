@@ -1,8 +1,13 @@
 using LamLibAllOver;
 
-namespace OsuDroidAttachment.Class; 
+namespace OsuDroidAttachment.Class;
 
 public record OptionResponse<T>(Option<T> Data) {
-    public static OptionResponse<T> Empty() => new(Option<T>.Empty);
-    public static OptionResponse<T> Set(T data) => new(Option<T>.With(data));
+    public static OptionResponse<T> Empty() {
+        return new OptionResponse<T>(Option<T>.Empty);
+    }
+
+    public static OptionResponse<T> Set(T data) {
+        return new OptionResponse<T>(Option<T>.With(data));
+    }
 }

@@ -10,7 +10,9 @@ namespace OsuDroid.Handler;
 public class WebLoginTokenHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerWrapper, OptionHandlerOutput<ViewWebLoginToken>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewWebLoginToken>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerWrapper request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerWrapper request) {
         var db = dbWrapper.Db;
         var controller = request.Controller;
 
@@ -25,10 +27,11 @@ public class WebLoginTokenHandler
         };
 
         var tokenResult = await WebLoginMathResultManager.AddWebLoginTokenAsync(db, new Entities.WebLoginMathResult {
-            CreateTime = now,
-            MathResult = res.MathValue1 + res.MathValue2,
-            WebLoginMathResultId = res.Token
-        });
+                CreateTime = now,
+                MathResult = res.MathValue1 + res.MathValue2,
+                WebLoginMathResultId = res.Token
+            }
+        );
 
         if (tokenResult == EResult.Err) return tokenResult.ConvertTo<OptionHandlerOutput<ViewWebLoginToken>>();
 

@@ -23,6 +23,7 @@ public static class PlayRecent {
             filterPlays,
             orderBy,
             limit,
-            startAt)).Map(x => x.ToList());
+            startAt
+        )).Map(x => x.ToList());
     }
 }

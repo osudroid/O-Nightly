@@ -32,7 +32,8 @@ public class OdrZip {
     }
 
 
-    public static async Task<Result<Option<(FileStream stream, string name)>, string>> FactoryAsync(NpgsqlConnection db,
+    public static async Task<Result<Option<(FileStream stream, string name)>, string>> FactoryAsync(
+        NpgsqlConnection db,
         long odrNumber) {
         var resultBblScore = await QueryPlayScore.GetByIdAsync(db, odrNumber);
 
@@ -42,7 +43,8 @@ public class OdrZip {
         var optionBblScore = resultBblScore.Ok();
         if (optionBblScore.IsSet() == false)
             return Result<Option<(FileStream stream, string name)>, string>.Ok(Option<(FileStream stream, string name)>
-                .Empty);
+                .Empty
+            );
 
         var bblScore = optionBblScore.Unwrap();
 
@@ -60,14 +62,16 @@ public class OdrZip {
             var optionBblUser = resultBblUser.Ok();
             if (optionBblUser.IsSet() == false)
                 return Result<Option<(FileStream stream, string name)>, string>.Ok(
-                    Option<(FileStream stream, string name)>.Empty);
+                    Option<(FileStream stream, string name)>.Empty
+                );
 
             var odrPath = Path.Join(Setting.ReplayPath, odrNumber + ".odr");
             if (Path.Exists(odrPath) == false)
                 return Result<Option<(FileStream stream, string name)>, string>.Err($"Path Error odrPath: {odrPath}");
 
             stream = CreateOdrZip(File.OpenRead(odrPath), OdrEntry
-                .Factory(bblScore, optionBblUser.Unwrap().Username ?? ""), filename);
+                    .Factory(bblScore, optionBblUser.Unwrap().Username ?? ""), filename
+            );
         }
 
         stream.Position = 0;

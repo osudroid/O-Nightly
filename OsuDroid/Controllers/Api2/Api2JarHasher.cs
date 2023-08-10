@@ -11,7 +11,8 @@ public class Api2JarHasher : ControllerExtensions {
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(byte[]))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Jar(
-        [FromRoute(Name = "version")] string version, [FromQuery(Name = "q")] string keyToken) {
+        [FromRoute(Name = "version")] string version,
+        [FromQuery(Name = "q")] string keyToken) {
         await using var dbN = await DbBuilder.BuildNpgsqlConnection();
         await using var dbT = await dbN.BeginTransactionAsync(IsolationLevel.Serializable);
         await using var db = dbT.Connection!;

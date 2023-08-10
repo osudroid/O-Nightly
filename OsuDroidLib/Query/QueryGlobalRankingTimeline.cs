@@ -1,8 +1,6 @@
-using System.Runtime.InteropServices;
 using Npgsql;
 using OsuDroidLib.Database.Entities;
 using OsuDroidLib.Extension;
-using OsuDroidLib.Lib;
 
 namespace OsuDroidLib.Query;
 
@@ -10,17 +8,16 @@ public static class QueryGlobalRankingTimeline {
     public static async Task<Result<Option<GlobalRankingTimeline>, string>> Now(NpgsqlConnection db, long userId) {
         var resultLeaderBoardUser = await Query.LeaderBoardUserSingleUser(db, userId);
 
-        if (resultLeaderBoardUser == EResult.Err) {
+        if (resultLeaderBoardUser == EResult.Err)
             return resultLeaderBoardUser.ChangeOkType<Option<GlobalRankingTimeline>>();
-        }
 
         var leaderBoardUser = resultLeaderBoardUser.Ok();
 
-        if (leaderBoardUser.IsSet()) {
+        if (leaderBoardUser.IsSet())
             return Result<Option<GlobalRankingTimeline>, string>
                 .Ok(Option<GlobalRankingTimeline>
-                    .With(GlobalRankingTimeline.FromLeaderBoardUser(leaderBoardUser.Unwrap(), DateTime.UtcNow)));
-        }
+                    .With(GlobalRankingTimeline.FromLeaderBoardUser(leaderBoardUser.Unwrap(), DateTime.UtcNow))
+                );
 
         return Result<Option<GlobalRankingTimeline>, string>
             .Ok(Option<GlobalRankingTimeline>.Empty);

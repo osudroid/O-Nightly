@@ -13,14 +13,17 @@ public class UpdateUsernameHandler
     : IHandler<NpgsqlCreates.DbWrapper, LogWrapper, ControllerPostWrapper<UpdateUsernameDto>,
         OptionHandlerOutput<ViewUpdateUsernameRes>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, ControllerPostWrapper<UpdateUsernameDto> request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerPostWrapper<UpdateUsernameDto> request) {
         var db = dbWrapper.Db;
         var cookieTokenWithUserIdOption = request.Controller.GetCookieAndUserId(db);
         var updateUsername = request.Post;
 
         if (cookieTokenWithUserIdOption.IsNotSet())
             return Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>.Ok(
-                OptionHandlerOutput<ViewUpdateUsernameRes>.Empty);
+                OptionHandlerOutput<ViewUpdateUsernameRes>.Empty
+            );
         var userId = cookieTokenWithUserIdOption.Unwrap().UserId;
 
         var userInfoResult = await QueryUserInfo.GetByUserIdAsync(db, userId);
@@ -35,7 +38,8 @@ public class UpdateUsernameHandler
 
         var userInfo = userInfoResult.Ok().Unwrap();
         var resultValidatePassword = await UserInfoManager.ValidatePasswordAndIfMd5UpdateIt(
-            db, userInfo.UserId, updateUsername.Passwd, userInfo.Password!);
+            db, userInfo.UserId, updateUsername.Password, userInfo.Password!
+        );
 
         if (resultValidatePassword == EResult.Err)
             return resultValidatePassword.ChangeOkType<OptionHandlerOutput<ViewUpdateUsernameRes>>();
@@ -43,8 +47,10 @@ public class UpdateUsernameHandler
         if (!resultValidatePassword.Ok().PasswordIsValid)
             return Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>.Ok(
                 OptionHandlerOutput<ViewUpdateUsernameRes>.With(new ViewUpdateUsernameRes {
-                    HasWork = false
-                }));
+                        HasWork = false
+                    }
+                )
+            );
 
         var checkUsername = await UserInfoManager.UsernameIsInUse(db, updateUsername.NewUsername);
 
@@ -54,8 +60,10 @@ public class UpdateUsernameHandler
         if (checkUsername.Ok())
             return Result<OptionHandlerOutput<ViewUpdateUsernameRes>, string>
                 .Ok(OptionHandlerOutput<ViewUpdateUsernameRes>.With(new ViewUpdateUsernameRes {
-                    HasWork = false
-                }));
+                            HasWork = false
+                        }
+                    )
+                );
 
         var result = await UserInfoManager.UpdateUsernameAsync(db, userInfo.UserId, updateUsername.NewUsername);
 

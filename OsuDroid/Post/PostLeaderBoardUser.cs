@@ -8,8 +8,9 @@ public sealed class PostLeaderBoardUser : Api2.IValuesAreGood, Api2.ISingleStrin
 
     public string PrintHashOrder() {
         return ErrorText.HashBodyDataAreFalse(new List<string> {
-            nameof(UserId)
-        });
+                nameof(UserId)
+            }
+        );
     }
 
     public string ToSingleString() {

@@ -10,19 +10,19 @@ public static class TokenHandlerManger {
 
     public static ITokenHandlerDb GetOrCreateCacheDatabase() {
         _taskClean ??= Task.Factory.StartNew(async () => {
-            while (true) {
-                try {
-                    {
-                        await Task.Delay(TimeSpan.FromMinutes(1));
-                        foreach (var (key, o) in TokenHandlerDic)
-                            o.RefreshAutoAsync();
+                while (true)
+                    try {
+                        {
+                            await Task.Delay(TimeSpan.FromMinutes(1));
+                            foreach (var (key, o) in TokenHandlerDic)
+                                o.RefreshAutoAsync();
+                        }
                     }
-                }
-                catch (Exception) {
-                    // ignored
-                }
-            }
-        }, TaskCreationOptions.LongRunning);
+                    catch (Exception) {
+                        // ignored
+                    }
+            }, TaskCreationOptions.LongRunning
+        );
 
         if (TokenHandlerDic.TryGetValue(ETokenHander.User, out var value)) {
             if (value is ITokenHandlerDb db) return db;

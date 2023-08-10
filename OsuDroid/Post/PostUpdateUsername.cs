@@ -6,20 +6,21 @@ namespace OsuDroid.Post;
 public sealed class PostUpdateUsername : Api2.IValuesAreGood, Api2.ISingleString {
     public string? NewUsername { get; set; }
     public string? OldUsername { get; set; }
-    public string? Passwd { get; set; }
+    public string? Password { get; set; }
 
     public string ToSingleString() {
         return Merge.ListToString(new[] {
-            NewUsername ?? "",
-            OldUsername ?? "",
-            Passwd ?? ""
-        });
+                NewUsername ?? "",
+                OldUsername ?? "",
+                Password ?? ""
+            }
+        );
     }
 
     public bool ValuesAreGood() {
         return ValidationUsername.Validation(NewUsername)
                && ValidationUsername.Validation(OldUsername)
-               && ValidationPassword.ValidationOldVersion(Passwd)
+               && ValidationPassword.ValidationOldVersion(Password)
             ;
     }
 }

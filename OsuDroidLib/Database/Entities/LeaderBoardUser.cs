@@ -1,3 +1,5 @@
+// ReSharper disable All
+
 namespace OsuDroidLib.Database.Entities;
 
 public class LeaderBoardUser {

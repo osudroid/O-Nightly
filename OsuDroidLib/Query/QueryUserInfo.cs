@@ -9,11 +9,13 @@ public static class QueryUserInfo {
         return await db.SafeInsertAsync(userInfo);
     }
 
-    public static async Task<Result<Option<UserInfo>, string>> GetUserIdByUsernameAsync(NpgsqlConnection db,
+    public static async Task<Result<Option<UserInfo>, string>> GetUserIdByUsernameAsync(
+        NpgsqlConnection db,
         string username) {
         return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(
             "SELECT UserId FROM UserInfo WHERE Username = lower(@Username) LIMIT 1",
-            new { Username = username });
+            new { Username = username }
+        );
     }
 
     public static async Task<Result<Option<StatisticActiveUser>, string>> GetStatisticActiveUser(NpgsqlConnection db) {
@@ -37,42 +39,49 @@ WHERE banned = false
 SELECT * 
 FROM UserInfo
 WHERE USerId = {userId}
-");
+"
+        );
     }
 
     public static async Task<Result<Option<UserInfo>, string>>
         GetByUsernameAsync(NpgsqlConnection db, string username) {
-        return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@$"
+        return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@"
 SELECT * 
 FROM UserInfo
 WHERE Username = @Username
-", new { Username = username });
+", new { Username = username }
+        );
     }
 
     public static async Task<Result<Option<UserInfo>, string>> GetByEmailAsync(NpgsqlConnection db, string email) {
-        return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@$"
+        return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@"
 SELECT * 
 FROM UserInfo
 WHERE Email = lower(@Email)
-", new { Email = email });
+", new { Email = email }
+        );
     }
 
     public static async Task<Result<Option<UserInfo>, string>> GetUsernameAndRegionByUserId(
-        NpgsqlConnection db, long userId) {
+        NpgsqlConnection db,
+        long userId) {
         return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@$"
 SELECT username, region
 FROM UserInfo
 WHERE UserId = {userId}
-");
+"
+        );
     }
 
     public static async Task<Result<Option<UserInfo>, string>> GetUsernameByUserIdAsync(
-        NpgsqlConnection db, long userId) {
+        NpgsqlConnection db,
+        long userId) {
         return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@$"
 SELECT Username
 FROM UserInfo
 WHERE UserId = {userId}
-");
+"
+        );
     }
 
     public static async Task<ResultErr<string>> DeleteAsync(NpgsqlConnection db, long userId) {
@@ -80,49 +89,61 @@ WHERE UserId = {userId}
     }
 
     public static async Task<Result<Option<UserInfo>, string>> GetIdUsernamePasswordByLowerUsernameAsync(
-        NpgsqlConnection db, string username) {
+        NpgsqlConnection db,
+        string username) {
         return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@"
 SELECT UserId, Username, Password 
 FROM UserInfo 
 WHERE lower(username) = lower(@Username)",
-            new { Username = username });
+            new { Username = username }
+        );
     }
 
     /// <returns> UserId, Email, Password, Username  </returns>
     public static async Task<Result<Option<UserInfo>, string>> GetLoginInfoByEmailAsync(
-        NpgsqlConnection db, string email) {
+        NpgsqlConnection db,
+        string email) {
         return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@"
 SELECT UserId, Email, Password, Username 
 FROM UserInfo 
 WHERE Email = lower(@Email) 
   AND Banned = false 
 LIMIT 1",
-            new { Email = email });
+            new { Email = email }
+        );
     }
 
     /// <returns> UserId, Email, Password, Username  </returns>
     public static async Task<Result<Option<UserInfo>, string>> GetLoginInfoByByUsernameAsync(
-        NpgsqlConnection db, string username) {
+        NpgsqlConnection db,
+        string username) {
         return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(@"
 SELECT UserId, Email, Password, Username
 FROM UserInfo 
 WHERE Username = lower(@Username) 
   AND Banned = false 
 LIMIT 1",
-            new { Username = username });
+            new { Username = username }
+        );
     }
 
     public static async Task<ResultErr<string>> UpdateIpAndRegionAsync(
-        NpgsqlConnection db, long userId, string region, string latestIp) {
+        NpgsqlConnection db,
+        long userId,
+        string region,
+        string latestIp) {
         return await db.SafeQueryAsync(@"
 UPDATE UserInfo
 SET Region = @Region, LatestIp = @LatestIp
 WHERE UserId = @UserId 
-", new { Region = region, LatestIp = latestIp, UserId = userId });
+", new { Region = region, LatestIp = latestIp, UserId = userId }
+        );
     }
 
     public static async Task<ResultErr<string>> UpdateEmailByUserId(
-        NpgsqlConnection db, long userId, string email) {
+        NpgsqlConnection db,
+        long userId,
+        string email) {
         return await db.SafeQueryAsync(
             @$"UPDATE UserInfo SET Email = lower(@Email) WHERE UserId = {userId}",
             new { Email = email }
@@ -130,7 +151,9 @@ WHERE UserId = @UserId
     }
 
     public static async Task<ResultErr<string>> UpdatePasswordByUserIdAsync(
-        NpgsqlConnection db, long userId, string password) {
+        NpgsqlConnection db,
+        long userId,
+        string password) {
         return await db.SafeQueryAsync(
             @$"UPDATE UserInfo SET Password = lower(@Password) WHERE UserId = {userId}",
             new { Password = password }
@@ -138,7 +161,9 @@ WHERE UserId = @UserId
     }
 
     public static async Task<ResultErr<string>> UpdateUsernameByUserIdAsync(
-        NpgsqlConnection db, long userId, string username) {
+        NpgsqlConnection db,
+        long userId,
+        string username) {
         return await db.SafeQueryAsync(
             @$"UPDATE UserInfo SET Username = lower(@Username) WHERE UserId = {userId}",
             new { Username = username }
@@ -146,18 +171,22 @@ WHERE UserId = @UserId
     }
 
     public static async Task<Result<Option<UserInfo>, string>> CheckPasswordGetIdAndUsernameAsync(
-        NpgsqlConnection db, string passwordHash) {
+        NpgsqlConnection db,
+        string passwordHash) {
         var sql = @"
 SELECT UserId, Username
 FROM UserInfo
 WHERE password = @PasswordHash
 ";
-        return (await db.SafeQueryFirstOrDefaultAsync<UserInfo>(sql,
-            new { PasswordHash = passwordHash }));
+        return await db.SafeQueryFirstOrDefaultAsync<UserInfo>(sql,
+            new { PasswordHash = passwordHash }
+        );
     }
 
     public static async Task<Result<IEnumerable<UserInfo>, string>> GetEmailAndUsernameByEmailAndUsername(
-        NpgsqlConnection db, string email, string username) {
+        NpgsqlConnection db,
+        string email,
+        string username) {
         var sql = @"
 SELECT username, email 
 FROM UserInfo
@@ -169,12 +198,16 @@ WHERE Email = lower(@Email)
     }
 
     public static async Task<Result<bool, string>> CheckExistByEmailAndUsername(
-        NpgsqlConnection db, string email, string username) {
+        NpgsqlConnection db,
+        string email,
+        string username) {
         return (await GetEmailAndUsernameByEmailAndUsername(db, email, username)).Map(x => x.Any());
     }
 
     public static async Task<ResultErr<string>> UpdatePasswordAsync(
-        NpgsqlConnection db, long userId, string passwordHash) {
+        NpgsqlConnection db,
+        long userId,
+        string passwordHash) {
         var sql = @"
 UPDATE UserInfo
 SET Password = @Password
@@ -195,7 +228,9 @@ WHERE UserId = @UserId
         )).Map(x => time);
     }
 
-    public static async Task<ResultErr<string>> SetAcceptPatreonEmailAsync(NpgsqlConnection db, long userId,
+    public static async Task<ResultErr<string>> SetAcceptPatreonEmailAsync(
+        NpgsqlConnection db,
+        long userId,
         bool accept = true) {
         var sql = $@"
 Update UserInfo 

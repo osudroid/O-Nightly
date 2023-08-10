@@ -9,13 +9,14 @@ using OsuDroidAttachment;
 using OsuDroidAttachment.DbBuilder;
 using OsuDroidAttachment.Validation;
 
-namespace OsuDroid.Controllers.Api2; 
+namespace OsuDroid.Controllers.Api2;
 
 public class Api2Statistic : ControllerExtensions {
     [HttpGet("/api2/statistic/active-user")]
     [PrivilegeRoute("/api2/statistic/active-user")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>))]
+        Type = typeof(ApiTypes.ViewExistOrFoundInfo<ViewStatisticActiveUser>)
+    )]
     public async Task<IActionResult> GetActiveUser() {
         var transaction = await Service.AttachmentServiceApi(
             new NpgsqlCreates(),
@@ -24,7 +25,8 @@ public class Api2Statistic : ControllerExtensions {
             new TransformAction<
                 ControllerWrapper,
                 ControllerWrapper>(i
-                => new ControllerWrapper(i.Controller)),
+                => new ControllerWrapper(i.Controller)
+            ),
             new ActiveUserHandler(),
             new ViewExistOrFoundInfoHandler<ViewStatisticActiveUser>(),
             new ControllerWrapper(ControllerHandlerBuild())
@@ -36,7 +38,8 @@ public class Api2Statistic : ControllerExtensions {
     [HttpGet("/api2/statistic/all-patreon")]
     [PrivilegeRoute("/api2/statistic/all-patreon")]
     [ProducesResponseType(StatusCodes.Status200OK,
-        Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>))]
+        Type = typeof(ApiTypes.ViewExistOrFoundInfo<List<ViewUsernameAndId>>)
+    )]
     public async Task<IActionResult> GetAllPatreon() {
         var transaction = await Service.AttachmentServiceApi(
             new NpgsqlCreates(),
@@ -45,7 +48,8 @@ public class Api2Statistic : ControllerExtensions {
             new TransformAction<
                 ControllerWrapper,
                 ControllerWrapper>(i
-                => new ControllerWrapper(i.Controller)),
+                => new ControllerWrapper(i.Controller)
+            ),
             new GetAllPatreonHandler(),
             new ViewExistOrFoundInfoHandler<List<ViewUsernameAndId>>(),
             new ControllerWrapper(ControllerHandlerBuild())

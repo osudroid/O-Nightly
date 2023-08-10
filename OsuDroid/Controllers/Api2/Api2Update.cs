@@ -53,11 +53,13 @@ public class Api2Update : ControllerExtensions {
             wantFile ??= defaultFile;
 
             return Ok(new ViewApiUpdateInfoV2 {
-                Changelog = await System.IO.File.ReadAllTextAsync(
-                    $"{Setting.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"),
-                VersionCode = dirNameNumber,
-                Link = $"https://{Setting.Domain_Name!.Value}/api2/apk/version/{dirNameNumber}.apk"
-            });
+                    Changelog = await System.IO.File.ReadAllTextAsync(
+                        $"{Setting.UpdatePath}/{dirNameNumber}/changelog/{wantFile}"
+                    ),
+                    VersionCode = dirNameNumber,
+                    Link = $"https://{Setting.Domain_Name!.Value}/api2/apk/version/{dirNameNumber}.apk"
+                }
+            );
         }
         catch (Exception e) {
             await log.AddLogErrorAsync(e.ToString());

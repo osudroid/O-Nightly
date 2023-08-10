@@ -8,7 +8,7 @@ public sealed class LeaderBoardDto : IDto {
     public required int Limit { get; set; }
 
     public Option<CountryInfo.Country> GetRegionAsCountry() {
-        return CountryInfo.FindByName(Region ?? "");
+        return CountryInfo.FindByName(Region);
     }
 
     public bool IsRegionAll() {

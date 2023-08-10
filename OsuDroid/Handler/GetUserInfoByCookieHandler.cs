@@ -11,7 +11,9 @@ namespace OsuDroid.Handler;
 public class GetUserInfoByCookieHandler :
     IHandler<NpgsqlCreates.DbWrapper, LogWrapper, UserCookieControllerHandler, OptionHandlerOutput<ViewUserInfo>> {
     public async ValueTask<Result<OptionHandlerOutput<ViewUserInfo>, string>> Handel(
-        NpgsqlCreates.DbWrapper dbWrapper, LogWrapper logger, UserCookieControllerHandler request) {
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        UserCookieControllerHandler request) {
         var db = dbWrapper.Db;
 
         var cookieOpt = request.GetCookie();
@@ -40,16 +42,18 @@ public class GetUserInfoByCookieHandler :
         var userInfo = result.Ok().Unwrap();
 
         return Result<OptionHandlerOutput<ViewUserInfo>, string>.Ok(OptionHandlerOutput<ViewUserInfo>.With(
-            new ViewUserInfo {
-                Id = userInfo.UserId,
-                Username = userInfo.Username ?? "",
-                Email = userInfo.Email ?? "",
-                Region = userInfo.Region ?? "",
-                Active = userInfo.Active,
-                Banned = userInfo.Banned,
-                RestrictMode = userInfo.RestrictMode,
-                RegistTime = userInfo.RegisterTime,
-                Supporter = userInfo.PatronEmailAccept
-            }));
+                new ViewUserInfo {
+                    Id = userInfo.UserId,
+                    Username = userInfo.Username ?? "",
+                    Email = userInfo.Email ?? "",
+                    Region = userInfo.Region ?? "",
+                    Active = userInfo.Active,
+                    Banned = userInfo.Banned,
+                    RestrictMode = userInfo.RestrictMode,
+                    RegistTime = userInfo.RegisterTime,
+                    Supporter = userInfo.PatronEmailAccept
+                }
+            )
+        );
     }
 }

@@ -1,4 +1,3 @@
 namespace OsuDroidServiceCleaner;
 
-public class ServiceState {
-}
+public class ServiceState;

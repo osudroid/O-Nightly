@@ -9,13 +9,13 @@
 
     <ItemGroup>
         <PackageReference Include="BCrypt.Net-Next" Version="4.0.3"/>
-        <PackageReference Include="Mediator.Abstractions" Version="2.1.5" />
+        <PackageReference Include="Mediator.Abstractions" Version="2.1.5"/>
         <PackageReference Include="Mediator.SourceGenerator" Version="2.1.5">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0.0"/>
         <PackageReference Include="Riok.Mapperly" Version="2.9.0-next.2"/>
 
         <PackageReference Include="LamLibAllOver" Version="2.13.0"/>
@@ -32,11 +32,10 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Reference Include="LamLibAllOver">
-        <HintPath>..\..\..\..\home\chaosmac\.nuget\packages\lamliballover\2.13.0\lib\net7.0\LamLibAllOver.dll</HintPath>
-      </Reference>
+        <Reference Include="LamLibAllOver">
+            <HintPath>..\..\..\..\home\chaosmac\.nuget\packages\lamliballover\2.13.0\lib\net7.0\LamLibAllOver.dll</HintPath>
+        </Reference>
     </ItemGroup>
-
 
 
 </Project>

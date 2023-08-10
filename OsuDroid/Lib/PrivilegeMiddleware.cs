@@ -16,7 +16,9 @@ public interface ICookieHandler {
     public string Name { get; }
 
     public Task<Result<(bool IsOk, long UserId, Guid Token), string>> HandleCookieAsync(
-        NpgsqlConnection db, IRequestCookieCollection requestCookie, IResponseCookies responseCookies);
+        NpgsqlConnection db,
+        IRequestCookieCollection requestCookie,
+        IResponseCookies responseCookies);
 }
 
 public class PrivilegeMiddleware {
@@ -65,7 +67,8 @@ public class PrivilegeMiddleware {
                 cookieHandler = new Option<ICookieHandler>(cookieHandlers[routerSetting.NeedCookieHandler ?? ""]);
 
             newMap[routerSetting.Path!] = new RouteInfo(needPrivilege.NeedPrivilegeId, needPrivilege.Name ?? "",
-                routerSetting.NeedCookie, cookieHandler);
+                routerSetting.NeedCookie, cookieHandler
+            );
         }
 
         NeedPrivilegeDic = newMap;
@@ -110,10 +113,12 @@ public class PrivilegeMiddleware {
     private async Task InvokeAsyncWithCookie(HttpContext context, RouteInfo routeInfo) {
         await using var db = await DbBuilder.BuildNpgsqlConnection();
 
-        var result = await routeInfo.CookieHandler.Unwrap().HandleCookieAsync(
-            db,
-            context.Request.Cookies,
-            context.Response.Cookies);
+        var result = await routeInfo.CookieHandler.Unwrap()
+                                    .HandleCookieAsync(
+                                        db,
+                                        context.Request.Cookies,
+                                        context.Response.Cookies
+                                    );
 
         if (result == EResult.Err)
             throw new Exception(result.Err());
@@ -132,7 +137,7 @@ public class PrivilegeMiddleware {
         if (resultPrivilegeOk == EResult.Err)
             throw new Exception(resultPrivilegeOk.Err());
 
-        foreach ((var name, var id, var has) in resultPrivilegeOk.Ok()) {
+        foreach (var (name, id, has) in resultPrivilegeOk.Ok()) {
             if (has)
                 continue;
 
@@ -151,14 +156,18 @@ public class PrivilegeMiddleware {
             : new CheckIfNeedCookieResult(true, Option<RouteInfo>.With(routeInfo));
     }
 
-    public record RouteInfo(Guid NeedPrilegeId, string NeedPrivileName, bool NeedCookie,
+    public record RouteInfo(
+        Guid NeedPrilegeId,
+        string NeedPrivileName,
+        bool NeedCookie,
         Option<ICookieHandler> CookieHandler);
 
     private record struct CheckIfNeedCookieResult(bool Found, Option<RouteInfo> RouteInfo);
 }
 
 public static class PrivilegeMiddlewareExtensions {
-    public static IApplicationBuilder UsePrivilege(this IApplicationBuilder builder,
+    public static IApplicationBuilder UsePrivilege(
+        this IApplicationBuilder builder,
         IReadOnlyList<ICookieHandler> cookieHandler) {
         PrivilegeMiddleware.Load(cookieHandler).Wait();
         return builder.UseMiddleware<PrivilegeMiddleware>();

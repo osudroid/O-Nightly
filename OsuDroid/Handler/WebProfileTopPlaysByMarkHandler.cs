@@ -11,8 +11,10 @@ namespace OsuDroid.Handler;
 
 public class WebProfileTopPlaysByMarkHandler : IHandler<NpgsqlCreates.DbWrapper, LogWrapper,
     ControllerGetWrapper<TopPlaysByMarkPageingDto>, OptionHandlerOutput<ViewPlays>> {
-    public async ValueTask<Result<OptionHandlerOutput<ViewPlays>, string>> Handel(NpgsqlCreates.DbWrapper dbWrapper,
-        LogWrapper logger, ControllerGetWrapper<TopPlaysByMarkPageingDto> request) {
+    public async ValueTask<Result<OptionHandlerOutput<ViewPlays>, string>> Handel(
+        NpgsqlCreates.DbWrapper dbWrapper,
+        LogWrapper logger,
+        ControllerGetWrapper<TopPlaysByMarkPageingDto> request) {
         var db = dbWrapper.Db;
         var userId = request.Get.UserId;
         var page = request.Get.Page;
@@ -33,10 +35,12 @@ OFFSET {page * pageSize}
 ;";
         return (await db.SafeQueryAsync<Entities.PlayScore>(sql, new { Mark = mark.ToStringFast() }))
             .Map(x => OptionHandlerOutput<ViewPlays>.With(new ViewPlays {
-                Found = true,
-                Scores = x
-                         .Select(ViewPlayScore.FromPlayScore)
-                         .ToList()
-            }));
+                        Found = true,
+                        Scores = x
+                                 .Select(ViewPlayScore.FromPlayScore)
+                                 .ToList()
+                    }
+                )
+            );
     }
 }

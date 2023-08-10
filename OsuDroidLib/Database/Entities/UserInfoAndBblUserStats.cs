@@ -1,5 +1,6 @@
 namespace OsuDroidLib.Database.Entities;
 
+// ReSharper disable All
 public class UserInfoAndBblUserStats {
     public long UserId { get; set; }
     public string? Username { get; set; }

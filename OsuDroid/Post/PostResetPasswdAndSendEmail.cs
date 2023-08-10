@@ -9,9 +9,10 @@ public sealed class PostResetPasswdAndSendEmail : Api2.IValuesAreGood, Api2.ISin
 
     public string ToSingleString() {
         return Merge.ListToString(new[] {
-            Email ?? "",
-            Username ?? ""
-        });
+                Email ?? "",
+                Username ?? ""
+            }
+        );
     }
 
     public bool ValuesAreGood() {
