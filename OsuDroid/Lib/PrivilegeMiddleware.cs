@@ -37,7 +37,9 @@ public class PrivilegeMiddleware {
 
     public static async Task Load(IReadOnlyList<ICookieHandler> cookieHandlerList) {
         var cookieHandlers = new Dictionary<string, ICookieHandler>(cookieHandlerList.Count * 2);
-        foreach (var cookieHandler in cookieHandlerList) cookieHandlers[cookieHandler.Name] = cookieHandler;
+        foreach (var cookieHandler in cookieHandlerList) {
+            cookieHandlers[cookieHandler.Name] = cookieHandler;
+        }
 
         CookieHandlers = cookieHandlers;
 
@@ -66,6 +68,10 @@ public class PrivilegeMiddleware {
             if (cookieHandlers.ContainsKey(routerSetting.NeedCookieHandler ?? ""))
                 cookieHandler = new Option<ICookieHandler>(cookieHandlers[routerSetting.NeedCookieHandler ?? ""]);
 
+            if (routerSetting.NeedCookie && cookieHandler.IsNotSet()) {
+                throw new NullReferenceException("cookieHandler.Unwrap()");
+            }
+            
             newMap[routerSetting.Path!] = new RouteInfo(needPrivilege.NeedPrivilegeId, needPrivilege.Name ?? "",
                 routerSetting.NeedCookie, cookieHandler
             );
@@ -84,7 +90,9 @@ public class PrivilegeMiddleware {
 
         var attribute = endpoint.Metadata.GetMetadata<PrivilegeRouteAttribute>();
 
-        if (attribute is null) throw new NullReferenceException(nameof(attribute));
+        if (attribute is null) {
+            throw new NullReferenceException(nameof(attribute));
+        }
 
         var checkResult = CheckIfNeedCookie(attribute);
         if (checkResult.RouteInfo.IsNotSet()) {
@@ -104,8 +112,9 @@ public class PrivilegeMiddleware {
             return;
         }
 
-        if (routeInfo.CookieHandler.IsNotSet())
+        if (routeInfo.CookieHandler.IsNotSet()) {
             throw new Exception("routeInfo.CookieHandler.IsNotSet() == true");
+        }
 
         await InvokeAsyncWithCookie(context, routeInfo);
     }
@@ -132,7 +141,7 @@ public class PrivilegeMiddleware {
 
 
         var resultPrivilegeOk =
-            PrivilegeManager.UserCanUseById(db, routeInfo.NeedPrilegeId, result.Ok().UserId);
+            await PrivilegeManager.UserCanUseByIdAsync(db, routeInfo.NeedPrilegeId, result.Ok().UserId);
 
         if (resultPrivilegeOk == EResult.Err)
             throw new Exception(resultPrivilegeOk.Err());
@@ -151,9 +160,10 @@ public class PrivilegeMiddleware {
     }
 
     private static CheckIfNeedCookieResult CheckIfNeedCookie(PrivilegeRouteAttribute attribute) {
-        return NeedPrivilegeDic.TryGetValue(attribute.Route, out var routeInfo) == false
-            ? default
-            : new CheckIfNeedCookieResult(true, Option<RouteInfo>.With(routeInfo));
+        if (NeedPrivilegeDic.TryGetValue(attribute.Route, out var routeInfo) == false) {
+            return default;
+        }
+        return new CheckIfNeedCookieResult(true, Option<RouteInfo>.With(routeInfo));
     }
 
     public record RouteInfo(

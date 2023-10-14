@@ -14,7 +14,7 @@ public static class Program {
             throw new Exception(loadResult.Err());
 
         DefaultTypeMap.MatchNamesWithUnderscores = false;
-        await PrivilegeManager.Update();
+        await PrivilegeManager.UpdateAsync();
 
         if (args.Length == 0) {
             Security.GetSecurity();

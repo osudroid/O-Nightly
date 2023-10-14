@@ -15,7 +15,7 @@ public class GetUserInfoByCookieHandler :
         LogWrapper logger,
         UserCookieControllerHandler request) {
         var db = dbWrapper.Db;
-
+        
         var cookieOpt = request.GetCookie();
         if (cookieOpt.IsNotSet())
             return Result<OptionHandlerOutput<ViewUserInfo>, string>.Ok(OptionHandlerOutput<ViewUserInfo>.Empty);

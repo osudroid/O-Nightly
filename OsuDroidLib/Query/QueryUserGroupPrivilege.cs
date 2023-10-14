@@ -7,7 +7,7 @@ namespace OsuDroidLib.Query;
 
 public static class QueryUserGroupPrivilege {
     public static async Task<Result<UserGroupPrivilegeDto, string>>
-        GetGroupPrivileges(NpgsqlConnection db, long userId) {
+        GetGroupPrivilegesAsync(NpgsqlConnection db, long userId) {
         try {
             var s = db.Query(@$"
 SELECT p.*, gpp.*, gp.* 

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using OsuDroid.Class;
@@ -151,19 +152,23 @@ public abstract class ControllerExtensions : ControllerBase {
     public Dictionary<ECookie, string> GetCookies() {
         try {
             var request = Request;
-            var stringValues = request.Headers["Cookie"];
-            if (stringValues.Count == 0)
+            var cookieHeader = request.Headers["Cookie"];
+            if (cookieHeader.Count == 0) return new Dictionary<ECookie, string>(0);
+            
+            var stringValues = cookieHeader[0].Trim().Split(";");
+            if (stringValues.Length == 0)
                 return new Dictionary<ECookie, string>(0);
 
-            var res = new Dictionary<ECookie, string>(10);
+            var res = new Dictionary<ECookie, string>(2);
 
             foreach (var i in stringValues) {
+                
                 var nameAndValue = (i ?? "").Split("=", StringSplitOptions.TrimEntries);
                 var eCookie = NameToECookie(nameAndValue[0]);
 
                 if (eCookie.IsSet() == false) continue;
 
-                res.Add(eCookie.Unwrap(), nameAndValue[1]);
+                res.TryAdd(eCookie.Unwrap(), nameAndValue[1]);
             }
 
             return res;

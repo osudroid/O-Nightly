@@ -32,10 +32,10 @@ public class DbTransfer {
 
     public async Task Run() {
         try {
-            // if (_cleanDb) await CleanDbHandler.Run(); 
-            // if (_insertUser) await InsertUserHandler.Run(); 
-            // if (_insertScore) await InsertScoreHandler.Run(); 
-            if (CalcUserScore) await CalcUserScoreHandler.Run();
+            await CleanDbHandler.Run(); 
+            await InsertUserHandler.Run(); 
+            await InsertScoreHandler.Run(); 
+            await CalcUserScoreHandler.Run();
         }
         catch (Exception e) {
             WriteLine(e);

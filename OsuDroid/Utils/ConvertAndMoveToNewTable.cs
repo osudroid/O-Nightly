@@ -73,7 +73,7 @@ public class ConvertAndMoveToNewTable {
                             Filename = score.filename
                                        ?? throw new NullReferenceException($"score.filename score.id: {score.id}"),
                             Hash = score.hash ?? throw new NullReferenceException($"score.hash score.id: {score.id}"),
-                            Mode = Mode.ModeAsSingleStringToModeArray(score.mode),
+                            Mode = Mode.ModeAsSingleStringToModeArray(score.mode, score.id),
                             Score = score.score,
                             Combo = score.combo,
                             Mark = score.mark ?? throw new NullReferenceException($"score.mark score.id: {score.id}"),
@@ -565,7 +565,7 @@ VALUES (
         for (var i = 0; i < scores.Count; i++) {
             var bblScore = scores[i];
 
-            static string[] ModeToArray(ReadOnlySpan<char> mode) {
+            string[] ModeToArray(ReadOnlySpan<char> mode) {
                 var res = new List<string>(4);
 
                 var hasPipe = false;
@@ -584,7 +584,7 @@ VALUES (
                 if (hasPipe && mode.Length >= posi) {
                     var slice = mode.Slice(posi);
                     if (slice[0] != 'x')
-                        throw new Exception("Must be start with 'x'");
+                        throw new Exception($"Must be start with 'x' ID: {bblScore.id} MODE: {mode} ");
                     res.Add(new string(slice));
                 }
 

@@ -55,14 +55,14 @@ public static class PrivilegeManager {
 
     private static void UpdateIfNeeded() {
         if (First) {
-            Update();
+            UpdateAsync();
             return;
         }
 
-        if (LastUpdate.AddMinutes(10) < DateTime.UtcNow) Update();
+        if (LastUpdate.AddMinutes(10) < DateTime.UtcNow) UpdateAsync();
     }
 
-    public static async Task<ResultErr<string>> Update() {
+    public static async Task<ResultErr<string>> UpdateAsync() {
         if (Monitor.IsEntered(_lock)) return ResultErr<string>.Ok();
 
         var lockTaken = false;
@@ -95,13 +95,13 @@ public static class PrivilegeManager {
         return ResultErr<string>.Ok();
     }
 
-    public static Result<List<(string Name, Guid id, bool Has)>, string> UserCanUse(
+    public static async Task<Result<List<(string Name, Guid id, bool Has)>, string>> UserCanUse(
         NpgsqlConnection db,
         string needPrivilege,
         long userId) {
         try {
             var res = new List<(string Name, Guid id, bool Has)>();
-            var query = db.Query<dynamic>(@$"
+            var query = await db.QueryAsync<dynamic>(@$"
 select * FROM user_check_need_privilege_by_name({userId}, @needPrivilege) as x(pri_name TEXT, need_privilege_id uuid, user_has_privilege bool)",
                 new { needPrivilege }
             );
@@ -113,13 +113,13 @@ select * FROM user_check_need_privilege_by_name({userId}, @needPrivilege) as x(p
         }
     }
 
-    public static Result<List<(string Name, Guid id, bool Has)>, string> UserCanUseById(
+    public static async Task<Result<List<(string Name, Guid id, bool Has)>, string>> UserCanUseByIdAsync(
         NpgsqlConnection db,
         Guid needPrivilegeId,
         long userId) {
         try {
             var res = new List<(string Name, Guid id, bool Has)>();
-            var query = db.Query<dynamic>(@$"
+            var query = await db.QueryAsync<dynamic>(@$"
 select * FROM user_check_need_privilege_by_id({userId}, @needPrivilegeId) as x(pri_name TEXT, need_privilege_id uuid, user_has_privilege bool)",
                 new { needPrivilegeId }
             );

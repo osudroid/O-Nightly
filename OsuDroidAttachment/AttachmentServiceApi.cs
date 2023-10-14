@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LamLibAllOver;
 using OsuDroidAttachment.Class;
 using OsuDroidAttachment.Interface;
@@ -15,14 +16,22 @@ public sealed class AttachmentServiceApi<TDb, ELogger, UInput, TransformOutput, 
         UInput input,
         CancellationToken token = default) {
         try {
+            var stopwatch = Stopwatch.StartNew();
             var result = Task.Factory.StartNew(() => RunFullAsync(builder, input), TaskCreationOptions.PreferFairness)
                              .Unwrap();
             await result.WaitAsync(token);
-            if (result.IsCompleted == false)
-                return await builder.OutputHandler.Handel(
+            if (result.IsCompleted == false) {
+                var resultValue =  await builder.OutputHandler.Handel(
                     Result<HandlerOutput, string>.Err(TraceMsg.WithMessage("IsNotCompleted"))
                 );
+                
+                stopwatch.Stop();
+                Console.WriteLine($"Time need {stopwatch.ElapsedMilliseconds}ms; Handler: {builder.Handler.GetType()}; Status IsNotCompleted");
+                return resultValue;
+            }
 
+            stopwatch.Stop();
+            Console.WriteLine($"Time need {stopwatch.ElapsedMilliseconds}ms; Handler: {builder.Handler.GetType()}");
             return result.Result;
         }
         catch (Exception e) {
