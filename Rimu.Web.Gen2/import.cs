@@ -1,0 +1,1 @@
+global using Rimu.Web.Gen2;

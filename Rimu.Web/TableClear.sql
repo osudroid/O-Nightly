@@ -1,0 +1,61 @@
+DROP VIEW "View_Play_PlayStats";
+DROP VIEW "View_Play_PlayStats_UserInfo";
+DROP VIEW "View_Play_PlayStatsHistory";
+DROP VIEW "View_UserAvatarNoBytes";
+DROP VIEW "View_UserInfo_UserClassifications";
+DROP VIEW "View_UserInfo_UserStats";
+DROP Table "GlobalRankingTimeline";
+DROP Table "Log";
+DROP Table "OldMarkNewMark";
+DROP Table "ResetPasswordKey";
+DROP Table "TokenUser";
+DROP Table "TokenWithGroup";
+DROP Table "UserSetting";
+DROP Table "WebLoginMathResult";
+DROP Table "PlayStats";
+DROP Table "PlayStatsHistory";
+DROP Table "ReplayFile";
+DROP Table "Play";
+DROP Table "UserAvatar";
+DROP Table "UserClassifications";
+DROP Table "UserStats";
+DROP Table "UserInfo";
+
+DROP sequence play_score_history_id;
+DROP sequence public_score_id_seq;
+DROP sequence user_classifications_id_seq;
+
+
+DELETE FROM "ReplayFile";
+
+DELETE FROM "GlobalRankingTimeline";
+DELETE FROM "Log";
+DELETE FROM "OldMarkNewMark";
+DELETE FROM "ResetPasswordKey";
+DELETE FROM "TokenUser";
+DELETE FROM "TokenWithGroup";
+DELETE FROM "UserSetting";
+DELETE FROM "WebLoginMathResult";
+DELETE FROM "PlayStats";
+DELETE FROM "PlayStatsHistory";
+DELETE FROM "Play";
+DELETE FROM "UserAvatar";
+DELETE FROM "UserClassifications";
+DELETE FROM "UserStats";
+DELETE FROM "UserInfo";
+
+VACUUM FULL "GlobalRankingTimeline";
+VACUUM FULL "Log";
+VACUUM FULL "OldMarkNewMark";
+VACUUM FULL "ResetPasswordKey";
+VACUUM FULL "TokenUser";
+VACUUM FULL "TokenWithGroup";
+VACUUM FULL "UserSetting";
+VACUUM FULL "WebLoginMathResult";
+VACUUM FULL "PlayStats";
+VACUUM FULL "PlayStatsHistory";
+VACUUM FULL "Play";
+VACUUM FULL "UserAvatar";
+VACUUM FULL "UserClassifications";
+VACUUM FULL "UserStats";
+VACUUM FULL "UserInfo";

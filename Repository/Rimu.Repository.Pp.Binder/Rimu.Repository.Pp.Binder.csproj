@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <PlatformTarget>x64</PlatformTarget>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <PlatformTarget>x64</PlatformTarget>
+        <DebugSymbols>true</DebugSymbols>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Rimu.Repository.Environment.Adapter\Rimu.Repository.Environment.Adapter.csproj" />
+      <ProjectReference Include="..\Rimu.Repository.Pp.Adapter\Rimu.Repository.Pp.Adapter.csproj" />
+      <ProjectReference Include="..\Rimu.Repository.Pp.Domain\Rimu.Repository.Pp.Domain.csproj" />
+    </ItemGroup>
+
+</Project>

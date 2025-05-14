@@ -1,0 +1,55 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <PlatformTarget>x64</PlatformTarget>
+      <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+      <DebugSymbols>true</DebugSymbols>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+      <PlatformTarget>x64</PlatformTarget>
+      <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BCrypt.Net-Next" Version="4.0.3"/>
+        <PackageReference Include="FastEndpoints" Version="6.1.0" />
+        <PackageReference Include="Mediator.Abstractions" Version="2.1.7"/>
+        <PackageReference Include="Mediator.SourceGenerator" Version="2.1.7">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="MediatR" Version="12.5.0" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.5" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.5" />
+        <PackageReference Include="Riok.Mapperly" Version="4.2.1" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
+        <PackageReference Include="MaxMind.GeoIP2" Version="5.3.0" />
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.8" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Repository\Rimu.Repository.Authentication.Adapter\Rimu.Repository.Authentication.Adapter.csproj" />
+      <ProjectReference Include="..\Repository\Rimu.Repository.Avatar.Adapter\Rimu.Repository.Avatar.Adapter.csproj" />
+      <ProjectReference Include="..\Repository\Rimu.Repository.Dependency.Adapter\Rimu.Repository.Dependency.Adapter.csproj" />
+      <ProjectReference Include="..\Repository\Rimu.Repository.Environment.Adapter\Rimu.Repository.Environment.Adapter.csproj" />
+      <ProjectReference Include="..\Repository\Rimu.Repository.OdrZip.Adapter\Rimu.Repository.OdrZip.Adapter.csproj" />
+      <ProjectReference Include="..\Repository\Rimu.Repository.Postgres.Adapter\Rimu.Repository.Postgres.Adapter.csproj" />
+      <ProjectReference Include="..\Repository\Rimu.Repository.Pp.Adapter\Rimu.Repository.Pp.Adapter.csproj" />
+      <ProjectReference Include="..\Repository\Rimu.Repository.Printer.Adapter\Rimu.Repository.Printer.Adapter.csproj" />
+      <ProjectReference Include="..\Repository\Rimu.Repository.Region.Adapter\Rimu.Repository.Region.Adapter.csproj" />
+      <ProjectReference Include="..\Repository\Rimu.Repository.Security.Adapter\Rimu.Repository.Security.Adapter.csproj" />
+      <ProjectReference Include="..\Rimu.Repository.Mailer.Adapter\Rimu.Repository.Mailer.Adapter.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Share\Validation\" />
+    </ItemGroup>
+</Project>

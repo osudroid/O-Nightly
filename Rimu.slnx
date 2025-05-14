@@ -1,0 +1,73 @@
+﻿<Solution>
+  <Folder Name="/Repository/" />
+  <Folder Name="/Repository/Authentication/">
+    <Project Path="Repository\Rimu.Repository.Authentication.Adapter\Rimu.Repository.Authentication.Adapter.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Authentication.Binder\Rimu.Repository.Authentication.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Authentication.Domain.Test.Unit\Rimu.Repository.Authentication.Domain.Test.Unit.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Authentication.Domain\Rimu.Repository.Authentication.Domain.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/Repository/Avatar/">
+    <Project Path="Repository\Rimu.Repository.Avatar.Adapter\Rimu.Repository.Avatar.Adapter.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Avatar.Binder\Rimu.Repository.Avatar.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Avatar.Domain\Rimu.Repository.Avatar.Domain.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/Repository/Dependency/">
+    <Project Path="Repository\Rimu.Repository.Dependency.Adapter\Rimu.Repository.Dependency.Adapter.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Dependency.AspNetCore\Rimu.Repository.Dependency.AspNetCore.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Dependency.Binder\Rimu.Repository.Dependency.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Dependency.Domain\Rimu.Repository.Dependency.Domain.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Dependency.Loader\Rimu.Repository.Dependency.Loader.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/Repository/Environment/">
+    <Project Path="Repository\Rimu.Repository.Environment.Adapter\Rimu.Repository.Environment.Adapter.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Environment.Binder\Rimu.Repository.Environment.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Environment.Domain\Rimu.Repository.Environment.Domain.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/Repository/Mailer/">
+    <Project Path="Repository\Rimu.Repository.Mailer.Binder\Rimu.Repository.Mailer.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Mailer.Domain\Rimu.Repository.Mailer.Domain.csproj" Type="Classic C#" />
+    <Project Path="Rimu.Repository.Mailer.Adapter\Rimu.Repository.Mailer.Adapter.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/Repository/OdrZip/">
+    <Project Path="Repository\Rimu.Repository.OdrZip.Adapter\Rimu.Repository.OdrZip.Adapter.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.OdrZip.Binder\Rimu.Repository.OdrZip.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.OdrZip.Domain\Rimu.Repository.OdrZip.Domain.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/Repository/Postgres/">
+    <Project Path="Repository\Rimu.Repository.Postgres.Adapter\Rimu.Repository.Postgres.Adapter.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Postgres.Binder\Rimu.Repository.Postgres.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Postgres.Domain\Rimu.Repository.Postgres.Domain.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Postgres.Kernel\Rimu.Repository.Postgres.Kernel.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/Repository/Pp/">
+    <Project Path="Repository\Rimu.Repository.Pp.Adapter\Rimu.Repository.Pp.Adapter.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Pp.Binder\Rimu.Repository.Pp.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Pp.Domain\Rimu.Repository.Pp.Domain.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/Repository/Printer/">
+    <Project Path="Repository\Rimu.Repository.Printer.Adapter\Rimu.Repository.Printer.Adapter.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Printer.Binder\Rimu.Repository.Printer.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Printer.Domain\Rimu.Repository.Printer.Domain.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/Repository/Region/">
+    <Project Path="Repository\Rimu.Repository.Region.Adapter\Rimu.Repository.Region.Adapter.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Region.Binder\Rimu.Repository.Region.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Region.Domain\Rimu.Repository.Region.Domain.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/Repository/Security/">
+    <Project Path="Repository\Rimu.Repository.Security.Adapter\Rimu.Repository.Security.Adapter.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Security.Binder\Rimu.Repository.Security.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Security.Domain.Test.Unit\Rimu.Repository.Security.Domain.Test.Unit.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Security.Domain\Rimu.Repository.Security.Domain.csproj" Type="Classic C#" />
+  </Folder>
+  <Project Path="Rimu.DefaultNuget\Rimu.DefaultNuget.csproj" Type="Classic C#" />
+  <Project Path="Rimu.ExtraInterface\Rimu.ExtraInterface.csproj" Type="Classic C#" />
+  <Project Path="Rimu.Init\Rimu.Init.csproj" Type="Classic C#" />
+  <Project Path="Rimu.Kernel\Rimu.Kernel.csproj" Type="Classic C#" />
+  <Project Path="Rimu.Terminal\Rimu.Terminal.csproj" Type="Classic C#" />
+  <Project Path="Rimu.Web.Gen1.Test.Unit\Rimu.Web.Gen1.Test.Unit.csproj" Type="Classic C#" />
+  <Project Path="Rimu.Web.Gen1\Rimu.Web.Gen1.csproj" Type="Classic C#" />
+  <Project Path="Rimu.Web.Gen2.Test.Unit\Rimu.Web.Gen2.Test.Unit.csproj" Type="Classic C#" />
+  <Project Path="Rimu.Web.Gen2\Rimu.Web.Gen2.csproj" Type="Classic C#" />
+  <Project Path="Rimu.Web\Rimu.Web.csproj" Type="Classic C#" />
+</Solution>

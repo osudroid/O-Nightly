@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>13</LangVersion>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <PlatformTarget>x64</PlatformTarget>
+      <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+      <PlatformTarget>x64</PlatformTarget>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Repository\Rimu.Repository.Authentication.Binder\Rimu.Repository.Authentication.Binder.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.Avatar.Binder\Rimu.Repository.Avatar.Binder.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.Dependency.Binder\Rimu.Repository.Dependency.Binder.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.Environment.Binder\Rimu.Repository.Environment.Binder.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.Mailer.Binder\Rimu.Repository.Mailer.Binder.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.OdrZip.Binder\Rimu.Repository.OdrZip.Binder.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.Postgres.Binder\Rimu.Repository.Postgres.Binder.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.Pp.Binder\Rimu.Repository.Pp.Binder.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.Printer.Binder\Rimu.Repository.Printer.Binder.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.Region.Binder\Rimu.Repository.Region.Binder.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.Security.Binder\Rimu.Repository.Security.Binder.csproj" />
+    </ItemGroup>
+
+</Project>
