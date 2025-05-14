@@ -17,7 +17,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\Rimu.Repository.Mailer.Adapter\Rimu.Repository.Mailer.Adapter.csproj" />
+      <ProjectReference Include="..\Rimu.Repository.Mailer.Adapter\Rimu.Repository.Mailer.Adapter.csproj" />
       <ProjectReference Include="..\Rimu.Repository.Dependency.Adapter\Rimu.Repository.Dependency.Adapter.csproj" />
       <ProjectReference Include="..\Rimu.Repository.Mailer.Domain\Rimu.Repository.Mailer.Domain.csproj" />
     </ItemGroup>
