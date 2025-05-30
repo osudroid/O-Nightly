@@ -1,7 +1,10 @@
 using Rimu.Repository.Postgres.Adapter.Interface;
-
+using Rimu.Kernel.Convert;
 namespace Rimu.Repository.OdrZip.Adapter.Class;
 
+/// <summary>
+/// Represents an OdrEntry, which contains version information and an replay.
+/// </summary>
 public class OdrEntry {
     public int Version { get; set; }
     public OdrReplay? Replay { get; set; }

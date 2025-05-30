@@ -7,6 +7,9 @@ using Rimu.Repository.Environment.Adapter.Interface;
 
 namespace Rimu.Repository.Pp.Domain;
 
+/// <summary>
+/// Provides functionality to calculate performance points (PP) from replay files by interacting with an external service.
+/// </summary>
 public class PpCalculatorProvider {
     private const string Path = "/calculate-replay";
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
@@ -33,6 +36,14 @@ public class PpCalculatorProvider {
         }
     }
 
+    /// <summary>
+    /// Calculates performance points (PP) from a replay file by sending it to an external service.
+    /// </summary>
+    /// <param name="replayFileBytes">The byte array representing the replay file.</param>
+    /// <param name="filename">The name of the replay file.</param>
+    /// <returns>
+    /// A success result with an optional double value representing the calculated PP, or an error result.
+    /// </returns>
     public async Task<SResult<Option<double>>> CalculateReplayAsync(byte[] replayFileBytes, string filename) {
         try {
             var file = new ByteArrayContent(replayFileBytes);

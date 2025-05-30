@@ -40,13 +40,14 @@
       <ProjectReference Include="..\Repository\Rimu.Repository.Avatar.Adapter\Rimu.Repository.Avatar.Adapter.csproj" />
       <ProjectReference Include="..\Repository\Rimu.Repository.Dependency.Adapter\Rimu.Repository.Dependency.Adapter.csproj" />
       <ProjectReference Include="..\Repository\Rimu.Repository.Environment.Adapter\Rimu.Repository.Environment.Adapter.csproj" />
+      <ProjectReference Include="..\Repository\Rimu.Repository.Mailer.Adapter\Rimu.Repository.Mailer.Adapter.csproj" />
       <ProjectReference Include="..\Repository\Rimu.Repository.OdrZip.Adapter\Rimu.Repository.OdrZip.Adapter.csproj" />
       <ProjectReference Include="..\Repository\Rimu.Repository.Postgres.Adapter\Rimu.Repository.Postgres.Adapter.csproj" />
       <ProjectReference Include="..\Repository\Rimu.Repository.Pp.Adapter\Rimu.Repository.Pp.Adapter.csproj" />
       <ProjectReference Include="..\Repository\Rimu.Repository.Printer.Adapter\Rimu.Repository.Printer.Adapter.csproj" />
       <ProjectReference Include="..\Repository\Rimu.Repository.Region.Adapter\Rimu.Repository.Region.Adapter.csproj" />
       <ProjectReference Include="..\Repository\Rimu.Repository.Security.Adapter\Rimu.Repository.Security.Adapter.csproj" />
-      <ProjectReference Include="..\Rimu.Repository.Mailer.Adapter\Rimu.Repository.Mailer.Adapter.csproj" />
+      <ProjectReference Include="..\Repository\Rimu.Repository.Mailer.Adapter\Rimu.Repository.Mailer.Adapter.csproj" />
     </ItemGroup>
 
     <ItemGroup>

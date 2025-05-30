@@ -46,7 +46,7 @@
         <ProjectReference Include="..\Repository\Rimu.Repository.Printer.Adapter\Rimu.Repository.Printer.Adapter.csproj" />
         <ProjectReference Include="..\Repository\Rimu.Repository.Region.Adapter\Rimu.Repository.Region.Adapter.csproj" />
         <ProjectReference Include="..\Repository\Rimu.Repository.Security.Adapter\Rimu.Repository.Security.Adapter.csproj" />
-        <ProjectReference Include="..\Rimu.Repository.Mailer.Adapter\Rimu.Repository.Mailer.Adapter.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.Mailer.Adapter\Rimu.Repository.Mailer.Adapter.csproj" />
     </ItemGroup>
 
     <ItemGroup>

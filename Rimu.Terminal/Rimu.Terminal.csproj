@@ -22,10 +22,19 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Repository\Rimu.Repository.Postgres.Adapter\Rimu.Repository.Postgres.Adapter.csproj" />
+        <ProjectReference Include="..\Repository\Rimu.Repository.Printer.Adapter\Rimu.Repository.Printer.Adapter.csproj" />
+        <ProjectReference Include="..\Rimu.DefaultNuget\Rimu.DefaultNuget.csproj" />
         <ProjectReference Include="..\Rimu.Init\Rimu.Init.csproj"/>
         <ProjectReference Include="..\Rimu.Kernel\Rimu.Kernel.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <Content Include="Sql\*">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+    
     <ItemGroup>
         <Content Update="SecurityUser.json">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>

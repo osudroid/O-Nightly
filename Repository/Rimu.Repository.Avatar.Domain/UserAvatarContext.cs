@@ -6,6 +6,9 @@ using Rimu.Repository.Postgres.Adapter.Query;
 
 namespace Rimu.Repository.Avatar.Domain;
 
+/// <summary>
+/// Provides methods to manage user avatars, including insertion, retrieval, and conversion operations.
+/// </summary>
 public sealed class UserAvatarContext: IUserAvatarContext {
     private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
 
@@ -21,6 +24,11 @@ public sealed class UserAvatarContext: IUserAvatarContext {
         _envDb = envDb;
     }
 
+    /// <summary>
+    /// Inserts or overwrites the user's avatar with a new one, creating multiple resized versions.
+    /// </summary>
+    /// <param name="imageBytes">The binary data of the new avatar image.</param>
+    /// <returns>Result contains an array of avatar metadata without binary data.</returns>
     public async Task<ResultOk<View_UserAvatarNoBytes[]>> InsertOrOverwriteWithNewAvatarAsync(byte[] imageBytes) {
         var err = await _queryUserAvatar.DeleteAllFromUserIdAsync(this._userId);
         if (err == EResult.Err) {
@@ -62,30 +70,61 @@ public sealed class UserAvatarContext: IUserAvatarContext {
         ]);
     }
 
+    /// <summary>
+    /// Retrieves all avatars for the user without binary data.
+    /// </summary>
+    /// <returns>Result contains an array of avatar metadata without binary data.</returns>
     public async Task<ResultOk<View_UserAvatarNoBytes[]>> FindByUserIdAsync() {
         return await _queryView_UserAvatarNoBytes.FindByUserIdAsync(this._userId);
     }
 
+    /// <summary>
+    /// Retrieves avatar metadata without binary data for the user by hash.
+    /// </summary>
+    /// <param name="hash">The hash of the avatar to retrieve.</param>
+    /// <returns>Result contains an optional avatar metadata object.</returns>
     public async Task<ResultOk<Option<View_UserAvatarNoBytes>>> FindByUserIdAndHashAsync(string hash) {
         return await _queryView_UserAvatarNoBytes.FindByUserIdAndHashAsync(this._userId, hash);
     }
 
+    /// <summary>
+    /// Retrieves the full avatar data for the user by hash.
+    /// </summary>
+    /// <param name="hash">The hash of the avatar to retrieve.</param>
+    /// <returns>Result contains an optional avatar object.</returns>
     public async Task<ResultOk<Option<UserAvatar>>> FindAvatarByUserIdAndHashAsync(string hash) {
         return await _queryUserAvatar.GetByUserIdAndHash(this._userId, hash);
     }
 
+    /// <summary>
+    /// Retrieves the low-resolution avatar for the user.
+    /// </summary>
+    /// <returns>Result contains an optional low-resolution avatar object.</returns>
     public async Task<ResultOk<Option<UserAvatar>>> FindAvatarLowByUserIdAsync() {
         return await _queryUserAvatar.GetLowByUserIdAsync(_userId);
     }
 
+    /// <summary>
+    /// Retrieves the high-resolution avatar for the user.
+    /// </summary>
+    /// <returns>Result contains an optional high-resolution avatar object.</returns>
     public async Task<ResultOk<Option<UserAvatar>>> FindAvatarHighByUserIdAsync() {
         return await _queryUserAvatar.GetHighByUserIdAsync(_userId);
     }
 
+    /// <summary>
+    /// Retrieves the original avatar for the user.
+    /// </summary>
+    /// <returns>Result contains an optional original avatar object.</returns>
     public async Task<ResultOk<Option<UserAvatar>>> FindAvatarOriginalByUserIdAsync() {
         return await _queryUserAvatar.GetOriginalByUserIdAsync(_userId);
     }
 
+    /// <summary>
+    /// Converts the given avatar to PNG format.
+    /// </summary>
+    /// <param name="userAvatar">The avatar to convert.</param>
+    /// <returns>Result contains the converted avatar object.</returns>
     public async Task<ResultOk<UserAvatar>> ToPngAsync(UserAvatar userAvatar) {
         if (userAvatar.Bytes is null) {
             Logger.Error("UserAvatar.ToPng: UserAvatar.Bytes is null");

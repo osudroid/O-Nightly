@@ -7,13 +7,27 @@ using Rimu.Repository.Postgres.Adapter.Query;
 
 namespace Rimu.Repository.Authentication.Domain;
 
+/// <summary>
+/// Represents the user authentication context, providing functionality for verifying passwords,
+/// updating passwords, and managing user rules.
+/// </summary>
 public class UserAuthContext: IUserAuthContext {
     private readonly IPasswordProvider _passwordGen1Provider = new PasswordGen1Provider();
     private readonly IPasswordProvider _passwordGen2Provider = new PasswordGen2Provider();
     private readonly Logger _logger = NLog.LogManager.GetCurrentClassLogger();
     private readonly IQueryUserInfo _queryUserInfo; 
+
+    /// <summary>
+    /// Gets a value indicating whether the user was found and authorized.
+    /// </summary>
     public bool FoundAndAuthorized { get; }
+    /// <summary>
+    /// Gets IUserAuthDataContext.
+    /// </summary>
     public Option<IUserAuthDataContext> UserDataContext { get; private set; }
+    /// <summary>
+    /// Gets the user rule associated with the user.
+    /// </summary>
     public IUserRule Rule { get; private init; }
 
     private UserAuthContext(bool foundAndAuthorized, Option<IUserAuthDataContext> userDataContext, IQueryUserInfo queryUserInfo, UserRule rule) {
@@ -23,6 +37,12 @@ public class UserAuthContext: IUserAuthContext {
         Rule = rule;
     }
     
+    /// <summary>
+    /// Creates a new <see cref="UserAuthContext"/> from the given user information.
+    /// </summary>
+    /// <param name="userInfo">The user information.</param>
+    /// <param name="queryUserInfo">The query interface for user information.</param>
+    /// <returns>A new instance of <see cref="UserAuthContext"/>.</returns>
     public static UserAuthContext FromUserInfo(UserInfo userInfo, IQueryUserInfo queryUserInfo) {
         return new UserAuthContext(
             userInfo.Active && !userInfo.Banned,
@@ -32,6 +52,11 @@ public class UserAuthContext: IUserAuthContext {
         );
     }
     
+    /// <summary>
+    /// Verifies if the given password matches the stored password.
+    /// </summary>
+    /// <param name="password">The password to verify.</param>
+    /// <returns>A <see cref="ResultOk{T}"/> indicating whether the password is correct.</returns>
     public ResultOk<bool> IsPassword(string password) {
         if (UserDataContext.IsNotSet()) {
             _logger.Error($"UserDataContext {password} is not set");
@@ -45,10 +70,20 @@ public class UserAuthContext: IUserAuthContext {
         return ResultOk<bool>.Ok(_passwordGen1Provider.VerifyPassword(password, user.PasswordGen1));
     }
 
+    /// <summary>
+    /// Checks if the given password hash matches the stored password hash for generation 1.
+    /// </summary>
+    /// <param name="passwordHash">The password hash to compare.</param>
+    /// <returns>True if the hashes match; otherwise, false.</returns>
     public bool PasswordGen1EqualHash(string passwordHash) {
         return this.UserDataContext.Unwrap().PasswordGen1 == passwordHash;
     }
 
+    /// <summary>
+    /// Validates the password and sets a generation 2 password hash if it generation 1.
+    /// </summary>
+    /// <param name="password">The password to validate.</param>
+    /// <returns>A <see cref="Task{TResult}"/> containing a <see cref="ResultOk{T}"/> indicating success or failure.</returns>
     public Task<ResultOk<bool>> IsPasswordValidAndSetGen2IfNotExistAsync(string password) {
         return IsPassword(password).AndThenAsync(async x => {
             if (!x) {
@@ -65,6 +100,11 @@ public class UserAuthContext: IUserAuthContext {
         });
     }
 
+    /// <summary>
+    /// Updates the user's password with new generation 1 and generation 2 hashes.
+    /// </summary>
+    /// <param name="password">The new password.</param>
+    /// <returns>A <see cref="Task{TResult}"/> containing a <see cref="ResultNone"/> indicating success or failure.</returns>
     public async Task<ResultNone> UpdatePasswordAsync(string password) {
         var passwordGen1Hash = _passwordGen1Provider.HashPassword(password);
         var passwordGen2Hash = _passwordGen1Provider.HashPassword(password);
@@ -82,6 +122,9 @@ public class UserAuthContext: IUserAuthContext {
         );
     }
     
+    /// <summary>
+    /// Represents the user rule, defining various permissions and restrictions for the user.
+    /// </summary>
     public struct UserRule: IUserRule {
         public required bool IsRestrict { get; init; }
         public required bool IsBanned { get; init; }

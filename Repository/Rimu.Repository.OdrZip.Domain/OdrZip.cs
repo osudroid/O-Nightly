@@ -8,6 +8,9 @@ using Rimu.Repository.Postgres.Adapter.Query;
 
 namespace Rimu.Repository.OdrZip.Domain;
 
+/// <summary>
+/// Represents the OdrZip class, responsible for creating and managing OdrZip files.
+/// </summary>
 public sealed class OdrZip: IOdrZip {
     private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
     
@@ -25,11 +28,18 @@ public sealed class OdrZip: IOdrZip {
         _queryReplayFile = queryReplayFile;
     }
 
+    /// <summary>
+    /// Creates an OdrZip file from the given replay data and entry information.
+    /// </summary>
+    /// <param name="odrBytes">The replay data as a byte array.</param>
+    /// <param name="entry">The entry information for the replay.</param>
+    /// <returns>A result containing the created OdrZip file as a byte array, or an error.</returns>
     private ResultOk<byte[]> CreateOdrZip(byte[] odrBytes, OdrEntry entry) {
         try
         {
             using var file = new MemoryStream();
 
+            // Create a new zip archive and add the replay file
             using var archive = new ZipArchive(file, ZipArchiveMode.Create, true);
             {
                 var odrEntry = archive.CreateEntry(entry.Replay!.Replayfile!, CompressionLevel.SmallestSize);
@@ -38,6 +48,7 @@ public sealed class OdrZip: IOdrZip {
                 }
             }
 
+            // Add the entry metadata as a JSON file
             {
                 var entryJson = archive.CreateEntry("entry.json", CompressionLevel.SmallestSize);
                 using (var odrEntryStream = entryJson.Open()) {
@@ -54,7 +65,13 @@ public sealed class OdrZip: IOdrZip {
         }
     }
 
-
+    /// <summary>
+    /// Asynchronously generates an OdrZip file for the given Odr number.
+    /// </summary>
+    /// <param name="odrNumber">The unique identifier for the Odr.</param>
+    /// <returns>
+    /// A result containing an optional tuple with the OdrZip file as a byte array and its name, or an error.
+    /// </returns>
     public async Task<ResultOk<Option<(byte[] bytes, string name)>>> FactoryAsync(long odrNumber) {
         var resultPlay_PlayStats = await _queryView_Play_PlayStats.GetByIdAsync(odrNumber);
 

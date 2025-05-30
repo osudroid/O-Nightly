@@ -5,15 +5,38 @@ using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Rimu.Repository.Postgres.Domain;
 
+/// <summary>
+/// Represents a transaction context for managing PostgreSQL database transactions.
+/// </summary>
 public class DbTransactionContext: IDbTransactionContext {
     private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
+    /// <summary>
+    /// Gets the database context associated with this transaction context.
+    /// </summary>
     public IDbContext DbContext { get; }
+    /// <summary>
+    /// Gets a value indicating whether the transaction context has been disposed.
+    /// </summary>
     public bool IsDisposed { get; private set; }
+    /// <summary>
+    /// Gets or sets the optional isolation level for the transaction.
+    /// </summary>
     public Option<IsolationLevel> IsolationLevelOption { get; private set; }
+    /// <summary>
+    /// Gets or sets the optional Npgsql transaction associated with this context.
+    /// </summary>
     public Option<NpgsqlTransaction> NpgsqlTransactionOption { get; private set; }
+    /// <summary>
+    /// Gets or sets the behavior when the transaction is disposed without being finished.
+    /// </summary>
     public ETransactionDisposed DisposedOption { get; set; }
-    
+    /// <summary>
+    /// Gets a value indicating whether a transaction is currently active.
+    /// </summary>
     public bool IsTransactionActive { get; private set; }
+    /// <summary>
+    /// Gets a value indicating whether the transaction has been finished (committed or rolled back).
+    /// </summary>
     public bool IsFinished { get; private set; }
     
     
@@ -25,11 +48,20 @@ public class DbTransactionContext: IDbTransactionContext {
         IsFinished = false;
     }
 
+    /// <summary>
+    /// Sets the isolation level for the transaction.
+    /// </summary>
+    /// <param name="isolationLevel">The isolation level to set.</param>
+    /// <returns>The current transaction context.</returns>
     public IDbTransactionContext SetIsolationLevel(IsolationLevel isolationLevel) {
         IsolationLevelOption = new Option<IsolationLevel>(isolationLevel);
         return this;
     }
 
+    /// <summary>
+    /// Rolls back the current transaction asynchronously.
+    /// </summary>
+    /// <returns>A result indicating success or failure.</returns>
     public async Task<ResultNone> RollbackAsync() {
         try {
             if (IsDisposed) {
@@ -53,6 +85,10 @@ public class DbTransactionContext: IDbTransactionContext {
         }
     }
     
+    /// <summary>
+    /// Begins a new transaction asynchronously.
+    /// </summary>
+    /// <returns>A result indicating success or failure.</returns>
     public async Task<ResultNone> BeginTransactionAsync() {
         try {
             if (IsDisposed) {
@@ -80,6 +116,10 @@ public class DbTransactionContext: IDbTransactionContext {
         }
     }
 
+    /// <summary>
+    /// Commits the current transaction asynchronously.
+    /// </summary>
+    /// <returns>A result indicating success or failure.</returns>
     public async Task<ResultNone> CommitAsync() {
         try {
             if (IsDisposed) {

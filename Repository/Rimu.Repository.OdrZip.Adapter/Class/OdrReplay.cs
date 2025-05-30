@@ -1,5 +1,8 @@
 namespace Rimu.Repository.OdrZip.Adapter.Class;
 
+/// <summary>
+/// Represents a replay in the OdrZip system, containing detailed information about a player's performance.
+/// </summary>
 public class OdrReplay {
     public string? Filename { get; set; }
     public string? Playername { get; set; }

@@ -6,11 +6,17 @@ using Rimu.Repository.Environment.Adapter;
 
 namespace Rimu.Repository.Postgres.Domain;
 
+/// <summary>
+/// Provides methods to build and manage Npgsql database connections.
+/// </summary>
 internal static class NpgsqlBuilder {
     private static readonly System.Threading.SemaphoreSlim SemaphoreSlim = new SemaphoreSlim(1);
     private static NpgsqlDataSourceBuilder? _npgsqlDataSourceBuilder;
     private static NpgsqlDataSource? _npgsqlDataSource;
 
+    /// <summary>
+    /// Initializes the Npgsql data source and its configuration.
+    /// </summary>
     private static void Init() {
         DefaultTypeMap.MatchNamesWithUnderscores = false;
         
@@ -39,6 +45,11 @@ internal static class NpgsqlBuilder {
         _npgsqlDataSource = _npgsqlDataSourceBuilder.Build();
     }
     
+    /// <summary>
+    /// Asynchronously builds and retrieves a new Npgsql database connection.
+    /// </summary>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>An open <see cref="NpgsqlConnection"/> instance.</returns>
     public static async Task<NpgsqlConnection> BuildAsync(CancellationToken cancellationToken = default) {
         try {
             await SemaphoreSlim.WaitAsync(cancellationToken);

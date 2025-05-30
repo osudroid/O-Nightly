@@ -17,10 +17,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="NLog" Version="5.4.0" />
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\Rimu.Repository.Dependency.Adapter\Rimu.Repository.Dependency.Adapter.csproj" />
       <ProjectReference Include="..\Rimu.Repository.Postgres.Adapter\Rimu.Repository.Postgres.Adapter.csproj" />
       <ProjectReference Include="..\Rimu.Repository.Printer.Adapter\Rimu.Repository.Printer.Adapter.csproj" />

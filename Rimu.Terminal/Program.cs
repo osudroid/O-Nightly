@@ -20,6 +20,10 @@ public static class Program {
               .Default
               .ParseArguments<CommandOption>(args)
               .WithParsedAsync(async option => {
+                  if (!option.CreateTables) {
+                      Logger.Info($"Start CreateTables");
+                      
+                  }
                   if (!String.IsNullOrEmpty(option.UploadReplayFile)) {
                       Logger.Info($"Start UploadReplayFile in '{option.UploadReplayFile}'");
                       if (!Directory.Exists(option.UploadReplayFile)) {
@@ -76,6 +80,8 @@ public static class Program {
     }
     
     private class CommandOption {
+        [Option( "create-tables", Required = false, HelpText = "Create Tables")]
+        public bool CreateTables { get; set; }
         [Option('c', "calc", Required = false, HelpText = "Calculate User Stats")]
         public bool CalcUserStats { get; set; }
 
