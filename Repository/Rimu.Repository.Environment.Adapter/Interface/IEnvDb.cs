@@ -21,6 +21,8 @@ public interface IEnvDb {
     public bool Log_RequestJsonPrint { get; }
     public int UserAvatar_SizeLow { get; }
     public int UserAvatar_SizeHigh { get; }
+    public int UserAvatar_ByteSizeLow { get; }
+    public int UserAvatar_ByteSizeHigh { get; }
     public int LoginToken_ValidTimeInMin { get; }
     public int LoginToken_TokenSize { get; }
     public string SecurityOld_Keyword { get; }
