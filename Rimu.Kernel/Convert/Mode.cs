@@ -1,7 +1,7 @@
 using System.Text;
 using LamLibAllOver.ErrorHandling;
 
-namespace Rimu.Repository.OdrZip.Adapter.Class;
+namespace Rimu.Kernel.Convert;
 
 public static class Mode {
     /// <exception cref="Exception"></exception>

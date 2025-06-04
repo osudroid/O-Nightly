@@ -9,6 +9,7 @@
   <Folder Name="/Repository/Avatar/">
     <Project Path="Repository\Rimu.Repository.Avatar.Adapter\Rimu.Repository.Avatar.Adapter.csproj" Type="Classic C#" />
     <Project Path="Repository\Rimu.Repository.Avatar.Binder\Rimu.Repository.Avatar.Binder.csproj" Type="Classic C#" />
+    <Project Path="Repository\Rimu.Repository.Avatar.Domain.Test.Unit\Rimu.Repository.Avatar.Domain.Test.Unit.csproj" Type="Classic C#" />
     <Project Path="Repository\Rimu.Repository.Avatar.Domain\Rimu.Repository.Avatar.Domain.csproj" Type="Classic C#" />
   </Folder>
   <Folder Name="/Repository/Dependency/">
@@ -24,9 +25,9 @@
     <Project Path="Repository\Rimu.Repository.Environment.Domain\Rimu.Repository.Environment.Domain.csproj" Type="Classic C#" />
   </Folder>
   <Folder Name="/Repository/Mailer/">
+    <Project Path="Repository\Rimu.Repository.Mailer.Adapter\Rimu.Repository.Mailer.Adapter.csproj" Type="Classic C#" />
     <Project Path="Repository\Rimu.Repository.Mailer.Binder\Rimu.Repository.Mailer.Binder.csproj" Type="Classic C#" />
     <Project Path="Repository\Rimu.Repository.Mailer.Domain\Rimu.Repository.Mailer.Domain.csproj" Type="Classic C#" />
-    <Project Path="Repository\Rimu.Repository.Mailer.Adapter\Rimu.Repository.Mailer.Adapter.csproj" Type="Classic C#" />
   </Folder>
   <Folder Name="/Repository/OdrZip/">
     <Project Path="Repository\Rimu.Repository.OdrZip.Adapter\Rimu.Repository.OdrZip.Adapter.csproj" Type="Classic C#" />

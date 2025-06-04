@@ -1,5 +1,7 @@
+using ImageMagick.Formats;
 using LamLibAllOver.ErrorHandling;
 using Rimu.Repository.Avatar.Adapter.Interface;
+using Rimu.Repository.Avatar.Domain.ImageConverter.Interface;
 using Rimu.Repository.Environment.Adapter.Interface;
 using Rimu.Repository.Postgres.Adapter.Entities;
 using Rimu.Repository.Postgres.Adapter.Query;
@@ -16,12 +18,23 @@ public sealed class UserAvatarContext: IUserAvatarContext {
     private readonly IQueryView_UserAvatarNoBytes _queryView_UserAvatarNoBytes;
     private readonly IQueryUserAvatar _queryUserAvatar;
     private readonly IEnvDb _envDb;
+    private readonly IImageTo<WebPWriteDefines> _imageToWebP;
+    private readonly IImageTo<PngWriteDefines> _imageToPng;
 
-    public UserAvatarContext(long userId, IQueryView_UserAvatarNoBytes queryViewUserAvatarNoBytes, IQueryUserAvatar queryUserAvatar, IEnvDb envDb) {
+    public UserAvatarContext(
+        long userId, 
+        IQueryView_UserAvatarNoBytes queryViewUserAvatarNoBytes, 
+        IQueryUserAvatar queryUserAvatar, 
+        IEnvDb envDb,
+        IImageTo<WebPWriteDefines> imageToWebP,
+        IImageTo<PngWriteDefines> imageToPng) 
+    {
         _userId = userId;
         _queryView_UserAvatarNoBytes = queryViewUserAvatarNoBytes;
         _queryUserAvatar = queryUserAvatar;
         _envDb = envDb;
+        _imageToWebP = imageToWebP;
+        _imageToPng = imageToPng;
     }
 
     /// <summary>
@@ -35,31 +48,28 @@ public sealed class UserAvatarContext: IUserAvatarContext {
             return ResultOk<View_UserAvatarNoBytes[]>.Err();
         }
         
-        var handler = new ImageConverterHandler(imageBytes);
-        var originalResult = (await handler.GetOriginalImageBytesAsync())
-                                    .Map(x => x.ToUserAvatar(_userId, true));
-        if (originalResult == EResult.Err) {
+        var imageConverterHandler = new ImageConverterHandler(imageBytes, this._imageToWebP);
+        var originalResult = imageConverterHandler.CreateOriginalImageDtoAsync()
+                                                  .Map(x => x.ToUserAvatar(_userId, true));
+        var highResult = imageConverterHandler.CreateHighImageDto()
+                                              .Map(x => x.ToUserAvatar(_userId, true));
+        var lowResult = imageConverterHandler.CreateLowImageDto()
+                                             .Map(x => x.ToUserAvatar(_userId, true));
+        
+        if (originalResult == EResult.Err || highResult == EResult.Err || lowResult == EResult.Err) {
             return ResultOk<View_UserAvatarNoBytes[]>.Err();
         }
         
-        var highResult = (await handler.ResizeAsync((uint)_envDb.UserAvatar_SizeHigh))
-            .Map(x => x.ToUserAvatar(_userId, false));
-        if (highResult == EResult.Err) {
-            return ResultOk<View_UserAvatarNoBytes[]>.Err();
-        }
         
-        var lowResult = (await handler.ResizeAsync((uint)_envDb.UserAvatar_SizeLow))
-            .Map(x => x.ToUserAvatar(_userId, false));
-        if (lowResult == EResult.Err) {
-            return ResultOk<View_UserAvatarNoBytes[]>.Err();
-        }
-
-
-        if (await _queryUserAvatar.InsertAsync(lowResult.Ok()) == EResult.Err) {
+        if (await _queryUserAvatar.InsertAsync(originalResult.Ok()) == EResult.Err) {
             return ResultOk<View_UserAvatarNoBytes[]>.Err();
         }
 
         if (await _queryUserAvatar.InsertAsync(highResult.Ok()) == EResult.Err) {
+            return ResultOk<View_UserAvatarNoBytes[]>.Err();
+        }
+        
+        if (await _queryUserAvatar.InsertAsync(lowResult.Ok()) == EResult.Err) {
             return ResultOk<View_UserAvatarNoBytes[]>.Err();
         }
         
@@ -127,11 +137,20 @@ public sealed class UserAvatarContext: IUserAvatarContext {
     /// <returns>Result contains the converted avatar object.</returns>
     public async Task<ResultOk<UserAvatar>> ToPngAsync(UserAvatar userAvatar) {
         if (userAvatar.Bytes is null) {
-            Logger.Error("UserAvatar.ToPng: UserAvatar.Bytes is null");
+            Logger.Error("UserAvatarContext.ToPng: UserAvatar.Bytes is null");
             return ResultOk<UserAvatar>.Err();
         }
-        var imageConverterHandler = new ImageConverterHandler(userAvatar.Bytes);
-        return (await imageConverterHandler.ToPngAsync())
-            .Map(x => x.ToUserAvatar(userAvatar.UserId, false));
+        try {
+            var imageConverterHandler = new ImageConverterHandler(userAvatar.Bytes, this._imageToPng);
+            var imagePng = (this._envDb.UserAvatar_ByteSizeLow < userAvatar.PixelSize) switch {
+                true => imageConverterHandler.CreateHighImageDto(),
+                _ => imageConverterHandler.CreateLowImageDto()
+            };
+
+            return imagePng.Map(x => x.ToUserAvatar(userAvatar.UserId, false));
+        }
+        catch (Exception e) {
+            return SResult<UserAvatar>.Err(e).LogIfError(Logger);
+        }
     }
 }

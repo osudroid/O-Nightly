@@ -1,11 +1,12 @@
-using ImageMagick;
 using ImageMagick.Formats;
 using Rimu.Repository.Environment.Adapter.Interface;
 
 namespace Rimu.Repository.Avatar.Domain.ImageConverter;
 
-public class IImageToWebp: ImageTo<WebPWriteDefines> {
-    public IImageToWebp(IEnvDb envDb): base(envDb, new WebPWriteDefines() {
+public class ImageToWebp: ImageTo<WebPWriteDefines> {
+    public ImageToWebp(IEnvDb envDb): base(
+        envDb, 
+        new Lazy<WebPWriteDefines>(() => new WebPWriteDefines() {
         AlphaCompression = WebPAlphaCompression.Compressed,
         AlphaQuality = 100,
         AlphaFiltering = WebPAlphaFiltering.Best,
@@ -14,24 +15,24 @@ public class IImageToWebp: ImageTo<WebPWriteDefines> {
         Lossless = false,
         LowMemory = false,
         TargetSize = envDb.UserAvatar_ByteSizeLow,
-    }, new WebPWriteDefines() {
-        AlphaCompression = WebPAlphaCompression.Compressed,
-        AlphaQuality = 100,
-        AlphaFiltering = WebPAlphaFiltering.Best,
-        FilterSharpness = 5,
-        FilterType = WebPFilterType.Simple,
-        Lossless = false,
-        LowMemory = false,
-        TargetSize = envDb.UserAvatar_ByteSizeHigh,
-    }) {
+    }, LazyThreadSafetyMode.None), new Lazy<WebPWriteDefines>(() => new WebPWriteDefines() {
+            AlphaCompression = WebPAlphaCompression.Compressed,
+            AlphaQuality = 100,
+            AlphaFiltering = WebPAlphaFiltering.Best,
+            FilterSharpness = 5,
+            FilterType = WebPFilterType.Simple,
+            Lossless = false,
+            LowMemory = false,
+            TargetSize = envDb.UserAvatar_ByteSizeHigh,
+        }, LazyThreadSafetyMode.None)) {
     }
 
     public override byte[] ConvertWithLowSize(byte[] fromImageBytes) {
-        return Convert(fromImageBytes, WriteDefineLow, (uint)EnvDb.UserAvatar_SizeLow);
+        return Convert(fromImageBytes, WriteDefineLow.Value, (uint)EnvDb.UserAvatar_SizeLow);
     }
 
     public override byte[] ConvertWithHighSize(byte[] fromImageBytes) {
-        return Convert(fromImageBytes, WriteDefineHigh, (uint)EnvDb.UserAvatar_SizeHigh);
+        return Convert(fromImageBytes, WriteDefineHigh.Value, (uint)EnvDb.UserAvatar_SizeHigh);
     }
 
     private byte[] Convert(byte[] fromImageBytes, WebPWriteDefines writeDefines, uint size) {

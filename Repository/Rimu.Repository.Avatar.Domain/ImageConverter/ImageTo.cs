@@ -1,17 +1,18 @@
 using ImageMagick;
+using Rimu.Repository.Avatar.Domain.ImageConverter.Interface;
 using Rimu.Repository.Environment.Adapter.Interface;
 
 namespace Rimu.Repository.Avatar.Domain.ImageConverter;
 
-public abstract class ImageTo<T>: IImageTo<T> {
+public abstract class ImageTo<T> : IImageTo<T> where T: IWriteDefines {
     protected readonly IEnvDb EnvDb;
-    protected readonly T WriteDefineLow;
-    protected readonly T WriteDefineHigh;
+    protected readonly Lazy<T> WriteDefineLow;
+    protected readonly Lazy<T> WriteDefineHigh;
 
-    protected ImageTo(IEnvDb envDb, T writeDefineLow, T writeDefineHigh) {
+    protected ImageTo(IEnvDb envDb, Lazy<T> lazyWriteDefineLow, Lazy<T> lazyWriteDefineHigh) {
         EnvDb = envDb;
-        WriteDefineLow = writeDefineLow;
-        WriteDefineHigh = writeDefineHigh;
+        WriteDefineLow = lazyWriteDefineLow;
+        WriteDefineHigh = lazyWriteDefineHigh;
     }
 
     public abstract byte[] ConvertWithLowSize(byte[] fromImageBytes);

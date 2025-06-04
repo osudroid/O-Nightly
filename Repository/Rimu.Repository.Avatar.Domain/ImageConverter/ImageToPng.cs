@@ -4,29 +4,29 @@ using Rimu.Repository.Environment.Adapter.Interface;
 
 namespace Rimu.Repository.Avatar.Domain.ImageConverter;
 
-public class IImageToPng: ImageTo<PngWriteDefines> {
+public class ImageToPng: ImageTo<PngWriteDefines> {
 
-    public IImageToPng(IEnvDb envDb) : base(envDb, new PngWriteDefines() {
+    public ImageToPng(IEnvDb envDb) : base(envDb, new Lazy<PngWriteDefines>(() => new PngWriteDefines() {
             BitDepth = 8,
             CompressionFilter = PngCompressionFilter.Average,
             CompressionLevel = 8,
             CompressionStrategy = PngCompressionStrategy.Default,
-        }, new PngWriteDefines() {
+        }, LazyThreadSafetyMode.None), new Lazy<PngWriteDefines>(() => new PngWriteDefines() {
             BitDepth = 8,
             CompressionFilter = PngCompressionFilter.Average,
             CompressionLevel = 7,
             CompressionStrategy = PngCompressionStrategy.Default,
-        }
+        }, LazyThreadSafetyMode.None)
     ) {
         
     }
 
     public override byte[] ConvertWithLowSize(byte[] fromImageBytes) {
-        return Convert(fromImageBytes, WriteDefineLow, (uint)EnvDb.UserAvatar_SizeLow);
+        return Convert(fromImageBytes, WriteDefineLow.Value, (uint)EnvDb.UserAvatar_SizeLow);
     }
 
     public override byte[] ConvertWithHighSize(byte[] fromImageBytes) {
-        return Convert(fromImageBytes, WriteDefineHigh, (uint)EnvDb.UserAvatar_SizeHigh);
+        return Convert(fromImageBytes, WriteDefineHigh.Value, (uint)EnvDb.UserAvatar_SizeHigh);
     }
 
     private byte[] Convert(byte[] fromImageBytes, PngWriteDefines writeDefines, uint size) {

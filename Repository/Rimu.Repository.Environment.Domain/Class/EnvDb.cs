@@ -23,6 +23,8 @@ public class EnvDb: IEnvDb {
     public bool Log_RequestJsonPrint { get; }
     public int UserAvatar_SizeLow { get; }
     public int UserAvatar_SizeHigh { get; }
+    public int UserAvatar_ByteSizeLow { get; }
+    public int UserAvatar_ByteSizeHigh { get; }
     public int LoginToken_ValidTimeInMin { get; }
     public int LoginToken_TokenSize { get; }
     public string SecurityOld_Keyword { get; }
@@ -57,6 +59,8 @@ public class EnvDb: IEnvDb {
         Log_RequestJsonPrint = bool.Parse(dictionary["Log_RequestJsonPrint"]);
         UserAvatar_SizeLow = int.Parse(dictionary["UserAvatar_SizeLow"]);
         UserAvatar_SizeHigh = int.Parse(dictionary["UserAvatar_SizeHigh"]);
+        UserAvatar_ByteSizeLow = int.Parse(dictionary["UserAvatar_ByteSizeLow"]);
+        UserAvatar_ByteSizeHigh = int.Parse(dictionary["UserAvatar_ByteSizeHigh"]);
         LoginToken_ValidTimeInMin = int.Parse(dictionary["LoginToken_ValidTimeInMin"]);
         LoginToken_TokenSize = int.Parse(dictionary["LoginToken_TokenSize"]);
         SecurityOld_Keyword = dictionary["SecurityOld_Keyword"];
